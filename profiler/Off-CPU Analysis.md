@@ -1,46 +1,40 @@
-# Off-CPU Analysis
+# [Off-CPU 分析](https://www.brendangregg.com/offcpuanalysis.html)
 
-[![img](https://www.brendangregg.com/Perf/thread_states.png)](https://www.brendangregg.com/Perf/thread_states.png)
-*Generic thread states*
+<p align="center">
+<img src="https://www.brendangregg.com/Perf/thread_states.png"/>
+线程状态
+</p>
 
-Performance issues can be categorized into one of two types:
+性能问题可以分为以下两种类型之一：
 
-- **On-CPU**: where threads are spending time running on-CPU.
-- **Off-CPU**: where time is spent waiting while blocked on I/O, locks, timers, paging/swapping, etc.
+- **`On-CPU`**：线程在CPU上的**运行时间**。
+- **`Off-CPU`**：在 I/O、锁、定时器、分页/交换等被阻塞的情况下的**等待时间**。
 
-Off-CPU analysis is a performance methodology where off-CPU time is measured and studied, along with context such as stack traces. It differs from CPU profiling, which only examines threads if they are executing on-CPU. Here, the target are thread states that are blocked and off-CPU, as shown in blue in the diagram on the right.
+`Off-CPU` 分析是一种性能分析方法论，测量和研究 `off-CPU` 的时间，以及堆栈采样等上下文。CPU 分析只检查线程是否正在 CPU 上执行。`Off-CPU` 分析的目标是线程被阻塞或不在执行时的状态，如图中的蓝色所示。
 
-Off-CPU analysis is complementary to CPU analysis, so that 100% of thread time can be understood. This method also differs from tracing techniques that instrument applications functions that commonly block, since this method targets the kernel scheduler's notion of blocking, which is a convenient catch-all.
+`Off-CPU` 分析是对 CPU 分析的补充，因此可以 100% 了解线程时间。这种方法也不同于 `trace`，**<u>跟踪技术通常是为阻塞的应用程序提供工具</u>**，因为这种方法的目标是内核调度器的阻塞概念，是一种方便的通用方法。
 
-Threads can leave CPU for a number of reasons, including I/O and locks, but also some that are unrelated to the current thread's execution, including involuntary context switching due to high demand for CPU resources, and interrupts. Whatever the reason, if this occurs during a workload request (a synchronous code-path), then it is introducing latency.
+线程可以出于多种原因离开 CPU，包括 I/O 和锁，但也有一些与当前线程的执行无关，包括由于对 CPU 资源的高需求而导致的<u>非自愿上下文切换</u>和<u>中断</u>。不管是什么原因，只要这发生干活期间，就会引入延迟。
 
-On this page I'll introduce off-CPU time as a metric, and summarize techniques for off-CPU analysis. As an example implementation of off-CPU analysis I'll apply it to Linux, then summarize other OSes in later sections.
+我将在本页==介绍 `off-CPU` 时间作为一个指标==，并总结 `off-CPU` 分析的技术。作为 `off-CPU` 分析的一个示例实现，我将把它应用到 Linux上，然后在后面介绍其他操作系统。
 
-Table of contents:
+## 先决条件
 
-- | [1. Prerequisites](https://www.brendangregg.com/offcpuanalysis.html#Prerequisites)  [2. Introduction](https://www.brendangregg.com/offcpuanalysis.html#Introduction)  [3. Overhead](https://www.brendangregg.com/offcpuanalysis.html#Overhead)  [4. Linux](https://www.brendangregg.com/offcpuanalysis.html#Linux)  [5. Off-CPU Time](https://www.brendangregg.com/offcpuanalysis.html#Time)  [6. Off-CPU Analysis](https://www.brendangregg.com/offcpuanalysis.html#Analysis)  [7. Request Context](https://www.brendangregg.com/offcpuanalysis.html#Context)  [8. Caveats](https://www.brendangregg.com/offcpuanalysis.html#Caveats) | [9. Flame Graphs](https://www.brendangregg.com/offcpuanalysis.html#FlameGraphs)  [10. Wakeups](https://www.brendangregg.com/offcpuanalysis.html#Wakeups)  [11. Other OSes](https://www.brendangregg.com/offcpuanalysis.html#OtherOS)  [12. Origin](https://www.brendangregg.com/offcpuanalysis.html#Origin)  [13. Summary](https://www.brendangregg.com/offcpuanalysis.html#Summary)  [14. Updates](https://www.brendangregg.com/offcpuanalysis.html#Updates) |
-  | ------------------------------------------------------------ | ------------------------------------------------------------ |
-  |                                                              |                                                              |
+> Off-CPU analysis require stack traces to be available to tracers, which you may need to fix first. Many applications are compiled with the -fomit-frame-pointer gcc option, breaking frame pointer-based stack walking. VM runtimes like Java compile methods on the fly, and tracers may not find their symbol information without additional help, causing the stack trace to be hexadecimal only. There are other gotchas as well. See my previous write ups on fixing [Stack Traces](http://www.brendangregg.com/perf.html#StackTraces) and [JIT Symbols](http://www.brendangregg.com/perf.html#JIT_Symbols) for perf.
 
+Off-CPU 分析需要堆栈跟踪可用。许多应用程序都是使用 `-fomit-frame-pointer` 的 gcc 选项编译的，这打破了基于帧指针的堆栈方法。VM 运行时（如 Java）可自由编译方法，在没有额外帮助的情况下可能无法找到其符号信息，从而导致仅能十六进制堆栈跟踪。请参阅关于修复 [Stack Traces](http://www.brendangregg.com/perf.html#StackTraces) 和 [JIT Symbols for perf](http://www.brendangregg.com/perf.html#JIT_Symbols)。
 
+## 简介
 
+为了解释 `off-CPU` 分析的作用，我将首先总结 CPU 采样和跟踪并进行比较。然后我将总结两种 `off-CPU` 分析方法：**跟踪**和**采样**。 虽然十多年来我一直在推动 `off-CPU` 分析，但它仍然不是一种广泛使用的方法，部分原因是在生产 Linux 环境中缺乏测量它的工具。现在，随着 `eBPF` 和 Linux 内核（4.8+）的不断更新，情况正在发生变化。
 
+> 参考 [JProfiler 文档](https://www.ej-technologies.com/resources/jprofiler/v/12.0/help_zh_CN/doc/main/methodCallRecording.html)
 
-## Prerequisites
+### 1. CPU 采样
 
-Off-CPU analysis require stack traces to be available to tracers, which you may need to fix first. Many applications are compiled with the -fomit-frame-pointer gcc option, breaking frame pointer-based stack walking. VM runtimes like Java compile methods on the fly, and tracers may not find their symbol information without additional help, causing the stack trace to be hexadecimal only. There are other gotchas as well. See my previous write ups on fixing [Stack Traces](http://www.brendangregg.com/perf.html#StackTraces) and [JIT Symbols](http://www.brendangregg.com/perf.html#JIT_Symbols) for perf.
+许多传统的分析工具定时采样所有 CPU 的活动，以特定时间间隔或频率（例如，99 赫兹）收集当前指令地址（程序计数器）或整个堆栈回溯的快照。 这将给出正在运行的函数或堆栈跟踪的计数，从而可以计算出 CPU 周期花费在何处的合理估计。 在 Linux 上，采样模式下的 [perf](https://www.brendangregg.com/perf.html) 工具（例如 -F 99）会进行 CPU 定时采样。
 
-
-
-## Introduction
-
-To explain the role of off-CPU analysis, I'll summarize CPU sampling and tracing first for comparison. I'll then summarize two off-CPU analysis approaches: tracing, and sampling. While I've been promoting off-CPU analysis for over a decade, it is still not a widely used methodology, in part due to the lack of tools in production Linux environments to measure it. That is now changing with eBPF and newer Linux kernels (4.8+).
-
-### 1. CPU Sampling
-
-Many traditional profiling tools use timed sampling of activity across all CPUs, collecting snapshots of the current instruction address (program counter) or entire stack back trace at a certain time interval or rate (eg, 99 Hertz). This will give counts of either the running function or the stack trace, allowing reasonable estimates to be calculated of where the CPU cycles are being spent. On Linux, the [perf](https://www.brendangregg.com/perf.html) tool in sampling mode (eg, -F 99) does timed CPU sampling.
-
-Consider application function A() calls function B(), which makes a blocking system call:
+考虑应用程序函数 `A()` 调用函数 `B()`，`B()` 进行的系统调用导致阻塞：
 
 ```
     CPU Sampling ----------------------------------------------->
@@ -56,11 +50,9 @@ Consider application function A() calls function B(), which makes a blocking sys
                        block . . . . . interrupt                    
 ```
 
+虽然这对于研究 `on-CPU` 问题非常有效，包括热代码路径和自适应互斥自旋，但它不会在应用程序处于阻塞并等待的 `off-CPU` 时收集数据。
 
-
-While this can be very effective for studying on-CPU issues, including hot code-paths and adaptive mutex spins, it doesn't gather data when the application has blocked and is waiting off-CPU.
-
-### 2. Application Tracing
+### 2. 应用程序追踪
 
 ```
     App Tracing ------------------------------------------------>
@@ -79,13 +71,13 @@ While this can be very effective for studying on-CPU issues, including hot code-
 
 
 
-Here functions are instrumented so that timestamps are collected when they begin "(" and end ")", so that the time spent in functions can be calculated. If the timestamps include elapsed time and CPU time (eg, using times(2) or getrusage(2)), then it is also possible to calculate which functions were slow on-CPU vs which functions were slow because they were blocked off-CPU. Unlike sampling, these timestamps can have a very high resolution (nanoseconds).
+这会动态修改（`Instrumentation`）函数，以便在它们开始 `(` 和结束 `)` 时收集时间戳，因此可以计算在函数中花费的间。 如果时间戳包括已用时间和 CPU 时间（例如，使用 times(2) 或 getrusage(2)），那么还可以计算哪些函数在 CPU 上慢，哪些函数因为在 CPU 外被阻塞而慢 . 与采样不同，这些时间戳可以具有非常高的分辨率（纳秒）。
 
-While this works, a disadvantage is that you either trace all application functions, which can have a significant performance impact (and affect the performance you are trying to measure), or you pick the functions that are likely to block, and hope you didn't miss any.
+虽然可行，但缺点是您要么跟踪所有应用程序函数，这可能会对性能产生重大影响（并影响到你的测量），要么选择可能会阻塞的函数，但可能会遗漏。
 
-### 3. Off-CPU Tracing
+### 3. Off-CPU 跟踪
 
-I'll summarize this here, then explain it in more detail in the next sections.
+我将在这小结一下，然后在接下来的部分对其进行更详细的解释。
 
 ```
     Off-CPU Tracing -------------------------------------------->
@@ -102,17 +94,15 @@ I'll summarize this here, then explain it in more detail in the next sections.
                        block . . . . . interrupt                    
 ```
 
+使用这种方法，只跟踪将线程切换到 `off-CPU` 的内核函数，以及时间戳和用户太堆栈采样。这侧重于 `off-CPU` 事件，无需跟踪所有应用程序函数，也无需知道应用程序是什么。这种方法可用于任何阻塞事件，适用于任何应用程序：MySQL、Apache、Java 等。
 
+> `Off-CPU` 跟踪捕获**任意**应用程序的**所有**等待事件。 
 
-With this approach, only the kernel functions that switch the thread off-CPU are traced, along with timestamps and user-land stack traces. This focuses on the off-CPU events, without needing to trace all of the application functions, or needing to know what the application is. This approach works for any blocking event, for any application: MySQL, Apache, Java, etc.
+本页后面，我将跟踪内核`off-CPU` 事件，并包括一些应用程序级别的**<u>检测</u>**来过滤掉==异步等待时间==（例如，等待工作的线程）。 与应用程序级**<u>检测</u>**不同，我不需要寻找所有可能阻塞 CPU 的地方； 我只需要确定应用程序处理工作期间，位于时间敏感的代码路径中（例如，在 MySQL 查询期间）同步的延迟。
 
-> Off-CPU tracing captures *all* wait events for *any* application.
+`Off-CPU` 跟踪一直是我分析 `Off-CPU` 的主要方法。但也有抽样。
 
-Later on this page I'll trace kernel off-CPU events and include some application level instrumentation to filter out asynchronous wait times (eg, threads waiting for work). Unlike application level instrumentation, I don't need to hunt down every place that may block off-CPU; I just need to identify that the application is in a time sensitive code path (eg, during a MySQL query), so that the latency is synchronous to the workload.
-
-Off-CPU tracing is the main approach I've been using for Off-CPU analysis. But there's also sampling.
-
-### 4. Off-CPU Sampling
+### 4. Off-CPU 取样
 
 ```
     Off-CPU Sampling ------------------------------------------->
@@ -128,50 +118,65 @@ Off-CPU tracing is the main approach I've been using for Off-CPU analysis. But t
                        block . . . . . interrupt                    
 ```
 
+这种方法定时采样被阻塞线程的堆栈。也可以通过**挂墙时间（wall-time）分析器**来完成：无论线程处于 `on-CPU ` 还是 `off-CPU`，总是对所有线程进行采样。然后，可以过滤 wall-time 分析器的输出， 只输出 `off-CPU` 堆栈。
 
+系统分析器很少使用 `off-CPU` 采样。**采样通常实现为 CPU 定时器的中断**，然后检查当前正在运行的中断进程：生成一个 `on-CPU` 采样文件。`off-CPU` 采样器必须以不同的方式工作：要么在每个应用程序线程中设置定时器来唤醒它们并捕获堆栈，要么让内核每隔一段时间遍历所有线程并捕获它们的堆栈。
 
-This approach uses timed sampling to capture blocked stack traces from threads that are not running on-CPU. It can also be accomplished by a wall-time profiler: one that samples all threads all the time, regardless of whether they are on- or off-CPU. The wall-time profile output can then be filtered to look for just the off-CPU stacks.
+## 开销
 
-Off-CPU sampling is rarely used by system profilers. Sampling is usually implemented as per-CPU timer interrupts, that then examine the currently running process that was interrupted: producing an on-CPU profile. An off-CPU sampler must work in a different way: either setting up timers in each application thread to wake them up and capture stacks, or having the kernel walk all threads at an interval and capture their stacks.
+**警告**：使用 `off-CPU` 跟踪时，调度程序事件可能非常频繁——在极端情况下，每秒有数百万个事件——尽管跟踪器可能只会给每个事件增加少量开销，但是由于事件速率，开销累积起来将变得很显著。`Off-CPU` 采样也有开销问题，因为系统可能有数万个线程必须不断采样，这比 `on-CPU` 采样的开销高出几个数量级。
 
+使用 `off-CPU` 分析，需要注意每一步的开销。将每个事件转储到用户空间，以进行后期处理的跟踪器每分钟创建  GB 级的跟踪数据，很容易令人望而却步。同时将数据写入文件系统和存储设备，进行后期处理，也会消耗更多的 CPU。由于**==在内核中进行摘要==**（如 Linux eBPF）的跟踪器可以减少开销，使得 `off-CPU` 分析变得切实可行，这就是它们为什么这么重要的原因。还要注意反馈循环：跟踪器跟踪由自己引起的事件。
 
+> If I'm completely in the dark with a new scheduler tracer, I'll begin by tracing for one tenth of a second only (0.1s), and then ratchet it up from there, while closely measuring the impact on system CPU utilization, application request rates, and application latency. I'll also consider the rate of context switches (eg, measured via the "cs" column in vmstat), and be more careful on servers with higher rates.
+>
+> To give you some idea of the overheads, I tested an 8 CPU system running Linux 4.15, with a heavy MySQL load causing 102k context switches per second. The server was running at CPU saturation (0% idle) on purpose, so that any tracer overhead will cause a noticeable loss in application performance. I then compared off-CPU analysis via scheduler tracing with Linux perf and eBPF, which demonstrate different approaches: perf for event dumping, and eBPF for in-kernel summarizing:
+>
+> - Using perf to trace every scheduler event caused a 9% drop in throughput while tracing, with occasional 12% drops while the perf.data capture file was flushed to disk. That file ended up 224 Mbytes for 10 seconds of tracing. The file was then post processed by running perf script to do symbol translation, which cost a 13% performance drop (the loss of 1 CPU) for 35 seconds. You could summarize this by saying the 10 second perf trace cost 9-13% overhead for 45 seconds.
+> - Using eBPF to count stacks in kernel context instead caused a 6% drop in throughput during the 10 second trace, which began with a 13% drop for 1 second as eBPF was initialized, and was followed by 6 seconds of post-processing (symbol resolution of the already-summarized stacks) costing a 13% drop. So a 10 second trace cost 6-13% overhead for 17 seconds. Much better.
+>
+> What happens when the trace duration is increased? For eBPF it's only capturing and translating unique stacks, which won't scale linearly with the trace duration. I tested this by increasing the trace from 10 to 60 seconds, which only increased eBPF post processing from 6 to 7 seconds. The same with perf increased its post processing from 35 seconds to 212 seconds, as it needed to process 6x the volume of data. To finish understanding this fully, it's worth noting that post processing is a user-level activity that can be tuned to interfere less with the production workload, such as by using different scheduler priorities. Imagine capping CPU at 10% (of one CPU) for this activity: the performance loss may then be negligible, and the eBPF post-processing stage may then take 70 seconds – not too bad. But the perf script time may then take 2120 seconds (35 minutes), which would stall an investigation. And perf's overhead isn't just CPU, it's also disk I/O.
+>
+> How does this MySQL example compare to production workloads? It was doing 102k context switches per second, which is relatively high: many production systems I see at the moment are in the 20-50k/s range. That would suggest that the overheads described here are about 2x higher than I would see on those production systems. However, the MySQL stack depth is relatively light, often only 20-40 frames, whereas production applications can exceed 100 frames. That matters as well, and may mean that my MySQL stack walking overheads are perhaps only half what I would see in production. So this may balance out for my production systems.
+>
 
-## Overhead
+如果我完全使用新的调度程序跟踪器，我将开始仅跟踪十分之一秒（0.1 秒），然后从那里向上加长，同时密切测量对系统 CPU 利用率、应用程序请求速率和应用程序延迟的影响。我还将考虑上下文切换的速率（例如，通过 vmstat 中的"cs"列进行测量），并在具有较高速率的服务器上更加小心。
 
-WARNING: With off-CPU tracing, be aware that scheduler events can be very frequent – in extreme cases, millions of events per second – and although tracers may only add a tiny amount of overhead to each event, due to the event rate that overhead can add up and become significant. Off-CPU sampling has overhead issues too, as systems may have tens of thousands of threads which must be constantly sampled, orders of magnitude higher overhead than CPU sampling across the CPU count only.
+为了让您了解开销，我测试了运行 Linux 4.15 的 8 CPU 系统，大量 MySQL 负载导致 102k 个上下文交换/秒。服务器以 CPU 饱和度（0% 空闲）运行，因此任何跟踪开销都会导致应用程序性能明显损失。然后，我比较了通过调度程序跟踪进行 CPU 分析与 Linux perf 和 eBPF，它们演示了不同的方法：用于事件转储的 perf 和用于内核中的 eBPF 汇总：
 
-To use off-CPU analysis, you'll want to pay attention to overheads every step of the way. Tracers that dump every event to user-space for post processing can easily become prohibitive, creating Gbytes of trace data per minute. That data must be written to the file system and storage devices and post-processed, costing more CPU. This is why tracers that can do in-kernel summaries, like Linux eBPF, are so important for reducing overhead and making off-CPU analysis practical. Also beware of feedback loops: tracers tracing events caused by themselves.
+- 使用 perf 跟踪每个调度程序事件导致跟踪时吞吐量下降 9%，在 perf.data 捕获文件刷新到磁盘时，吞吐量偶尔会下降 12%。该文件最终为 224 MB，用于 10 秒的跟踪。然后通过运行 perf 脚本进行符号转换对文件进行发布处理，这会花费 13% 的性能下降（丢失 1 个 CPU）35 秒。您可以总结这一点，说 10 秒 perf 跟踪花费 9-13% 开销 45 秒。
+- 使用 eBPF 对内核上下文中的堆栈进行计数，在 10 秒跟踪期间导致吞吐量下降 6%，从初始化 eBPF 时 1 秒内的吞吐量下降 13%开始，随后是 6 秒的后处理（已汇总堆栈的符号分辨率），成本下降了 13%。因此，10 秒跟踪需要 6-13% 的开销 17 秒。
 
-If I'm completely in the dark with a new scheduler tracer, I'll begin by tracing for one tenth of a second only (0.1s), and then ratchet it up from there, while closely measuring the impact on system CPU utilization, application request rates, and application latency. I'll also consider the rate of context switches (eg, measured via the "cs" column in vmstat), and be more careful on servers with higher rates.
+增加跟踪持续时间时会发生什么？对于 eBPF，它只捕获和转换唯一堆栈，不会随着跟踪持续时间线性扩展。我通过将跟踪从 10 秒增加到 60 秒来测试这一点，这仅将 eBPF 后处理从 6 秒增加到 7 秒。perf 将其后期处理从 35 秒增加到 212 秒，因为它需要处理 6 倍的数据量。为了完全了解这一点，值得注意的是，后期处理是一种用户级活动，可以调整以减少对生产工作负载的干扰，例如使用不同的计划程序优先级。想象一下，此活动的 CPU 上限为 10%：性能损失可能微不足道，eBPF 后处理阶段可能需要 70 秒 - 还不算太坏。但是，perf 脚本时间可能需要 2120 秒（35 分钟），这将阻碍调查。perf 的开销不仅仅是 CPU，它也开销磁盘 I/O。
 
-To give you some idea of the overheads, I tested an 8 CPU system running Linux 4.15, with a heavy MySQL load causing 102k context switches per second. The server was running at CPU saturation (0% idle) on purpose, so that any tracer overhead will cause a noticeable loss in application performance. I then compared off-CPU analysis via scheduler tracing with Linux perf and eBPF, which demonstrate different approaches: perf for event dumping, and eBPF for in-kernel summarizing:
-
-- Using perf to trace every scheduler event caused a 9% drop in throughput while tracing, with occasional 12% drops while the perf.data capture file was flushed to disk. That file ended up 224 Mbytes for 10 seconds of tracing. The file was then post processed by running perf script to do symbol translation, which cost a 13% performance drop (the loss of 1 CPU) for 35 seconds. You could summarize this by saying the 10 second perf trace cost 9-13% overhead for 45 seconds.
-- Using eBPF to count stacks in kernel context instead caused a 6% drop in throughput during the 10 second trace, which began with a 13% drop for 1 second as eBPF was initialized, and was followed by 6 seconds of post-processing (symbol resolution of the already-summarized stacks) costing a 13% drop. So a 10 second trace cost 6-13% overhead for 17 seconds. Much better.
-
-What happens when the trace duration is increased? For eBPF it's only capturing and translating unique stacks, which won't scale linearly with the trace duration. I tested this by increasing the trace from 10 to 60 seconds, which only increased eBPF post processing from 6 to 7 seconds. The same with perf increased its post processing from 35 seconds to 212 seconds, as it needed to process 6x the volume of data. To finish understanding this fully, it's worth noting that post processing is a user-level activity that can be tuned to interfere less with the production workload, such as by using different scheduler priorities. Imagine capping CPU at 10% (of one CPU) for this activity: the performance loss may then be negligible, and the eBPF post-processing stage may then take 70 seconds – not too bad. But the perf script time may then take 2120 seconds (35 minutes), which would stall an investigation. And perf's overhead isn't just CPU, it's also disk I/O.
-
-How does this MySQL example compare to production workloads? It was doing 102k context switches per second, which is relatively high: many production systems I see at the moment are in the 20-50k/s range. That would suggest that the overheads described here are about 2x higher than I would see on those production systems. However, the MySQL stack depth is relatively light, often only 20-40 frames, whereas production applications can exceed 100 frames. That matters as well, and may mean that my MySQL stack walking overheads are perhaps only half what I would see in production. So this may balance out for my production systems.
-
-
+此 MySQL 示例与生产工作负载相比如何？它当时在进行102k的上下文开关/秒，这是相对较高的：目前我看到的许多生产系统都在20-50k/s范围内。这表明，这里描述的开销比我在这些生产系统上看到的要高2倍。但是，MySQL 堆栈深度相对较轻，通常只有 20-40 帧，而生产应用程序可以超过 100 帧。这也很重要，而且可能意味着我的 MySQL 堆栈行走开销可能只有我在生产中看到的一半。因此，这可以平衡我的生产系统。
 
 ## Linux: perf, eBPF
 
-Off-CPU analysis is a generic approach that should work on any operating system. I'll demonstrate doing it on Linux using off-CPU tracing, then summarize other OSes in later sections.
+> Off-CPU analysis is a generic approach that should work on any operating system. I'll demonstrate doing it on Linux using off-CPU tracing, then summarize other OSes in later sections.
+>
+> There are many tracers available on Linux for off-CPU analysis. I'll use [eBPF](https://www.brendangregg.com/ebpf.html) here, as it can easily do in-kernel summaries of stack traces and times. eBPF is part of the Linux kernel, and I'll use it via the [bcc](https://www.brendangregg.com/ebpf.html#bcc) frontend tools. These need at least Linux 4.8 for stack trace support.
+>
+> You may wonder how I did off-CPU analysis before eBPF. Lots of different ways, including completely different approaches for each blocking type: storage tracing for storage I/O, kernel statistics for scheduler latency, and so on. To actually do off-CPU analysis before, I've used SystemTap, and also [perf](https://www.brendangregg.com/perf.html) event logging – although that has higher overhead (I wrote about it in [perf_events Off-CPU Time Flame Graph](http://www.brendangregg.com/blog/2015-02-26/linux-perf-off-cpu-flame-graph.html)). At one point I wrote a simple wall-time kernel-stack profiler called [proc-profiler.pl](https://github.com/brendangregg/proc-profiler/blob/master/proc-profiler.pl), which sampled /proc/PID/stack for a given PID. It worked well enough. I'm not the first to hack up such a wall-time profiler either, see [poormansprofiler](http://poormansprofiler.org/) and Tanel Poder's [quick'n'dirty](https://blog.tanelpoder.com/2013/02/21/peeking-into-linux-kernel-land-using-proc-filesystem-for-quickndirty-troubleshooting/) troubleshooting.
+>
 
-There are many tracers available on Linux for off-CPU analysis. I'll use [eBPF](https://www.brendangregg.com/ebpf.html) here, as it can easily do in-kernel summaries of stack traces and times. eBPF is part of the Linux kernel, and I'll use it via the [bcc](https://www.brendangregg.com/ebpf.html#bcc) frontend tools. These need at least Linux 4.8 for stack trace support.
+Off-CPU 分析是一种通用方法，可在任何操作系统上工作。我将演示使用 Off-CPU 跟踪在 Linux 上执行该方法，然后在后两节中总结其他操作系统。
 
-You may wonder how I did off-CPU analysis before eBPF. Lots of different ways, including completely different approaches for each blocking type: storage tracing for storage I/O, kernel statistics for scheduler latency, and so on. To actually do off-CPU analysis before, I've used SystemTap, and also [perf](https://www.brendangregg.com/perf.html) event logging – although that has higher overhead (I wrote about it in [perf_events Off-CPU Time Flame Graph](http://www.brendangregg.com/blog/2015-02-26/linux-perf-off-cpu-flame-graph.html)). At one point I wrote a simple wall-time kernel-stack profiler called [proc-profiler.pl](https://github.com/brendangregg/proc-profiler/blob/master/proc-profiler.pl), which sampled /proc/PID/stack for a given PID. It worked well enough. I'm not the first to hack up such a wall-time profiler either, see [poormansprofiler](http://poormansprofiler.org/) and Tanel Poder's [quick'n'dirty](https://blog.tanelpoder.com/2013/02/21/peeking-into-linux-kernel-land-using-proc-filesystem-for-quickndirty-troubleshooting/) troubleshooting.
+Linux 上有许多用于 Off-CPU 分析的跟踪器。我将在这里使用 eBPF，因为它可以很容易地执行堆栈跟踪和时间内核中的摘要。eBPF 是 Linux 内核的一部分，我通过 bcc 前端工具使用它。这些至少需要 Linux 4.8 来支持堆栈跟踪。
 
-
+你可能想知道我在 eBPF 之前是如何进行 CPU 外分析的。许多不同的方法，包括每种阻塞类型的完全不同的方法：存储 I/O 的存储跟踪、调度程序延迟的内核统计信息等等。要实际执行 Off-CPU 分析之前，我曾使用过 SystemTap，也使用过 perf 事件日志记录 ， 尽管这具有更高的开销（我在 perf_events 非 CPU 时间火焰图中写过）。有一次，我写了一个简单的wall-time内核堆栈探查器proc-profiler.pl，它采样/proc/PID/堆栈给定的PID。它工作得很好。我也不是第一个破解这样的墙时间分析器， 看poormansprofiler和Tanel Poder's quick'n'dirty故障排除。
 
 ## Off-CPU Time
 
-This is the time that threads spent waiting off-CPU (blocked time), and not running on-CPU. It can be measured as totals across a duration (already provided by /proc statistics), or measured for each blocking event (usually requires a tracer).
+> This is the time that threads spent waiting off-CPU (blocked time), and not running on-CPU. It can be measured as totals across a duration (already provided by /proc statistics), or measured for each blocking event (usually requires a tracer).
+>
+> To start with, I'll show total off-CPU time from a tool that may already be familiar to you. The time(1) command. Eg, timing tar(1):
 
-To start with, I'll show total off-CPU time from a tool that may already be familiar to you. The time(1) command. Eg, timing tar(1):
+这是线程等待 Off-CPU （阻塞时间）而不是On-CPU 的时间。它可以作为持续时间（已由 /proc 统计信息提供）的总计进行测量，或测量每个阻塞事件（通常需要一个跟踪器）。
 
-```
+首先，我将展示您可能已经熟悉的工具的总关闭 CPU 时间。 The time(1) command. Eg, timing tar(1):
+
+```bash
 $ time tar cf archive.tar linux-4.15-rc2
 
 real	0m50.798s
@@ -179,13 +184,15 @@ user	0m1.048s
 sys	0m11.627s
 ```
 
+> tar took about one minute to run, but the time command shows it only spent 1.0 seconds of user-mode CPU time, and 11.6 seconds of kernel-mode CPU time, out of a total 50.8 seconds of elapsed time. We are missing 38.2 seconds! That is the time the tar command was blocked off-CPU, no doubt doing storage I/O as part of its archive generation.
+>
+> To examine off-CPU time in more detail, either dynamic tracing of kernel scheduler functions or static tracing using the sched tracepoints can be used. The bcc/eBPF project includes cpudist that does this, developed by Sasha Goldshtein, which has a -O mode that measures off-CPU time. This requires Linux 4.4 or higher. Measuring tar's off-CPU time:
 
+tar 运行大约一分钟，但时间命令显示，它只花了 1.0 秒的用户模式 CPU 时间，以及 11.6 秒的内核模式 CPU 时间，总共 50.8 秒的运行时间。我们错过了 38.2 秒！这是 tar 命令在 Off-CPU 的时间，毫无疑问，作为其存档生成一部分，执行存储 I/O。
 
-tar took about one minute to run, but the time command shows it only spent 1.0 seconds of user-mode CPU time, and 11.6 seconds of kernel-mode CPU time, out of a total 50.8 seconds of elapsed time. We are missing 38.2 seconds! That is the time the tar command was blocked off-CPU, no doubt doing storage I/O as part of its archive generation.
+为了更详细地检查 Off-CPU 时间，可以使用内核调度程序函数的动态跟踪或使用 sched 跟踪点的静态跟踪。bcc/eBPF 项目包括由 Sasha Goldshtein 开发的 cpudist，该项目具有测量 Off-CPU 时间的 -O 模式。这需要 Linux 4.4 或更高版本。Measuring tar's off-CPU time:
 
-To examine off-CPU time in more detail, either dynamic tracing of kernel scheduler functions or static tracing using the sched tracepoints can be used. The bcc/eBPF project includes cpudist that does this, developed by Sasha Goldshtein, which has a -O mode that measures off-CPU time. This requires Linux 4.4 or higher. Measuring tar's off-CPU time:
-
-```
+```bash
 # /usr/share/bcc/tools/cpudist -O -p `pgrep -nx tar`
 Tracing off-CPU time... Hit Ctrl-C to end.
 ^C
@@ -209,37 +216,52 @@ Tracing off-CPU time... Hit Ctrl-C to end.
      65536 -> 131071     : 9        |                                        |
 ```
 
+> This shows that most of the blocking events were between 64 and 511 microseconds, which is consistent with flash storage I/O latency (this is a flash-based system). The slowest blocking events, while tracing, reached the 65 to 131 millisecond second range (the last bucket in this histogram).
+>
+> What does this off-CPU time consist of? Everything from when a thread blocked to when it began running again, including scheduler delay.
+>
+> At the time of writing this, cpudist uses kprobes (kernel dynamic tracing) to instrument the finish_task_switch() kernel function. (It should use the sched tracepoint, for API stability reasons, but the first attempt wasn't successful and was [reverted](https://github.com/iovisor/bcc/commit/06d90d3d4b35815027b7b7a7fc48167d497d2de3#diff-8db0718fb1ee9a9dcbb8db1a14a146e8) for now.)
+>
+> The prototype for finish_task_switch() is:
 
+这表明大多数阻塞事件在 64 到 511 微秒之间，这与闪存存储 I/O 延迟（这是基于闪存的系统）一致。跟踪时最慢的阻塞事件达到 65 到 131 毫秒的范围（此直方图中的最后一个存储桶）。
 
-This shows that most of the blocking events were between 64 and 511 microseconds, which is consistent with flash storage I/O latency (this is a flash-based system). The slowest blocking events, while tracing, reached the 65 to 131 millisecond second range (the last bucket in this histogram).
+此 Off-CPU 关闭时间由什么组成？从线程阻塞到再次开始运行的所有内容，包括调度程序延迟。
 
-What does this off-CPU time consist of? Everything from when a thread blocked to when it began running again, including scheduler delay.
+在编写本文时，cpudist 使用 kprobes（内核动态跟踪）来检测  `finish_task_switch()` 内核函数。（出于 API 稳定性原因，它应该使用 sched 跟踪点，但第一次尝试未成功，现在已 [reverted](https://github.com/iovisor/bcc/commit/06d90d3d4b35815027b7b7a7fc48167d497d2de3#diff-8db0718fb1ee9a9dcbb8db1a14a146e8)。）
 
-At the time of writing this, cpudist uses kprobes (kernel dynamic tracing) to instrument the finish_task_switch() kernel function. (It should use the sched tracepoint, for API stability reasons, but the first attempt wasn't successful and was [reverted](https://github.com/iovisor/bcc/commit/06d90d3d4b35815027b7b7a7fc48167d497d2de3#diff-8db0718fb1ee9a9dcbb8db1a14a146e8) for now.)
+`finish_task_switch()` 的原型是：
 
-The prototype for finish_task_switch() is:
-
-```
+```C
 static struct rq *finish_task_switch(struct task_struct *prev)
 ```
 
+> To give you an idea of how this tool works: The finish_task_switch() function is called in the context of the next-running thread. An eBPF program can instrument this function and argument using kprobes, fetch the current PID (via `bpf_get_current_pid_tgid()`), and also fetch a high resolution timestamp (bpf_ktime_get_ns()). This is all the information needed for the above summary, which uses an eBPF map to efficiently store the histogram buckets in kernel context. Here is the full source to [cpudist](https://github.com/iovisor/bcc/blob/master/tools/cpudist.py).
+>
+> eBPF is not the only tool on Linux for measuring off-CPU time. The [perf](https://www.brendangregg.com/perf.html) tool provides a "wait time" column in its [perf sched timehist](http://www.brendangregg.com/blog/2017-03-16/perf-sched.html) output, which excludes scheduler time as it's shown in the adjacent column separately. That output shows the wait time for each scheduler event, and costs more overhead to measure than the eBPF histogram summary.
+>
+> Measuring off-CPU times as a histogram is a little bit useful, but not a lot. What we really want to know is context – *why* are threads blocking and going off-CPU. This is the focus of off-CPU analysis.
+>
 
+为了让您了解此工具的工作原理：`finish_task_switch()`  函数在下一个运行线程的上下文中调用。eBPF 程序可以使用 `kprobes` 检测此函数和参数，获取当前 PID（通过 `bpf_get_current_pid_tgid()`），还可以获取高分辨率时间戳 （`bpf_ktime_get_ns()`）。这是上述摘要所需的全部信息，它使用 eBPF 映射在内核上下文中有效地存储直方图存储桶。这里是 [cpudist](https://github.com/iovisor/bcc/blob/master/tools/cpudist.py) 的完整来源。
 
-To give you an idea of how this tool works: The finish_task_switch() function is called in the context of the next-running thread. An eBPF program can instrument this function and argument using kprobes, fetch the current PID (via bpf_get_current_pid_tgid()), and also fetch a high resolution timestamp (bpf_ktime_get_ns()). This is all the information needed for the above summary, which uses an eBPF map to efficiently store the histogram buckets in kernel context. Here is the full source to [cpudist](https://github.com/iovisor/bcc/blob/master/tools/cpudist.py).
+eBPF 不是 Linux 上测量 Off-CPU 外时间的唯一工具。perf 工具在其 perf sched timehist 时间设置输出中提供 "wait time" 列，该列排除了计划程序时间，因为它分别显示在相邻列中。该输出显示每个调度程序事件的等待时间，并且与 eBPF 直方图摘要更需要测量的开销。
 
-eBPF is not the only tool on Linux for measuring off-CPU time. The [perf](https://www.brendangregg.com/perf.html) tool provides a "wait time" column in its [perf sched timehist](http://www.brendangregg.com/blog/2017-03-16/perf-sched.html) output, which excludes scheduler time as it's shown in the adjacent column separately. That output shows the wait time for each scheduler event, and costs more overhead to measure than the eBPF histogram summary.
-
-Measuring off-CPU times as a histogram is a little bit useful, but not a lot. What we really want to know is context – *why* are threads blocking and going off-CPU. This is the focus of off-CPU analysis.
-
-
+将 Off-CPU 时间作为直方图进行测量有点有用，但不是很多。我们真正想知道的是上下文 - 为什么线程会阻塞和 Off-CPU。这是 Off-CPU 分析的重点。
 
 ## Off-CPU Analysis
 
-Off-CPU analysis is the methodology of analyzing off-CPU time along with stack traces to identify the reason that threads were blocking. The off-CPU tracing analysis technique can be easy to implement due to this principle:
+> Off-CPU analysis is the methodology of analyzing off-CPU time along with stack traces to identify the reason that threads were blocking. The off-CPU tracing analysis technique can be easy to implement due to this principle:
+>
+> > Application stack traces don't change while off-CPU.
+>
+> This means we only need to measure the stack trace once, either at the beginning or end of the off-CPU period. The end is usually easier, since you're recording the time interval then anyway. Here is tracing pseudocode for measuring off-CPU time with stack traces:
 
-> Application stack traces don't change while off-CPU.
+Off-CPU 分析是分析 Off-CPU 时间以及堆栈跟踪以确定线程阻塞原因的方法。由于以下原因，Off-CPU 跟踪分析技术很容易实现：
 
-This means we only need to measure the stack trace once, either at the beginning or end of the off-CPU period. The end is usually easier, since you're recording the time interval then anyway. Here is tracing pseudocode for measuring off-CPU time with stack traces:
+> off-CPU 时，应用程序堆栈跟踪不会更改。
+
+这意味着我们只需要在 Off-CPU 周期的开始或结束时测量一次堆栈跟踪。通常测量结束更容易，因为你总是在记录时间间隔。以下是用于使用堆栈跟踪测量Off-CPU 时间的伪代码：
 
 ```
 on context switch finish:
@@ -255,8 +277,6 @@ on tracer exit:
 		print key
 		print totaltime[key]
 ```
-
-
 
 Some notes on this: all measurements happen from one instrumentation point, the end of the context switch routine, which is in the context of the next thread (eg, the Linux finish_task_switch() function). That way, we can calculate the off-CPU duration at the same time as retrieving the context for that duration by simply fetching the current context (pid, execname, user stack, kernel stack), which tracers make easy.
 
@@ -468,8 +488,6 @@ Tracing off-CPU time (us) of PID 29887 by user + kernel stack... Hit Ctrl-C to e
 [...]
 ```
 
-
-
 Various threads are polling for work and other background tasks. These background stacks can dominate the output, even for a busy MySQL server. What I'm usually looking for is off-CPU time during a database query or command. That's the time that matters – the time that's hurting the end customer. To find those in the output, I need to hunt around for stacks in query context.
 
 For example, now from a busy MySQL server:
@@ -512,13 +530,9 @@ Tracing off-CPU time (us) of PID 29887 by user + kernel stack... Hit Ctrl-C to e
 [...]
 ```
 
-
-
 This stack identifies some time (latency) during a query. The do_command() -> mysql_execute_command() code path is a give away. I know this because I'm familiar with the code from all parts of this stack: MySQL and kernel internals.
 
 You can imagine writing a simple text post-processor, that plucked out the stacks of interest based on some application-specific pattern matching. And that might work fine. There's another way, which is a little more efficient, although also requires application specifics: extending the tracing program to also instrument application requests (the do_command() function, in this MySQL server example), and to then only record off-CPU time if it occurred during the application request. I've done it before, it can help.
-
-
 
 ## Caveats
 
@@ -600,11 +614,11 @@ For example, creating an off-CPU flame graph for mysqld:
 # ./flamegraph.pl --color=io --title="Off-CPU Time Flame Graph" --countname=us < out.stacks > out.svg
 ```
 
-
-
 Then open out.svg in a web browser. It looks like this ([SVG](https://www.brendangregg.com/FlameGraphs/off-mysqld1.svg), [PNG](https://www.brendangregg.com/FlameGraphs/off-mysqld1.png)):
 
-
+<p align="center">
+<img src="https://www.brendangregg.com/FlameGraphs/off-mysqld1.svg"/>
+</p>
 
 Much better: this shows all off-CPU stack traces, with stack depth on the y-axis, and the width corresponds to the total time in each stack. The left-to-right ordering has no meaning. There are delimiter frames "-" between the kernel and user stacks, which were inserted by offcputime's -d option.
 
@@ -614,11 +628,11 @@ You can click to zoom. For example, click on the "do_command(THD*)" frame on the
 # grep do_command < out.stacks | ./flamegraph.pl --color=io --title="Off-CPU Time Flame Graph" --countname=us > out.svg
 ```
 
+The resulting flame graph ([SVG](https://www.brendangregg.com/FlameGraphs/off-mysqld2.svg), [PNG](https://www.brendangregg.com/FlameGraphs/off-mysqld2.png)): 
 
-
-The resulting flame graph ([SVG](https://www.brendangregg.com/FlameGraphs/off-mysqld2.svg), [PNG](https://www.brendangregg.com/FlameGraphs/off-mysqld2.png)):
-
-
+<p align="center">
+<img src="https://www.brendangregg.com/FlameGraphs/off-mysqld2.svg"/>
+</p>
 
 That looks great.
 
@@ -628,11 +642,14 @@ For more on off-CPU flame graphs, see my [Off-CPU Flame Graphs](https://www.bren
 
 ## Wakeups
 
-Now that you know how to do off-CPU tracing, and generate flame graphs, you're starting to really look at these flame graphs and interpret them. You may find that many off-CPU stacks show the blocking path, but not the full reason it was blocked. That reason and code path is with another thread, the one that called a wakeup on a blocked thread. This happens all the time.
+> Now that you know how to do `off-CPU` tracing, and generate flame graphs, you're starting to really look at these flame graphs and interpret them. You may find that many off-CPU stacks show the blocking path, but not the full reason it was blocked. That reason and code path is with another thread, the one that called a wakeup on a blocked thread. This happens all the time.
+>
+> I cover this topic in my [Off-CPU Flame Graphs](https://www.brendangregg.com/FlameGraphs/offcpuflamegraphs.html) page, along with two tools: wakeuptime and offwaketime, to measure wakeup stacks and also to associate them with off-CPU stacks.
+>
 
-I cover this topic in my [Off-CPU Flame Graphs](https://www.brendangregg.com/FlameGraphs/offcpuflamegraphs.html) page, along with two tools: wakeuptime and offwaketime, to measure wakeup stacks and also to associate them with off-CPU stacks.
+现在，您已经知道如何进行Off-CPU 跟踪并生成火焰图，您开始真正查看这些火焰图并解释它们。您可能会发现许多Off-CPU 堆栈显示阻塞路径，但不包括阻止路径的全部原因。原因是代码路径在另一个线程，即调用阻塞线程上的唤醒线程。这种情况经常发生。
 
-
+我在Off-CPU Flame Graphs中介绍此主题，以及两种工具：wakeuptime and offwaketime，以测量唤醒堆栈，并将其与Off-CPU 堆栈关联。
 
 ## Other Operating Systems
 
@@ -641,21 +658,17 @@ I cover this topic in my [Off-CPU Flame Graphs](https://www.brendangregg.com/Fla
 
 
 
-## Origin
+## 起源
 
-I started using this methodology in about 2005 after exploring uses of the DTrace sched provider and its sched:::off-cpu probe. I called it off-CPU analysis and the metric off-CPU time, after the DTrace probe name (not a perfect name: when teaching a DTrace class in Adelaide in 2005, a Sun engineer said I shouldn't call it off-CPU since the CPU isn't "off"). The Solaris Dynamic Tracing Guide had some examples of measuring the time from sched:::off-cpu to sched:::on-cpu for some specific cases and process states. I didn't filter on process state, and instead captured all off-CPU events, and included the stack trace to explain why. I think this approach is obvious, so I doubt I'm the first to do this, but I seem to have been the only person really promoting this methodology for a while. I wrote about it in 2007 in [DTracing Off-CPU Time](http://www.brendangregg.com/blog/2007-07-29/dtracing-off-cpu-time.html), and in later posts and talks.
+大约在2005年，我在探索了 `DTrace sched provider` 及其 `sched::off-cpu` 探测器的用法之后，开始使用这种方法。我将其称为 `off-CPU` 分析和 `off-CPU` 时间度量（不是一个完美的名称：2005年在阿德莱德教授 DTrace 课程时，一位Sun 工程师说我不应该将其称为 `off-CPU`，因为 CPU 没有**关闭**）。《Solaris动态跟踪指南》中有一些示例，用于测量某些特定情况和进程状态下从 `sched::off-cpu` 到 `sched::on-cpu` 的时间。我没有过滤进程状态，而是捕获所有 `off-CPU` 事件，并包含堆栈采样来解释原因。我认为这种方法显而易见，所以我怀疑我不是第一个这样做的人，但我似乎是一段时间以来唯一真正推广这种方法的人。2007 年的 [DTracing Off-CPU Time](http://www.brendangregg.com/blog/2007-07-29/dtracing-off-cpu-time.html) 以及后来的帖子和演讲中，都写了它。
 
+## 小结
 
+`Off-CPU` 分析是一种有效的方法，用于定位线程被阻塞（延迟）以等待其他事件的原因。通过跟踪**内核调度器切换线程上下文**的函数，以相同的方式分析所有类型的 `off-CPU` 延迟，而无需跟踪多个来源。要查看 `off-CPU` 事件的上下文以了解其发生的原因，可以检查用户和内核堆栈采样。
 
-## Summary
+借助 CPU 和 `Off-CPU` 分析，可以全面了解线程在那里消耗时间。 这些是互补的技术。
 
-Off-CPU analysis can be an effective way to locate types of latency where threads block and wait for some other event. By tracing this from the kernel scheduler functions that context switch threads, all off-CPU latency types can be analyzed in the same way, without needing to trace multiple sources. To see the context for the off-CPU event to understand why it occurred, both user and kernel stack back traces can be inspected.
-
-With CPU profiling and off-CPU analysis, you have the full picture of where threads spend their time. These are complementary techniques.
-
-For more on off-CPU analysis, see the visualizations in [Off-CPU Flame Graphs](https://www.brendangregg.com/FlameGraphs/offcpuflamegraphs.html) and [Hot/Cold Flame Graphs](https://www.brendangregg.com/FlameGraphs/hotcoldflamegraphs.html).
-
-
+有关 `off-CPU` 分析的更多信息，请参阅 [Off-CPU Flame Graphs](https://www.brendangregg.com/FlameGraphs/offcpuflamegraphs.html) 和 [Hot/Cold Flame Graphs](https://www.brendangregg.com/FlameGraphs/hotcoldflamegraphs.html) 中的可视化。
 
 ## Updates
 
