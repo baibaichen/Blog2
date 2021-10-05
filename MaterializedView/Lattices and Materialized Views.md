@@ -287,7 +287,7 @@ For details, see the [lattices documentation](https://calcite.apache.org/docs/la
 
 > The first approach is based on view substitution.
 >
-> `SubstitutionVisitor` and its extension `MaterializedViewSubstitutionVisitor` aim to substitute part of the relational algebra tree with an equivalent expression which makes use of a materialized view. The scan over the materialized view and the materialized view definition plan are registered with the planner. Afterwards, transformation rules that try to unify expressions in the plan are triggered. Expressions do not need to be equivalent to be replaced: the visitor might add a residual predicate on top of the expression if needed.
+> `SubstitutionVisitor` and its extension `MaterializedViewSubstitutionVisitor` aim to substitute part of the relational algebra tree with an equivalent expression which makes use of a materialized view. The scan over the materialized view and the materialized view definition plan are registered with the planner. ==Afterwards, transformation rules that try to unify expressions in the plan are triggered==. Expressions do not need to be equivalent to be replaced: the visitor might add a residual predicate on top of the expression if needed.
 >
 > The following example is taken from the documentation of `SubstitutionVisitor`:
 >
@@ -301,9 +301,9 @@ For details, see the [lattices documentation](https://calcite.apache.org/docs/la
 
 第一种方法基于视图替换。
 
-`SubstitutionVisitor` 及其扩展 `MaterializedViewSubstitutionVisitor` 旨在用使用物化视图的等效表达式替换部分关系代数树。物化视图的定义以及如何扫描物化视图被注册进优化器中。之后，将触发尝试在优化器中统一表达式的转换规则。表达式不需要等价才能被替换：如果需要，访问者可以在表达式的顶部添加一个剩余的谓词。
+`SubstitutionVisitor` 及其扩展 `MaterializedViewSubstitutionVisitor` 旨在用使用物化视图的等效表达式替换部分关系代数树。物化视图的定义以及如何扫描物化视图被注册进优化器中。==之后，将触发尝试在优化器中统一表达式的转换规则==。表达式不需要等价才能被替换：如果需要，访问者可以在表达式的顶部添加一个剩余的谓词。
 
-以下示例取自`SubstitutionVisitor`的文档：
+以下示例取自 `SubstitutionVisitor` 的文档：
 
   * 查询：`SELECT a, c FROM t WHERE x = 5 AND b = 4`
   * 目标（物化视图的定义）：`SELECT a, b, c FROM t WHERE x = 5`
@@ -359,11 +359,13 @@ CREATE TABLE emps(
 
 ###### Join rewriting
 
-The rewriting can handle different join orders in the query and the view definition. In addition, the rule tries to detect when a compensation predicate could be used to produce a rewriting using a view.
+> The rewriting can handle different join orders in the query and the view definition. In addition, the rule tries to detect when a compensation predicate could be used to produce a rewriting using a view.
+
+重写可以处理查询和视图定义中的<u>**不同连接顺序**</u>。此外使用视图重写时，该规则尝试检测是否可以使用补偿谓词。
 
 - Query:
 
-```
+```sql
 SELECT empid
 FROM depts
 JOIN (
@@ -375,7 +377,7 @@ ON depts.deptno = subq.deptno
 
 - Materialized view definition:
 
-```
+```sql
 SELECT empid
 FROM emps
 JOIN depts USING (deptno)
@@ -383,7 +385,7 @@ JOIN depts USING (deptno)
 
 - Rewriting:
 
-```
+```sql
 SELECT empid
 FROM mv
 WHERE empid = 1
@@ -393,7 +395,7 @@ WHERE empid = 1
 
 - Query:
 
-```
+```sql
 SELECT deptno
 FROM emps
 WHERE deptno > 10
@@ -575,7 +577,9 @@ GROUP BY empid, deptname
 
 ##### Limitations
 
-This rule still presents some limitations. In particular, the rewriting rule attempts to match all views against each query. We plan to implement more refined filtering techniques such as those described in [[GL01](https://calcite.apache.org/docs/materialized_views.html#ref-gl01)].
+> This rule still presents some limitations. In particular, the rewriting rule attempts to match all views against each query. We plan to implement more refined filtering techniques such as those described in [[GL01](https://calcite.apache.org/docs/materialized_views.html#ref-gl01)].
+
+该规则仍然存在一些限制。特别是，重写规则尝试将每个查询与所有视图进行匹配。我们计划实施更精细的过滤技术，例如 [[GL01](https://calcite.apache.org/docs/materialized_views.html#ref-gl01)] 中描述的那些。
 
 ## References
 
