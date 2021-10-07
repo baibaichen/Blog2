@@ -6,31 +6,78 @@
 
 > Materialized views can provide massive improvements in query processing time, especially for aggregation queries over large tables. To realize this potential, the query optimizer must know how and when to exploit materialized views. This paper presents a fast and scalable algorithm for determining whether part or all of a query can be computed from materialized views and describes how it can be incorporated in transformation-based optimizers. The current version handles views composed of selections, joins and a final group-by. Optimization remains fully cost based, that is, a single “best” rewrite is not selected by heuristic rules but multiple rewrites are generated and the optimizer chooses the best alternative in the normal way. Experimental results based on an implementation in Microsoft SQL Server show outstanding performance and scalability. Optimization time increases slowly with the number of views but remains low even up to a thousand
 
-物化视图可以大大缩短查询处理时间，尤其是对于大型表上的聚合查询。为了实现这种潜力，查询优化器必须知道如何以及何时利用物化视图。本文提出了一快速且可扩展的算法，用于确定是否可以从物化视图完成部分或全部查询，并描述如何将其合并到基于**转换**的优化器中。 当前版本处理由<u>选择</u>、<u>连接</u>和<u>最终分组</u>组成的视图。仍然基于成本优化，也就是说，启发式规则不会选择单个“最佳”重写，而是生成多个重写，优化器以正常方式选择最佳替代方案。基于 Microsoft SQL Server 中实现的实验结果显示出出色的性能和可扩展性。化时间随着视图数量的增加而缓慢增加，即使有 1000 个视图，优化时间仍然很低
+物化视图可以大大地缩短查询处理时间，尤其是对于大数据表上的聚合查询。为了实现这种潜力，查询优化器必须知道如何以及何时利用物化视图。本文提出了一快速且可扩展的算法，用于确定是否可以从物化视图完成部分或全部查询，并描述如何将其合并到基于**转换**的优化器中。当前版本处理由<u>选择</u>、<u>连接</u>和<u>最后的 `group by`</u> 组成的视图。还是基于成本优化，也就是说，启发式规则不会选择单个“最佳”重写，而是生成多个重写，优化器以正常方式选择最佳执行方案。基于在 Microsoft SQL Server 中实现的实验结果表明，该算法具有良好的性能和可扩展性。优化时间随着视图数量的增加而缓慢增加，即使有 1000 个视图，优化时间仍然维持在较低的水平。
 
-## 1. Introduction
+## 1. 简介（Introduction）
 
-Using materialized views to speed up query processing is an old idea [10] but only in the last few years has the idea been adopted in commercial database systems. Recent TPC-R benchmark results and actual customer experiences show that query processing time can be improved by orders of magnitude through judicious use of materialized views. To realize the potential of materialized views, efficient solutions to three issues are required:
+> Using materialized views to speed up query processing is an old idea [10] but only in the last few years has the idea been adopted in commercial database systems. Recent TPC-R benchmark results and actual customer experiences show that query processing time can be improved by orders of magnitude through judicious use of materialized views. To realize the potential of materialized views, efficient solutions to three issues are required:
+>
+> - **View design**: determining what views to materialize, including how to store and index them.
+> - **View maintenance**: efficiently updating materialized views when base tables are updated.
+> - **View exploitation**: making efficient use of materialized views to speed up query processing.
+>
+> This paper deals with view exploitation in transformation-based optimizers. Conceptually, an optimizer generates all possible rewritings of a query expression, estimates their costs, and chooses the one with the lowest cost. A transformation-based optimizer generates rewritings by applying **local transformation rules** on subexpressions of the query. Applying a rule produces substitute expressions, equivalent to the original expression. View matching, that is, computing a subexpression from materialized views, is one such transformation rule. The view-matching rule invokes a viewmatching algorithm that determines whether the original expression can be computed from one or more of the existing materialized views and, if so, generates substitute expressions. The algorithm may be invoked many times during optimization, each time on a different subexpression. 
+>
+> The main contributions of this paper are (a) an efficient viewmatching algorithm for views composed of selections, joins and a final group-by (SPJG views) and (b) a novel index structure (on view definitions, not view data) that quickly narrows the search to a small set of candidate views on which view-matching is applied. The version of the algorithm described here is limited to SPJG views and produces single-view substitutes. However, these are not inherent limitations of our approach; the algorithm and the index structure can be extended to a broader class of views and substitutes. We briefly discuss possible extensions but the details are beyond the scope of this paper.
+>
+> Our view-matching algorithm is fast and scalable. Speed is crucial because the view-matching algorithm may be called many times during optimization of a complex query. We also wanted an algorithm able to handle thousands of views efficiently. Many database systems contain hundreds, even thousands, of tables. Such databases may have hundreds of materialized views. Tools similar to that described in [1] can also generate large numbers of views. A smart system might also cache and reuse results of previously computed queries. Cached results can be treated as temporary materialized views, easily resulting in thousands of materialized views. The algorithm was implemented in Microsoft SQL Server, which uses a transformation-based optimizer based on the Cascades framework [6]. Experiments show outstanding performanceand scalability. Optimization time increases linearly with the number of views but remains low even up to a thousand.
+>
+> Integrating view matching through the optimizer’s normal rule mechanism provides important benefits. Multiple rewrites may be generated; some exploiting materialized views, some not. All rewrites participate in the normal cost-based optimization, regardless of whether they make use of materialized views.  Secondary indexes, if any, on materialized views are automatically considered. The optimization time may even be reduced. If a cheap plan using materialized views is found early in the optimization process, it tightens cost bounds resulting in more aggressive pruning.
+>
+> The rest of the paper is organized as follows. Section 2 describes the class of materialized views supported and defines the problem to be solved. Section 3 describes our algorithm for deciding if a query expression can be computed from a view. Section 4 introduces our index structure. Section 5 presents experimental results based on our prototype implementation. Related work is discussed in section 6. Section 7 contains a summary and a brief discussion of possible extensions.
+>
 
-- **View design**: determining what views to materialize, including how to store and index them.
-- **View maintenance**: efficiently updating materialized views when base tables are updated.
-- **View exploitation**: making efficient use of materialized views to speed up query processing.
+使用物化视图来加速查询处理是一个古老的想法 [10]，但直到最近几年，商业数据库系统才采用这种想法。 最近的 TPC-R 基准测试结果和实际客户体验表明，通过合理使用物化视图可以将查询处理时间缩短几个数量级。要实现物化视图的潜力，需要有效解决三个问题：
 
-This paper deals with view exploitation in transformation-based optimizers. Conceptually, an optimizer generates all possible rewritings of a query expression, estimates their costs, and chooses the one with the lowest cost. A transformation-based optimizer generates rewritings by applying local transformation rules on subexpressions of the query. Applying a rule produces substitute expressions, equivalent to the original expression. View matching, that is, computing a subexpression from materialized views, is one such transformation rule. The view-matching rule invokes a viewmatching algorithm that determines whether the original expression can be computed from one or more of the existing materialized views and, if so, generates substitute expressions. The algorithm may be invoked many times during optimization, each time on a different subexpression. 
+- **视图设计**：确定要物化的视图，包括如何存储和索引这些视图。
+- **视图维护**：更新基表时，能高效地更新物化视图。
+- **视图利用**：有效利用物化视图，加快查询处理。
 
-The main contributions of this paper are (a) an efficient viewmatching algorithm for views composed of selections, joins and a final group-by (SPJG views) and (b) a novel index structure (on view definitions, not view data) that quickly narrows the search to a small set of candidate views on which view-matching is applied. The version of the algorithm described here is limited to SPJG views and produces single-view substitutes. However, these are not inherent limitations of our approach; the algorithm and the index structure can be extended to a broader class of views and substitutes. We briefly discuss possible extensions but the details are beyond the scope of this paper.
+本文讨论了如何在基于转换的优化器中利用视图。从概念上讲，优化器生成查询表达式所有可能的执行计划，估算它们的成本，并选择成本最低的那个。基于转换的优化器利用**本地转换规则**来重写查询的子表达式。规则会产生与原始表达式等价的替换表达式。视图匹配就是这样的一种转换规则，即利用**物化视图**计算<u>子表达式</u>。**视图匹配规则**调用==视图匹配算法==，该算法确定是否可以从一个或多个现有物化视图中计算出原始表达式，如果可以，则生成替代表达式。在优化期间，可以在不同的子表达式上多次调用该算法。
 
-Our view-matching algorithm is fast and scalable. Speed is crucial because the view-matching algorithm may be called many times during optimization of a complex query. We also wanted an algorithm able to handle thousands of views efficiently. Many database systems contain hundreds, even thousands, of tables. Such databases may have hundreds of materialized views. Tools similar to that described in [1] can also generate large numbers of views. A smart system might also cache and reuse results of previously computed queries. Cached results can be treated as temporary materialized views, easily resulting in thousands of materialized views. The algorithm was implemented in Microsoft SQL Server, which uses a transformation-based optimizer based on the Cascades framework [6]. Experiments show outstanding performanceand scalability. Optimization time increases linearly with the number of views but remains low even up to a thousand.
+本文的主要贡献： (a)针对由<u>选择</u>、<u>连接</u>和<u>最后的 `group by`</u> 组成的（SPJG）视图，提出了一种高效的视图匹配算法；(b) 提出了一种新颖的索引结构（基于视图定义，而不是视图数据），可以快速地将搜索范围缩小到一小组候选视图，以简化视图匹配。这里描述的算法版本仅限于 SPJG 视图，且只替换为单个视图。然而，这并不是该方法的固有局限；该算法和索引结构可以扩展到更广泛的视图和替代。我们简要讨论了可能的扩展，但详细信息超出了本文的范围。
 
-Integrating view matching through the optimizer’s normal rule mechanism provides important benefits. Multiple rewrites may be generated; some exploiting materialized views, some not. All rewrites participate in the normal cost-based optimization, regardless of whether they make use of materialized views.  Secondary indexes, if any, on materialized views are automatically considered. The optimization time may even be reduced. If a cheap plan using materialized views is found early in the optimization process, it tightens cost bounds resulting in more aggressive pruning.
+我们的视图匹配算法快速且可扩展。 速度至关重要，因为在优化复杂查询期间，可能会多次调用视图匹配算法。我们还想要一种能够有效处理数千个视图的算法。 许多数据库系统包含数百、甚至数千个表。这样的数据库可能有数百个物化视图。 类似于 [1] 中描述的工具也可以生成大量视图。智能系统还可以缓存和重用先前计算的查询结果。缓存的结果可以当作临时的物化视图，很容易产生数千个物化视图。Microsoft SQL Server 在 Cascades 框架的基础上使用基于转换的优化器[6]，我们基于此实现了该算法。实验表明，该系统具有优异的性能和可扩展性。优化时间随视图数量线性增加，即使有 1000 个视图，优化时间仍然维持在较低的水平。
 
-The rest of the paper is organized as follows. Section 2 describes the class of materialized views supported and defines the problem to be solved. Section 3 describes our algorithm for deciding if a query expression can be computed from a view. Section 4 introduces our index structure. Section 5 presents experimental results based on our prototype implementation. Related work is discussed in section 6. Section 7 contains a summary and a brief discussion of possible extensions.
+通过优化器的正常规则机制集成视图匹配算法，有很重要的好处。可能会产生多次重写；有些利用物化视图，有些则不利用。无论是否使用物化视图，所有重写都要参与基于成本的优化。将自动考虑物化视图上的二级索引（如果有）。甚至可以缩短优化时间，如果在优化过程的早期，就发现了使用物化视图的廉价计划，则会收紧成本上限，从而导致更积极的修剪。
 
-## 2. Defining the problem
+本文的其余部分安排如下。第 2 节描述了所支持的物化视图，并定义了要解决的问题。第 3 节描述了我们用于确定是否可以从视图计算查询表达式的算法。第 4 节介绍了我们的索引结构。第 5 节给出了基于原型实现的实验结果。相关工作在第 6 节中讨论。第 7 节包含总结和对可能扩展的简要讨论。
 
-SQL Server 2000 supports materialized views. They are called indexed views because a materialized view may be indexed in multiple ways. A view is materialized by creating a unique clustered index on an existing view. Uniqueness implies that the view output must contain a unique key. This is necessary to guarantee that views can be updated incrementally. Once the clustered index has been created, additional secondary indexes can be created. Not all views are indexable. An indexable view must be defined by a single-level SQL statement containing selections, (inner) joins, and an optional group-by. The FROM clause cannot contain derived tables, i.e. it must reference base tables, and subqueries are not allowed. The output of an aggregation view must include all grouping columns as output columns (because they define the key) and a count column. Aggregation functions are limited to sum and count. This is the class of views considered in this paper.
+## 2. 问题定义（Defining the problem）
 
-**Example 1**: This example shows how to create an indexed view, with an additional secondary index, in SQL Server 2000. All examples in this paper use the TPC-H/R database.
+> SQL Server 2000 supports materialized views. They are called indexed views because a materialized view may be indexed in multiple ways. A view is materialized by creating a unique clustered index on an existing view. Uniqueness implies that the view output must contain a unique key. This is necessary to guarantee that views can be updated incrementally. Once the clustered index has been created, additional secondary indexes can be created. Not all views are indexable. An indexable view must be defined by a single-level SQL statement containing selections, (inner) joins, and an optional group-by. The FROM clause cannot contain derived tables, i.e. it must reference base tables, and subqueries are not allowed. The output of an aggregation view must include all grouping columns as output columns (because they define the key) and a count column. Aggregation functions are limited to sum and count. This is the class of views considered in this paper.
+>
+> **Example 1**: This example shows how to create an indexed view, with an additional secondary index, in SQL Server 2000. All examples in this paper use the TPC-H/R database.
+>
+> ```sql
+> create view v1 with schemabinding as
+>  select p_partkey, p_name, p_retailprice,
+>    count_big(*) as cnt,
+>    sum(l_extendedprice*l_quantity) as gross_revenue
+>  from dbo.lineitem, dbo.part
+>  where p_partkey < 1000 
+>    and p_name like ‘%steel%’
+>    and p_partkey = l_partkey
+>  group by p_partkey, p_name, p_retailprice
+> 
+> create unique clustered index v1_cidx on v1(p_partkey)
+> create index v1_sidx on v1( gross_revenue, p_name)
+> ```
+>
+> The first statement creates the view v1. The phrase “with schemabinding” is required for indexed views. A count_big column is required in all aggregation views so deletions can be handled incrementally (when the count becomes zero, the group is empty and the row must be deleted). Output columns defined by arithmetic or other expressions must be assigned names (using the AS clause) so that they can be referred to. The second statement materializes the view and stores the result in a clustered index. Even though the statement specifies only the (unique) key of the view, the rows contain all output columns. The final statement creates a secondary index on the materialized view.
+>
+> As outlined in the introduction, a transformation-based optimizer generates rewrites by recursively applying transformation rules on relational expressions. View matching is a transformation rule that is invoked on select-project-join-group-by (SPJG) expressions. For each expression, we want to find every materialized view from which the expression can be computed. In this paper, we require that the expression can be computed from the view alone. The following is the view-matching problem considered in this paper.
+>
+> **View Matching with Single-View Substitutes**: Given a relational expression in SPJG form, find all materialized (SPJG) views from which the expression can be computed and, for each view found, construct a substitute expression equivalent to the given expression.
+>
+> No restrictions are imposed on the overall query. Even though we consider only single-view substitutes, different views may be used to evaluate different parts of a query. Whenever the optimizer finds a SPJG expression the view-matching rule is invoked. All substitutes produced by view matching participate in cost-based optimization in the normal way. Furthermore, any secondary indexes defined on a materialized view will be considered automatically in the same way as for base tables.
+>
+> The algorithm explained in this paper is limited to SPJG subexpressions and single-table substitutes. However, this is not an inherent limitation of our approach. The algorithm can be extended to a broader class of input and substitute expressions, for example, expressions containing unions, outer joins or aggregation with grouping sets.
+>
+
+SQL Server 2000 支持物化视图。它们之所以被称为索引视图，是因为物化视图可以以多种方式进行索引。通过在现有视图上创建唯一的聚集索引来物化视图。唯一性意味着视图输出必须包含唯一键。这是保证视图可以增量更新所必需的。创建聚集索引后，可以创建其他二级索引。并非所有视图都是可索引的。可索引视图必须由包含选择、`inner join` 和可选 `group-by` 的**单级 SQL 语句**定义。FROM 子句不能包含**<u>派生表</u>**，即它必须引用基表，并且不允许子查询。聚合视图的输出必须包括所有**<u>分组列</u>**作为输出列（因为它们定义了键）和一个计数列。聚合函数仅限于 `sum` 和 `count`。这就是本文所考虑的一类视图。
+
+**例 1**：本例显示如何在 SQL Server 2000 中创建带有额外二级索引的索引视图。本文中的所有示例均使用 TPC-H/R 数据库。
 
 ```sql
 create view v1 with schemabinding as
@@ -46,16 +93,15 @@ create view v1 with schemabinding as
 create unique clustered index v1_cidx on v1(p_partkey)
 create index v1_sidx on v1( gross_revenue, p_name)
 ```
+第一条语句创建视图 v1。索引视图需要短语 `with schemabinding`。所有的聚合视图都需要一个 `count_big` 列，以便可以增量的方式处理删除（当计数为零时，分组为空，必须删除该行）。由算术或其他表达式定义的输出列必须（使用 AS 子句）定义名称，以便可以引用它们。第二个语句物化视图并将结果存储在聚集索引中。即使该语句仅指定视图的（唯一）键，行也包含所有输出列。最后一条语句在物化视图上创建二级索引。□
 
-The first statement creates the view v1. The phrase “with schemabinding” is required for indexed views. A count_big column is required in all aggregation views so deletions can be handled incrementally (when the count becomes zero, the group is empty and the row must be deleted). Output columns defined by arithmetic or other expressions must be assigned names (using the AS clause) so that they can be referred to. The second statement materializes the view and stores the result in a clustered index. Even though the statement specifies only the (unique) key of the view, the rows contain all output columns. The final statement creates a secondary index on the materialized view.
+如简介中所述，基于转换的优化器在关系表达式上递归地应用优化规则来生成等价的执行计划。视图匹配是在 `select`-`project`-`join`-`group-by` (SPJG) 表达式上调用的转换规则。对于每个表达式，我们希望找到可以从中计算表达式的每个物化视图。 在本文中，我们要求必须从视图中计算出整个关系表达式。以下是本文考虑的视图匹配问题。
 
-As outlined in the introduction, a transformation-based optimizer generates rewrites by recursively applying transformation rules on relational expressions. View matching is a transformation rule that is invoked on select-project-join-group-by (SPJG) expressions. For each expression, we want to find every materialized view from which the expression can be computed. In this paper, we require that the expression can be computed from the view alone. The following is the view-matching problem considered in this paper.
+**使用单视图替代的视图匹配**：给定一个 SPJG 形式的关系表达式，找到所有可以计算该表达式的物化视图，并为找到的每个视图构造一个与给定表达式等价的替代表达式。
 
-**View Matching with Single-View Substitutes**: Given a relational expression in SPJG form, find all materialized (SPJG) views from which the expression can be computed and, for each view found, construct a substitute expression equivalent to the given expression.
+对整个查询没有任何限制。即使我们只考虑单一视图替代，也可以使用不同的视图来计算查询的不同部分。**只要优化器找到 SPJG 表达式，就会调用视图匹配规则**。视图匹配产生的所有替代表达式都以正常方式参与基于成本的优化。此外，物化视图上定义的任何二级索引都将按照与基表相同的方式自动考虑。
 
-No restrictions are imposed on the overall query. Even though we consider only single-view substitutes, different views may be used to evaluate different parts of a query. Whenever the optimizer finds a SPJG expression the view-matching rule is invoked. All substitutes produced by view matching participate in cost-based optimization in the normal way. Furthermore, any secondary indexes defined on a materialized view will be considered automatically in the same way as for base tables.
-
-The algorithm explained in this paper is limited to SPJG subexpressions and single-table substitutes. However, this is not an inherent limitation of our approach. The algorithm can be extended to a broader class of input and substitute expressions, for example, expressions containing unions, outer joins or aggregation with grouping sets.
+本文介绍的算法仅限于 SPJG 子表达式和单表替换。然而，这不是我们方法的固有限制。该算法可以扩展到更广泛的输入和替换表达式类，例如，包含 `union`、`outer join` 或带有 `grouping set` 的表达式。
 
 ## 3. 从视图计算查询表达式（Computing a query expression from a view）
 
@@ -64,14 +110,36 @@ The algorithm explained in this paper is limited to SPJG subexpressions and sing
 > Our algorithm exploits four types of constraints: not-null constraints on columns, primary key constraints, uniqueness constraints (either explicitly declared or implied by creating a unique index), and foreign key constraints. We assume that the selection predicates of view and query expressions have been converted into conjunctive normal form (CNF). If not, we first convert them into CNF. We also assume that join elimination has been performed so query and view expressions contain no redundant tables. (The SQL Server optimizer does this automatically.)
 >
 
-在本节中描述如何确定可以从视图构造出**查询表达式**，以及如果可以，**如何构造替换表达式**。第一小节讨论 **<u>join select project</u>（<u>SPJ</u>）**视图和查询，假设视图和查询引用相同的表。<u>有额外表的</u>视图和聚合视图在单独的小节中介绍。无需考虑视图包含的表的数量少查询表达式引用的表的数量。这样的视图只能用于计算<u>查询表达式的子表达式</u>。 视图匹配规则将在每个<u>子表达式</u>上自动调用。
+在本节中描述如何确定可以从视图构造出**查询表达式**，以及如果可以，**如何构造等价的替换表达式**。第一小节讨论 **<u>join select project</u>（<u>SPJ</u>）**视图和查询，假设视图和查询引用相同的表。<u>有额外表的</u>视图和聚合视图在单独的小节中介绍。不需要考虑表的数量少于查询表达式的视图。这样的视图只能用于计算<u>查询表达式的子表达式</u>。 视图匹配规则将在每个<u>子表达式</u>上自动调用。
 
-算法利用四种约束类型：非空列约束，主键约束，唯一性约束（通过创建唯一索引明确声明或是隐含的约束）以及外键约束。我们假设视图和查询表达式的选择谓词已转换为**<u>合取范式</u>（conjunctive normal form，<u>CNF</u>）**。 如果没有，我们首先将它们转换为**CNF**。 我们还假定已执行<u>**联接消除**</u>，因此查询和视图表达式不包含冗余表（SQL Server优化器会自动执行此操作）。
+算法利用四种约束类型：**<u>非空列约束</u>**，**<u>主键约束</u>**，**<u>唯一性约束</u>**（通过创建唯一索引显式或隐含声明）以及**<u>外键约束</u>**。我们假设视图和查询表达式的选择谓词已转换为**<u>合取范式</u>（conjunctive normal form，<u>CNF</u>）**。如果没有，我们首先将它们转换为**CNF**。 我们还假定已执行<u>**联接消除**</u>，因此查询和视图表达式不包含冗余表（SQL Server优化器会自动执行此操作）。
 
 > 注：
 >
 > 1. CNF
 > 2. 关联消除：意味着SQL优化器消除了不必再关联中出现的表
+>
+> To prove that two expressions are equal, a frequently used technique is to transform both expressions to a standard form. One such standard form is called conjunctive normal form or CNF. An expression in CNF is a ‘product of sums’. The ‘sums’ are literals (simple propositions or negated propositions, e.g., $P$, or $\neg Q$) linked by $\vee$, which are then formed into a ‘product’ using $\wedge$.
+>
+> Consider the expression:  $(P \Leftrightarrow Q)$
+>
+> > 表示 P 等价于 Q
+>
+> Its conjunctive normal form is $(\neg P \vee Q) \wedge (P \vee \neg Q)$. 
+>
+> To get this result, (using Axiom (2.1.9)) we reduce all the operators to $\wedge$, $\vee$, and $\neg$, $( P \wedge Q) \vee (\neg P \wedge \neg Q)$.
+>
+> We then use the first distribution law, three times:
+>
+> $$(P∧Q)∨(¬P∧¬Q)$$ =
+> $$(P∨¬P∧¬Q)∧(Q∨¬P∧¬Q)$$=
+> $$(P∨¬P)∧(P∨¬Q)∧(Q∨¬P∧¬Q)$$=
+> $$(P∨¬P)∧(P∨¬Q)∧(Q∨¬P)∧(Q∨¬Q)$$
+>
+> Finally, we eliminate the sums $$(P∨¬P)$$ and $$(Q∨¬Q)$$  which are always *True*, leaving $$(P∨¬Q)∧(Q∨¬P)$$.
+>
+> Normalisation is a purely mechanical process that a computer can do (although it is NP-hard). We can prove the theorem $$ (P⇔Q)=(P⇒Q)∧(P⇐Q)$$ by converting both sides to CNF. We have already dealt with the left-hand side above. Normalising its right-hand side is left as a simple exercise for the reader.
+>
 
 ### 3.1 Join-select-project views and queries
 
@@ -86,7 +154,7 @@ The algorithm explained in this paper is limited to SPJG subexpressions and sing
 
 如果要从视图中返回SPJ查询表达式的结果，视图必须满足如下的条件：
 
-1. **视图包含查询表达式所需的所有行**。 因为我们仅考虑<u>单视图</u>替代，所以这是显而易见的要求。 但是，如果我们考虑用<u>视图的并集</u>替代，则不是必需的。
+1. **视图包含查询表达式所需的所有行**。 因为我们仅考虑<u>单个视图</u>的替代，所以这是显而易见的要求。但是，如果我们考虑用<u>视图的并集</u>替代，则不是必需的。
 2. **可以从视图中选择所有必需的行**。 即使视图中存在所有必需的行，也可能无法正确提取它们。选择是通过谓词来完成的。如果视图中缺少谓词所需的某一列，则无法选择所需的行。
 3. **可以从视图的输出算出所有输出表达式**。
 4. **所有输出行都使用正确的复制因子**。SQL基于<u>Bag语义</u>，即（物化视图的）基础表或SQL表达式的输出可能包含重复的行。<u>因此，两个表达式产生相同的行集还不够，任何重复的行也必须出现完全相同的次数</u>。
@@ -101,19 +169,19 @@ The algorithm explained in this paper is limited to SPJG subexpressions and sing
 
 > Let *W=P~1~∧ P~2~∧ … ∧P~n~* be the selection predicate (in CNF) of a `SPJ` expression. By collecting the appropriate conjuncts, we can rewrite the predicate as *W=PE∧ PNE* where *PE* contains column equality predicates of the form *(T~i~.C~p~ =T~j~.C~q~)* and *PNE* contains all remaining conjuncts. T~i~ and T~j~ are tables, not necessarily distinct, and C~p~ and C~q~ are column references.
 >
-> Suppose we evaluate the SPJ expression by computing the Cartesian product of the tables, then applying the column-equality predicates in *PE*, then applying the predicates in *PNE*, and finally computing the expressions in the output list. After the column equality predicates have been applied, some columns are interchangeable in both the **PNE** predicates and the output columns. This ability to **reroute column references among equivalent columns** will be important later on.
+> Suppose we evaluate the SPJ expression by computing the Cartesian product of the tables, then applying the column-equality predicates in *PE*, then applying the predicates in *PNE*, and finally computing the expressions in the output list. ==After the column equality predicates have been applied, some columns are interchangeable in both the **PNE** predicates and the output columns==. This ability to **reroute column references among equivalent columns** will be important later on.
 >
 > Knowledge about column equivalences can be captured compactly by <u>computing a set of equivalence classes</u> based on the column equality predicates in *PE*. **An equivalence class is a set of columns that are known to be equal**. Computing the equivalence classes is straightforward. Begin with each column of the tables referenced by the expression in a separate set. Then loop through the <u>column equality predicates</u> in any order. For each *(T~i~.C~p~ = T~j~.C~q~)*, find the set containing *T~i~.C~p~* and the set containing *T~j~.C~q~*. If they are in different sets merge the two sets, otherwise do nothing. The sets left at the end is the desired collection of equivalence classes, including trivial classes consisting of a single column.
 
-设*W=P~1~∧P~2~∧…∧P~n~*为`SPJ`表达式的选择谓词（按CNF的形式）。通过适当地调整<u>==连接词==</u>，可重写谓词为*W=PE∧ PNE*，其中，其中 *PE* 包含形式为*(T~i~.C~p~=T~j~.C~q~)* 的<u>列相等</u>谓词，*PNE* 包含所有剩余的连接。T~i~和T~j~是表，有可能相同，而C~p~和C~q~是列引用。
+设*W=P~1~∧P~2~∧…∧P~n~*为`SPJ`表达式的选择谓词（按CNF的形式）。通过适当地调整<u>==连接词==</u>，可重写谓词为*W=PE∧ PNE*，其中，其中 *PE* 包含所有形式为*(T~i~.C~p~=T~j~.C~q~)* 的<u>列相等</u>谓词，*PNE* 包含所有剩余的连接。T~i~ 和 T~j~ 是表，有可能相同，而C~p~和C~q~是列引用。
 
-假设我们求解SPJ表达式是先计算表的笛卡尔积，再应用*PE*中的列相等谓词，然后再应用*PNE*中谓词，最后计算输出列表中的表达式。应用<u>列相等谓词</u>后，**PNE**谓词和输出列中的某些列可以互换。后续可以**在等价列之间<u>重新路由引用列</u>的功能**将很重要。
+假设我们求解 SPJ 表达式是先计算表的笛卡尔积，再应用 *PE* 中的列相等谓词，然后再应用 *PNE* 中谓词，最后计算输出列表中的表达式。==应用<u>列相等谓词</u>后，某些列可以在**PNE** 谓词和输出列互换==。这种**在等价列之间<u>重新路由引用列</u>的功能**稍后将非常重要。
 
-通过基于 *PE* 中的列相等谓词<u>计算等价类的集合</u>，可简洁地获取**列等价性**的知识。**等价类是一组已知相等的列**。计算等价类很简单。在单独的集合中，从表达式引用的表的每一列开始，然后按任意顺序循环遍历<u>列相等谓词</u>。对于每个 *(T~i~.C~p~=T~j~.C~q~)*，找到包含 *T~i~.C~p~* 的集合和包含 *T~j~.C~q~* 的集合。如果它们位于不同的集合中，则将这两个集合合并，否则啥也不用做。最后留下的集合是所需的等价类集合，包括由单个列组成的没有价值的<u>等价类</u>。
+通过基于 *PE* 中列相等谓词<u>计算等价类的集合</u>，可简洁地获取**列等价性**的知识。**等价类是一组已知相等的列**。计算等价类很简单。在单独的集合中，从表达式引用的表的每一列开始，然后按任意顺序循环遍历<u>列相等谓词</u>。对于每个 *(T~i~.C~p~=T~j~.C~q~)*，找到包含 *T~i~.C~p~* 的集合和包含 *T~j~.C~q~* 的集合。如果它们位于不同的集合中，则将这两个集合合并，否则啥也不用做。最后留下的集合是所需的等价类集合，包括由单个列组成的没有价值的<u>等价类</u>。
 
 #### 3.1.2 视图中是否存在所有必需的行？（Do all required rows exist in the view?）
 
-> Assume that the query expression and the view expression reference the tables *T~1~, T~2~,…, T~m~*. Let *W~q~* denote the predicate in the `where-clause` of the query expression and *W~v~* the predicate of the view expression. Determining whether the view contains all rows required by the query expression is, in principle, easy. All we need to show is that the output of the expression *(select \* from T~1~,T~2~,…,T~m~ where W~q~)* produces a subset of the output of *(select \* from T~1~,T~2~,…,T~m~ where W~v~)* for all valid instances of tables *T~1~, T~2~,…,T~m~*. This is guaranteed to hold if *W~q~ ⇒W~v~*,where‘⇒’ denotes **logical implication**. 
+> Assume that the query expression and the view expression reference the tables *T~1~, T~2~,…, T~m~*. Let *W~q~* denote the predicate in the `where-clause` of the query expression and *W~v~* the predicate of the view expression. Determining whether the view contains all rows required by the query expression is, in principle, easy. All we need to show is that the output of the expression *(select \* from T~1~,T~2~,…,T~m~ where W~q~)* produces a subset of the output of *(select \* from T~1~,T~2~,…,T~m~ where W~v~)* for all valid instances of tables *T~1~, T~2~,…,T~m~*. This is guaranteed to hold if *W~q~ ⇒W~v~*,where ‘⇒’ denotes **logical implication**. 
 >
 > Therefore we need an algorithm to decide whether *W~q~ ⇒ W~v~* holds. We rewrite the predicates as *W~q~ =P~q,1~∧P~q,2~∧…∧P~q,m~* and *W~v~ =P~v,1~∧P~v,2~∧…∧P~v,n~*. A simple conservative algorithm is to check that every conjunct *P~v,i~* in *W~v~*, matches a conjunct *P~q,i~* in *W~q~*. There are several ways to decide whether two conjuncts match. <u>For instance, the matching can be purely syntactic</u>. This can be implemented by converting each conjunct into a string, i.e., the SQL text version of the conjunct, and then matching the strings. The drawback with this approach is that even minor syntactic differences result in different strings. For example, the two predicates `(A > B)` and `(B < A)` would not match. To avoid this problem, we must interpret the predicates and exploit equivalences among expressions. Exploiting **commutativity** is a good example, applicable to many types of expressions: comparisons, addition, multiplication, and disjunction (OR). We can design matching functions at different levels of sophistication and complexity depending on how much knowledge about equivalences we build into the function. For example, a simple function might only understand that `(A+B) = (B+A)`, while a more sophisticated function might also recognize that `(A/2 + B/5) * 10 = A * 5 + B * 2`. 
 >
@@ -141,7 +209,7 @@ The algorithm explained in this paper is limited to SPJG subexpressions and sing
 > 
 >**Check constraints** can be readily incorporated into the tests. The key observation is that **check constraints on the tables of a query can be added to the <u>where-clause</u> without changing the query result**. Hence, check constraints can be taken into account by including them in the antecedent of the implication *W~q~ ⇒ W~v~*. Whether or not the check constraints will actually be exploited depends on the algorithm used for testing.
 
-假设查询表达式和视图表达式引用表*T~1~，T~2~，…，T~m~*。让 *W~q~* 表示查询表达式`where子句`中的谓词，*W~v~* 表示视图表达式的谓词。理论上，确定视图是否包含查询表达式所需的所有行很容易。我们只需要证明，对表 *T~1~, T~2~,…,T~m~* 所有的有效实例，表达式 *(select \* from T~1~，T~2~，…，T~m~ where W~q~)* 的输出都会产生 *(select \* from T~1~,T~2~,…,T~m~ where W~v~)* 输出的子集。因此只要 *W~q~ ⇒ W~v~*，则证明成立，这里 ⇒ 表示**逻辑包含**。
+假设查询表达式和视图表达式引用表*T~1~，T~2~，…，T~m~*。让 *W~q~* 表示查询表达式 `where` 子句中的谓词，*W~v~* 表示视图表达式的谓词。理论上，确定视图是否包含查询表达式所需的所有行很容易。我们只需要证明，对表 *T~1~, T~2~,…,T~m~* 所有的有效实例，表达式 *(select \* from T~1~，T~2~，…，T~m~ where W~q~)* 的输出都会产生 *(select \* from T~1~,T~2~,…,T~m~ where W~v~)* 输出的子集。因此只要 *W~q~ ⇒ W~v~*，则证明成立，这里 ⇒ 表示**逻辑包含**。
 
 > 这里的[logical implication](https://whatis.techtarget.com/definition/logical-implication) ，感觉就是[充分条件](https://baike.baidu.com/item/%E5%85%85%E5%88%86%E5%BF%85%E8%A6%81%E6%9D%A1%E4%BB%B6)。即，如果p能推出q，p是q的充分条件，同时q是p的必要条件，此时**p是q的子集**。
 
@@ -827,6 +895,7 @@ Group by c_nationkey
 
 ### 4.3 小结（Summary）
 
-> As we saw, each condition above can be the basis for a lattice index subdividing a collection of views. The conditions are independent and can be composed in any order to create a filter tree. For instance, we can create a filter tree where the root node partitions the views based on their hubs and the second level nodes further subdivide each partition according to the views’ extended output column lists. We can stop there or add more levels using any other conditions. Our implementation uses a filter tree with eight levels. From top to bottom, the levels are: hubs, source tables, output expressions, output columns, residual constraints, and range constraints. For aggregation views, there are two additional levels: grouping expressions and grouping columns.
+> As we saw, each condition above can be the basis for a lattice index subdividing a collection of views. The conditions are independent and can be composed in any order to create a filter tree. For instance, we can create a filter tree where the root node partitions the views based on their hubs and the second level nodes further subdivide each partition according to the views’ extended output column lists. We can stop there or add more levels using any other conditions. Our implementation uses a filter tree with eight levels. From top to bottom, the levels are: <u>**hubs**</u>, source tables, output expressions, output columns, residual constraints, and range constraints. For aggregation views, there are two additional levels: grouping expressions and grouping columns.
 
-如我们所见，上述每个条件都可以作为细分视图 lattice 索引的基础。这些是独立条件，可以按任何顺序组合以创建**过滤树**。例如，可以这样创建，根节点基于视图中心对视图进行分区，第二层节点根据视图的扩展输出列进一步细分每个分区。可以就此停下，也可以使用其他条件添加更多层次。我们使用的是**八层过滤器树**。从上到下，分别是：视图中芯，源表，输出表达式，输出列，剩余谓词约束和范围约束。 对于聚合视图，还有两个附加级别：分组表达式和分组列。
+如我们所见，上述每个条件都可以作为细分视图 lattice 索引的基础。这些是独立条件，可以按任何顺序组合以创建**过滤树**。例如，可以这样创建，根节点基于视图中心对视图进行分区，第二层节点根据视图的扩展输出列进一步细分每个分区。可以就此停下，也可以使用其他条件添加更多层次。我们使用的是**八层过滤器树**。从上到下，分别是：**<u>集线器</u>**，源表，输出表达式，输出列，剩余谓词约束和范围约束。对于聚合视图，还有两个附加级别：分组表达式和分组列。
+
