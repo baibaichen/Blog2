@@ -110,7 +110,7 @@ create index v1_sidx on v1( gross_revenue, p_name)
 > Our algorithm exploits four types of constraints: not-null constraints on columns, primary key constraints, uniqueness constraints (either explicitly declared or implied by creating a unique index), and foreign key constraints. We assume that the selection predicates of view and query expressions have been converted into conjunctive normal form (CNF). If not, we first convert them into CNF. We also assume that join elimination has been performed so query and view expressions contain no redundant tables. (The SQL Server optimizer does this automatically.)
 >
 
-在本节中描述如何确定可以从视图构造出**查询表达式**，以及如果可以，**如何构造等价的替换表达式**。第一小节讨论 **<u>join select project</u>（<u>SPJ</u>）**视图和查询，假设视图和查询引用相同的表。<u>有额外表的</u>视图和聚合视图在单独的小节中介绍。不需要考虑表的数量少于查询表达式的视图。这样的视图只能用于计算<u>查询表达式的子表达式</u>。 视图匹配规则将在每个<u>子表达式</u>上自动调用。
+在本节中描述如何确定可以从视图构造出**查询表达式**，以及如果可以的话，**如何构造等价的替换表达式**。第一小节讨论 **<u>join select project</u>（<u>SPJ</u>）**视图和查询，假设视图和查询引用相同的表。<u>有额外表的</u>视图和聚合视图在单独的小节中介绍。不需要考虑表的数量少于查询表达式的视图。这样的视图只能用于计算<u>查询表达式的子表达式</u>。 视图匹配规则将在每个<u>子表达式</u>上自动调用。
 
 算法利用四种约束类型：**<u>非空列约束</u>**，**<u>主键约束</u>**，**<u>唯一性约束</u>**（通过创建唯一索引显式或隐含声明）以及**<u>外键约束</u>**。我们假设视图和查询表达式的选择谓词已转换为**<u>合取范式</u>（conjunctive normal form，<u>CNF</u>）**。如果没有，我们首先将它们转换为**CNF**。 我们还假定已执行<u>**联接消除**</u>，因此查询和视图表达式不包含冗余表（SQL Server优化器会自动执行此操作）。
 
@@ -119,7 +119,7 @@ create index v1_sidx on v1( gross_revenue, p_name)
 > 1. CNF
 > 2. 关联消除：意味着SQL优化器消除了不必再关联中出现的表
 >
-> To prove that two expressions are equal, a frequently used technique is to transform both expressions to a standard form. One such standard form is called conjunctive normal form or CNF. An expression in CNF is a ‘product of sums’. The ‘sums’ are literals (simple propositions or negated propositions, e.g., $P$, or $\neg Q$) linked by $\vee$, which are then formed into a ‘product’ using $\wedge$.
+> ==To prove that two expressions are equal, a frequently used technique is to transform both expressions to a standard form. One such standard form is called conjunctive normal form or CNF==. An expression in CNF is a ‘product of sums’. The ‘sums’ are literals (simple propositions or negated propositions, e.g., $P$, or $\neg Q$) linked by $\vee$, which are then formed into a ‘product’ using $\wedge$.
 >
 > Consider the expression:  $(P \Leftrightarrow Q)$
 >
@@ -159,11 +159,10 @@ create index v1_sidx on v1( gross_revenue, p_name)
 3. **可以从视图的输出算出所有输出表达式**。
 4. **所有输出行都使用正确的复制因子**。SQL基于<u>Bag语义</u>，即（物化视图的）基础表或SQL表达式的输出可能包含重复的行。<u>因此，两个表达式产生相同的行集还不够，任何重复的行也必须出现完全相同的次数</u>。
 
-列之间的等效性在我们的测试中起着重要作用，因此我们首先讨论该主题。然后，我们讨论如何确保满足上述要求，再用单独的小节讨论每项需求。
+列之间的等价性在我们的==测试==中起着重要作用，因此我们首先讨论该主题。然后，我们讨论如何确保满足上述要求，再用单独的小节讨论每项需求。
 
-> 注：
+> 注：[Bag 语义](http://ceur-ws.org/Vol-1087/keynote2slides.pdf)：表示有重复元素，与之对应的是Set语义，表示没有重复。也就是查询返回的结果不会去重，有重复数据，除非加上`distinct`。
 >
-> 1. [Bag 语义](http://ceur-ws.org/Vol-1087/keynote2slides.pdf)：表示有重复元素，与之对应的是Set语义，表示没有重复。也就是查询返回的结果不会去重，有重复数据，除非加上`distinct`。
 
 #### 3.1.1 列等价分类（column equivalence classes）
 
@@ -173,15 +172,15 @@ create index v1_sidx on v1( gross_revenue, p_name)
 >
 > Knowledge about column equivalences can be captured compactly by <u>computing a set of equivalence classes</u> based on the column equality predicates in *PE*. **An equivalence class is a set of columns that are known to be equal**. Computing the equivalence classes is straightforward. Begin with each column of the tables referenced by the expression in a separate set. Then loop through the <u>column equality predicates</u> in any order. For each *(T~i~.C~p~ = T~j~.C~q~)*, find the set containing *T~i~.C~p~* and the set containing *T~j~.C~q~*. If they are in different sets merge the two sets, otherwise do nothing. The sets left at the end is the desired collection of equivalence classes, including trivial classes consisting of a single column.
 
-设*W=P~1~∧P~2~∧…∧P~n~*为`SPJ`表达式的选择谓词（按CNF的形式）。通过适当地调整<u>==连接词==</u>，可重写谓词为*W=PE∧ PNE*，其中，其中 *PE* 包含所有形式为*(T~i~.C~p~=T~j~.C~q~)* 的<u>列相等</u>谓词，*PNE* 包含所有剩余的连接。T~i~ 和 T~j~ 是表，有可能相同，而C~p~和C~q~是列引用。
+设 $W=P_1∧P_2∧…∧P_n$ 为 **SPJ** 表达式（按 CNF 形式组织）的==选择谓词==。适当调整 $\wedge$，谓词可改写为 $W=PE ∧ PNE$，其中，其中 **PE** 包含所有形式为  ($T_i.C_p=T_j.C_q$) 的<u>列相等</u>谓词，**PNE** 包含所有剩余的连接。T~i~ 和 T~j~ 是表，有可能相同，而C~p~ 和 C~q~ 是列引用。
 
-假设我们求解 SPJ 表达式是先计算表的笛卡尔积，再应用 *PE* 中的列相等谓词，然后再应用 *PNE* 中谓词，最后计算输出列表中的表达式。==应用<u>列相等谓词</u>后，某些列可以在**PNE** 谓词和输出列互换==。这种**在等价列之间<u>重新路由引用列</u>的功能**稍后将非常重要。
+假设我们求解 SPJ 表达式是先计算表的笛卡尔积，再应用 **PE** 中列相等的谓词，然后再应用 **PNE** 中的谓词，最后计算输出列表中的表达式。==应用<u>列相等谓词</u>后，某些列可以在 **PNE** 谓词和输出列互换==。这种在等价列之间**<u>重新路由引用列</u>的功能**稍后将非常重要。
 
-通过基于 *PE* 中列相等谓词<u>计算等价类的集合</u>，可简洁地获取**列等价性**的知识。**等价类是一组已知相等的列**。计算等价类很简单。在单独的集合中，从表达式引用的表的每一列开始，然后按任意顺序循环遍历<u>列相等谓词</u>。对于每个 *(T~i~.C~p~=T~j~.C~q~)*，找到包含 *T~i~.C~p~* 的集合和包含 *T~j~.C~q~* 的集合。如果它们位于不同的集合中，则将这两个集合合并，否则啥也不用做。最后留下的集合是所需的等价类集合，包括由单个列组成的没有价值的<u>等价类</u>。
+通过基于 **PE** 中列相等谓词<u>计算等价类的集合</u>，可简洁地获取**列等价性**的知识。**等价类是一组已知相等的列**。计算等价类很简单。在单独的集合中，从表达式引用的表的每一列开始，然后按任意顺序循环遍历<u>列相等谓词</u>。对每个 ($T_i.C_p=T_j.C_q$)，找到包含 **T~i~.C~p~** 的集合和包含 **T~j~.C~q~** 的集合。如果它们位于不同的集合中，则将这两个集合合并，否则不执行任何操作。最后留下的集合是所需的等价类集合，包括没有意义的<u>==单列等价类==</u>。
 
 #### 3.1.2 视图中是否存在所有必需的行？（Do all required rows exist in the view?）
 
-> Assume that the query expression and the view expression reference the tables *T~1~, T~2~,…, T~m~*. Let *W~q~* denote the predicate in the `where-clause` of the query expression and *W~v~* the predicate of the view expression. Determining whether the view contains all rows required by the query expression is, in principle, easy. All we need to show is that the output of the expression *(select \* from T~1~,T~2~,…,T~m~ where W~q~)* produces a subset of the output of *(select \* from T~1~,T~2~,…,T~m~ where W~v~)* for all valid instances of tables *T~1~, T~2~,…,T~m~*. This is guaranteed to hold if *W~q~ ⇒W~v~*,where ‘⇒’ denotes **logical implication**. 
+> Assume that the query expression and the view expression reference the tables *T~1~, T~2~,…, T~m~*. Let *W~q~* denote the predicate in the `where-clause` of the query expression and *W~v~* the predicate of the view expression. Determining whether the view contains all rows required by the query expression is, in principle, easy. All we need to show is that the output of the expression *(select \* from T~1~,T~2~,…,T~m~ where W~q~)* produces a subset of the output of *(select \* from T~1~,T~2~,…,T~m~ where W~v~)* for all valid instances of tables *T~1~, T~2~,…,T~m~*. This is guaranteed to hold if *W~q~ ⇒W~v~*,where ‘⇒’ denotes ==**logical implication**==. 
 >
 > Therefore we need an algorithm to decide whether *W~q~ ⇒ W~v~* holds. We rewrite the predicates as *W~q~ =P~q,1~∧P~q,2~∧…∧P~q,m~* and *W~v~ =P~v,1~∧P~v,2~∧…∧P~v,n~*. A simple conservative algorithm is to check that every conjunct *P~v,i~* in *W~v~*, matches a conjunct *P~q,i~* in *W~q~*. There are several ways to decide whether two conjuncts match. <u>For instance, the matching can be purely syntactic</u>. This can be implemented by converting each conjunct into a string, i.e., the SQL text version of the conjunct, and then matching the strings. The drawback with this approach is that even minor syntactic differences result in different strings. For example, the two predicates `(A > B)` and `(B < A)` would not match. To avoid this problem, we must interpret the predicates and exploit equivalences among expressions. Exploiting **commutativity** is a good example, applicable to many types of expressions: comparisons, addition, multiplication, and disjunction (OR). We can design matching functions at different levels of sophistication and complexity depending on how much knowledge about equivalences we build into the function. For example, a simple function might only understand that `(A+B) = (B+A)`, while a more sophisticated function might also recognize that `(A/2 + B/5) * 10 = A * 5 + B * 2`. 
 >
@@ -209,11 +208,11 @@ create index v1_sidx on v1( gross_revenue, p_name)
 > 
 >**Check constraints** can be readily incorporated into the tests. The key observation is that **check constraints on the tables of a query can be added to the <u>where-clause</u> without changing the query result**. Hence, check constraints can be taken into account by including them in the antecedent of the implication *W~q~ ⇒ W~v~*. Whether or not the check constraints will actually be exploited depends on the algorithm used for testing.
 
-假设查询表达式和视图表达式引用表*T~1~，T~2~，…，T~m~*。让 *W~q~* 表示查询表达式 `where` 子句中的谓词，*W~v~* 表示视图表达式的谓词。理论上，确定视图是否包含查询表达式所需的所有行很容易。我们只需要证明，对表 *T~1~, T~2~,…,T~m~* 所有的有效实例，表达式 *(select \* from T~1~，T~2~，…，T~m~ where W~q~)* 的输出都会产生 *(select \* from T~1~,T~2~,…,T~m~ where W~v~)* 输出的子集。因此只要 *W~q~ ⇒ W~v~*，则证明成立，这里 ⇒ 表示**逻辑包含**。
+假设查询表达式和视图表达式引用表 **T~1~，T~2~，…，T~m~**。让 **W~q~** 表示查询表达式 `where` 子句中的谓词，**W~v~** 表示视图表达式的谓词。理论上，确定视图是否包含查询表达式所需的所有行很容易。我们只需要证明，对表 **T~1~, T~2~,…,T~m~** 所有的有效实例，表达式  (**select \* from T~1~，T~2~，…，T~m~ where W~q~**) 的输出都是表达式 (**select \* from T~1~,T~2~,…,T~m~ where W~v~**) 输出的子集。因此只要 *W~q~ ⇒ W~v~*，则证明成立，这里 ⇒ 表示**逻辑隐含**。
 
-> 这里的[logical implication](https://whatis.techtarget.com/definition/logical-implication) ，感觉就是[充分条件](https://baike.baidu.com/item/%E5%85%85%E5%88%86%E5%BF%85%E8%A6%81%E6%9D%A1%E4%BB%B6)。即，如果p能推出q，p是q的充分条件，同时q是p的必要条件，此时**p是q的子集**。
+> 这里的 [logical implication](https://whatis.techtarget.com/definition/logical-implication) ，感觉就是[充分条件](https://baike.baidu.com/item/%E5%85%85%E5%88%86%E5%BF%85%E8%A6%81%E6%9D%A1%E4%BB%B6)。即，如果 p 能推出 q，p 是 q 的充分条件，同时 q 是 p 的必要条件，此时 **p 是 q 的子集**。
 
-因此，我们需要一个算法来判断 *W~q~ ⇒ W~v~* 是否成立。我们重写谓词如下：*W~q~ =P~q,1~∧P~q,2~∧…∧P~q,m~*  和 *W~v~ =P~v,1~∧P~v,2~∧…∧P~v,n~*。一种简单的保守算法是检查 *W~v~* 中每个条件*P~v,i~* ，是否匹配*W~q~* 中的每个条件*P~q,i~* 。有几种方法可以确定两个条件是否匹配。<u>例如，匹配可以是纯语法的</u>。这可通过将每个条件转换为字符串来实现，即将条件转为SQL，然后匹配字符串。这种方法的缺点是，细微的语法差异会导致字符串不同。比如，`(A > B)`和 `(B < A)` 这两个谓词会匹配失败。为了避免这个问题，我们必须分析谓词，并利用表达式之间的等价性。利用**交换性**是一个很好的例子，适用于许多类型的表达式：比较、加法、乘法和<u>析取</u>（OR）。可设计不同精密度和复杂度的匹配函数，这取决于匹配函数有多少等价性的知识。比如，简单函数只能理解`（A+B）=（B+A）`，更复杂的函数可能识别`（A/2 + B/5）* 10 = A*5 + B*2`。
+因此，我们需要一个算法来判断 **W~q~ ⇒ W~v~** 是否成立。重写谓词如下：*W~q~ =P~q,1~∧P~q,2~∧…∧P~q,m~*  和 *W~v~ =P~v,1~∧P~v,2~∧…∧P~v,n~*。一种简单的保守算法是检查 *W~v~* 中每个条件*P~v,i~* ，是否匹配*W~q~* 中的每个条件*P~q,i~* 。有几种方法可以确定两个条件是否匹配。<u>例如，匹配可以是纯语法的</u>，通过将每个条件转换为字符串来实现，即将条件转为 SQL，然后匹配字符串。这种方法的缺点是，细微的语法差异会导致字符串不同。比如，`(A > B)`和 `(B < A)` 这两个谓词会匹配失败。为了避免这个问题，我们必须分析谓词，并利用表达式之间的等价性。利用**交换性**是一个很好的例子，适用于许多类型的表达式：比较、加法、乘法和<u>析取</u>（OR）。可设计不同精密度和复杂度的匹配函数，这取决于匹配函数有多少等价性的知识。比如，简单函数只能理解`（A+B）=（B+A）`，更复杂的函数可能识别`（A/2 + B/5）* 10 = A*5 + B*2`。
 
 我们的决策算法利用了列等价性和列范围的知识。我们首先将谓词 *W~q~* 和 *W~v~* 分为三个部分，并将<u>**包含测试**</u>写为：
 
@@ -239,7 +238,7 @@ create index v1_sidx on v1( gross_revenue, p_name)
 
 > 注：这里视图的谓词怀疑是 *(A+B) = 8*
 
-**检查约束**可以很容易地合并到测试中。这里观察到的关键点是，**可以将表上的检查约束添加到<u>where子句</u>中，而不会更改查询结果**。因此，可以通过将检查约束包含在 *W~q~ ⇒ W~v~* 的前导项中考虑它们。是否真正利用检查约束取决于测试算法。
+**检查约束**可以很容易地合并到测试中。这里观察到的关键点是，**可以将表上的检查约束添加到 <u>where 子句</u>中，而不会更改查询结果**。因此，可以通过将检查约束包含在 *W~q~ ⇒ W~v~* 的前导项中考虑它们。是否真正利用检查约束取决于测试算法。
 
 ##### 等值关联包含测试（Equijoin subsumption test）
 

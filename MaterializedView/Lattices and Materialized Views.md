@@ -267,9 +267,9 @@ For details, see the [lattices documentation](https://calcite.apache.org/docs/la
 >
 > By registering materialized views in Calcite, the optimizer has the opportunity to automatically rewrite queries to use these views.
 
-某些 Calcite 适配器以及依赖 Calcite 的项目都有自己**物化视图的概念**。
+某些 Calcite 适配器以及依赖 Calcite 的项目都有**物化视图的概念**。
 
-==例如，Apache Cassandra 允许用户根据自动维护的现有表定义物化视图==。Cassandra 适配器自动将这些物化视图暴露给 Calcite。另一个例子是Apache Hive。 在 Hive 中创建物化视图时，用户可以指定该视图是否可以用于查询优化。 如果用户选择这样做，物化视图将被注册到 Calcite。
+==例如，Apache Cassandra 允许用户根据自动维护的表定义物化视图==。Cassandra 适配器自动将这些物化视图暴露给 Calcite。另一个例子是Apache Hive。 在 Hive 中创建物化视图时，用户可以指定该视图是否可以用于查询优化。 如果用户选择这样做，物化视图将被注册到 Calcite。
 
 通过在 Calcite 中注册物化视图，优化器有机会自动重写查询以使用这些视图。
 
@@ -584,3 +584,40 @@ GROUP BY empid, deptname
 ## References
 
 - [GL01] Jonathan Goldstein and Per-åke Larson. [Optimizing queries using materialized views: A practical, scalable solution](https://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.95.113). In *Proc. ACM SIGMOD Conf.*, 2001.
+
+# 其他
+
+重写逻辑基于 Goldstein 和 Larson 的**使用物化视图优化查询：一个实用的、可扩展的解决方案**。
+
+在查询端，规则匹配 `Project` 节点链或 `Aggregate` 和 `Join` 节点。这些节点的子计划必须由以下一个或多个算子组成：`TableScan`、`Project`、`Filter` 和 `Join`。
+
+对于每个加入MV，我们需要检查以下内容：
+
+1. 以<u>视图中的 Join 运算符为根的计划</u>生成以<u>查询中的 Join 运算符为根的计划</u>所需的所有行。
+2. <u>补偿谓词</u>所需的所有列（即需要在视图上强制执行的谓词）在视图输出中可用。
+3. 所有**输出表达式**都可以从视图的输出中计算出来。
+4. 所有输出行都以正确的重复因子出现。我们可能依赖现有的**唯一键 - 外键**关系来提取该信息。
+
+反过来，对于每个聚合 MV，我们需要检查以下内容：
+
+1. 以<u>视图中的聚合运算符为根的计划</u>生成以<u>查询中的聚合运算符为根的计划</u>所需的所有行。
+2. 补偿谓词所需的所有列，即需要在视图上强制执行的谓词，在视图输出中可用。
+3. **查询中的分组列是视图中分组列的子集**。
+4. **视图输出**中提供了执行进一步分组所需的所有列。
+5. **视图输出**中提供了计算输出表达式所需的所有列。
+
+与原始论文相比，该规则包含多个扩展。其中之一是可以使用 `Union` 重写执行计划，比如物化视图只包含了部分查询结果。
+
+工作步骤：
+
+1. Explore query plan to recognize whether preconditions to  try to generate a rewriting are met（探索查询计划以识别是否满足尝试生成重写的先决条件）
+2. Initialize all query related auxiliary data structures that will be used throughout query rewriting process Generate query table references（初始化将在整个查询重写过程中使用的所有查询相关的辅助数据结构生成查询表引用）
+3. We iterate through all applicable materializations trying to rewrite the given query（我们遍历所有适用的物化尝试重写给定的查询）
+   1. View checks before proceeding
+   2. Initialize all query related auxiliary data structures that will be used throughout query rewriting process Extract view predicates
+4. We map every table in the query to a table with the same qualified name (all query tables are contained in the view, thus this is equivalent to mapping every table in the query to a view table).
+   1. Compute compensation predicates, i.e., predicates that need to be enforced over the view to retain query semantics. The resulting  predicates are expressed using {@link RexTableInputRef} over the query. First, to establish relationship, we swap column references of the view predicates to point to query tables and compute equivalence classes.
+   2. 
+
+## 定义
+
