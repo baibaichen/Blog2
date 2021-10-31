@@ -719,17 +719,17 @@ Group by c_nationkey
 >
 > A filter tree is a multiway search tree where all the leaves are on the same level. A node in the tree contains a collection of (key, pointer) pairs. A key consists of a set of values, not just a single value. A pointer in an internal node points to a node at the next level while a pointer in a leaf node points to a list of view descriptions. A filter tree subdivides the set of views into smaller and smaller partitions at each level of the tree.
 >
-> A search in a filter tree may traverse multiple paths. When the search reaches a node, it continues along some of the node’s outgoing pointers. Whether to continue along a pointer is determined by applying a search condition on the key associated with the pointer. The condition is always of the same type: <u>a key qualifies</u> if it is a subset (superset) of or equal to a given search key. The search key is also a set. We can always do a linear scan and check every key but this may be slow if the node contains many keys. To avoid a linear scan, we organize the keys in a **lattice** structure, which allows us to find all subsets (supersets) of a given search key easily. We call this internal structure a **lattice index**.
+> A search in a filter tree may traverse multiple paths. When the search reaches a node, it continues along some of the node’s outgoing pointers. Whether to continue along a pointer is determined by applying a search condition on the key associated with the pointer. The condition is always of the same type: ==<u>a key qualifies</u> if it is a subset (superset) of or equal to a given search key==. The search key is also a set. We can always do a linear scan and check every key but this may be slow if the node contains many keys. To avoid a linear scan, we organize the keys in a **lattice** structure, which allows us to find all subsets (supersets) of a given search key easily. We call this internal structure a **lattice index**.
 >
 > We describe the lattice index in more detail in the next section and then explain the <u>partitioning conditions</u> applied at different levels of the tree.
 
 为了加快视图匹配，在内存中保留了每个物化视图的描述，包含了上一节视图匹配算法所需的所有信息。即使如此，每次调用匹配规则时，如果视图的数量非常大，匹配所有视图会很慢。本节描述了一个称为**过滤树**的内存索引，可快速丢弃查询不匹配的视图。
 
-**过滤树**是一种多路搜索树，其中所有叶子都处于同一级别。 树中的节点包含（键、指针）对的集合。 键由一组值组成，而不仅仅是一个值。 内部节点的指针指向下一级的节点，叶节点的指针指向视图描述列表。过滤树在树的每一级将视图集细分为越来越小的**分区**。
+**过滤树**是一种多路搜索树，其中所有叶子都处于同一级别。 树中的节点包含 `<key、指针>` 对的集合。 key  由一组值而不仅仅是一个值组成。 内部节点的指针指向下一级的节点，叶节点的指针指向视图描述列表。过滤树在树的每一级将视图集细分为越来越小的**分区**。
 
-**过滤树**中的搜索可遍历多个路径。 搜索到达某个节点后，它将沿着该节点的某些传出指针继续。 在<u>与指针关联的键上</u>应用搜索条件，决定是否沿着指针继续。条件总是属于同一类型：<u>键限定</u>它是给定搜索键的子集（超集）还是等于给定搜索键。搜索键也是一个集合。我们总是执行线性扫描并检查每个键，但如果节点包含多个键，可能会很慢。为了避免线性扫描，我们将<u>键</u>组织在一个称为**lattice**的结构中，这样我们就可以轻松地找到给定<u>键</u>的所有子集（超集）。我们称这种内部结构为 **lattice 索引**。
+**过滤树**中的搜索可遍历多个路径。 搜索到达某个节点时，它将沿着该节点的某些传出指针继续。 在<u>与指针关联的 Key</u> 应用搜索条件，决定是否沿着指针继续。条件总是属于同一类型：==<u>键限定</u>它是给定搜索键的子集（超集）还是等于给定搜索键==。搜索 key 也是一个集合。我们**可以总是**执行线性扫描并检查每个 key，但如果节点包含多个键，可能会很慢。为了避免线性扫描，我们将 <u>key</u> 组织在一个称为 **lattice** 的结构中，这样我们就可以轻松地找到给定 <u>key</u> 的所有子集（超集）。我们称这种内部结构为 **lattice 索引**。
 
-我们将在下一节更详细地描述**lattice 索引**，然后说明在树的不同层上应用的<u>分区条件</u>。
+在下一节详细描述 **lattice 索引**，然后说明在树的不同层上应用的<u>分区条件</u>。
 
 ### 4.1 Lattice 索引（Lattice index）
 
