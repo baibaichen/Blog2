@@ -520,7 +520,7 @@ To further modify the `OverCall`, call its methods:
 - [Further directions](https://calcite.apache.org/docs/lattice.html#further-directions)
 - [References](https://calcite.apache.org/docs/lattice.html#references)
 
-## Concept
+## Concept（概念）
 
 > A lattice represents a star (or snowflake) schema, not <u>==a general schema==</u>. In particular, all relationships must be many-to-one, heading from a fact table at the center of the star.
 >
@@ -540,28 +540,27 @@ To further modify the `OverCall`, call its methods:
 >
 > Most star schema models force you to choose whether a column is a dimension or a measure. In a lattice, every column is a dimension column. (That is, it can become one of the columns in the GROUP BY clause to query the star schema at a particular dimensionality). Any column can also be used in a measure; you define measures by giving the column and an aggregate function.
 >
+><u>If “unit_sales” tends to be used much more often as a measure rather than a dimension, that’s fine. Calcite’s algorithm should notice that it is rarely aggregated, and not be inclined to create tiles that aggregate on it</u>. (By “should” I mean “could and one day will”. The algorithm does not currently take query history into account when designing tiles.)
+> 
+>But someone might want to know whether orders with fewer than 5 items were more or less profitable than orders with more than 100. All of a sudden, “unit_sales” has become a dimension. If there’s virtually zero cost to declaring a column a dimension column, I figured let’s make them all dimension columns.
+> 
 >
-> If “unit_sales” tends to be used much more often as a measure rather than a dimension, that’s fine. Calcite’s algorithm should notice that it is rarely aggregated, and not be inclined to create tiles that aggregate on it. (By “should” I mean “could and one day will”. The algorithm does not currently take query history into account when designing tiles.)
->
-> But someone might want to know whether orders with fewer than 5 items were more or less profitable than orders with more than 100. All of a sudden, “unit_sales” has become a dimension. If there’s virtually zero cost to declaring a column a dimension column, I figured let’s make them all dimension columns.
->
->
-> The model allows for a particular table to be used more than once, with a different table alias. You could use this to model say OrderDate and ShipDate, with two uses to the Time dimension table.
->
-> Most SQL systems require that the column names in a view are unique. This is hard to achieve in a lattice, because you often include primary and foreign key columns in a join. So Calcite lets you refer to columns in two ways. If the column is unique, you can use its name, [“unit_sales”]. Whether or not it is unique in the lattice, it will be unique in its table, so you can use it qualified by its table alias. Examples:
->
-> - [“sales”, “unit_sales”]
+>The model allows for a particular table to be used more than once, with a different table alias. You could use this to model say OrderDate and ShipDate, with two uses to the Time dimension table.
+> 
+>Most SQL systems require that the column names in a view are unique. This is hard to achieve in a lattice, because you often include primary and foreign key columns in a join. So Calcite lets you refer to columns in two ways. If the column is unique, you can use its name, [“unit_sales”]. Whether or not it is unique in the lattice, it will be unique in its table, so you can use it qualified by its table alias. Examples:
+> 
+>- [“sales”, “unit_sales”]
 > - [“ship_date”, “time_id”]
 > - [“order_date”, “time_id”]
->
-> A “tile” is a materialized table in a lattice, with a particular dimensionality. The “tiles” attribute of the [lattice JSON element](https://calcite.apache.org/docs/model.html#lattice) defines an initial set of tiles to materialize.
->
+> 
+>A “tile” is a materialized table in a lattice, with a particular dimensionality. The “tiles” attribute of the [lattice JSON element](https://calcite.apache.org/docs/model.html#lattice) defines an initial set of tiles to materialize.
+> 
 
 **Lattice**  代表星形（或雪花）模式，而不是<u>==一般模式==</u>。特别地，所有关系都必须是多对一的，从星形中心的事实表开始。
 
 这个名字来源于数学：[lattice](https://en.wikipedia.org/wiki/Lattice_(order)) 是[偏序集](https://en.wikipedia.org/wiki/Partially_ordered_set)，其中任意两个元素具有唯一的**最大下界**和**最小上界**。
 
-[[HRU96](https://calcite.apache.org/docs/lattice.html#ref-hru96)] 观察到数据立方体的可能物化集合形成 **lattice**，提出了一种算法来选择一个好的物化视图集合。 Calcite 的推荐算法就是由此衍生出来的。
+[[HRU96](https://calcite.apache.org/docs/lattice.html#ref-hru96)] 观察到数据立方体的可能物化集合形成 **lattice**，提出了一种算法来选择一个好的物化视图集合。 Calcite 的推荐算法就是由此衍生出来。
 
 **Lattice**  定义使用 SQL 来表示星形。SQL 是一种好用的简写，可用于表示连接在一起的多个表，并为列名指定别名（这比发明一种新语言来表示关系、连接条件和基数更方便）。
 
@@ -571,13 +570,13 @@ To further modify the `OverCall`, call its methods:
 
 **Calcite 不检查这些约束。 如果违反，Calcite 将返回错误的结果**。
 
-**Lattice**  是一个<u>大的虚拟连接视图</u>。没有物化（由于并没有规范化，它会比星型模式大几倍）并且您可能不想查询它（太多列）。 那么它有什么用呢？ 正如我们上面所说，(a)  **lattice**  声明了一些非常有用的主键和外键约束，(b) 它帮助 **planner** 将用户查询映射到 `filter-join-aggregate` 的物化视图（DW 查询最有用的物化视图类型） )，(c) 为 Calcite 提供了一个框架，在该框架内收集有关数据量和用户查询的统计信息，(d) 允许 Calcite 自动设计和填充物化视图。
+**Lattice**  是一个<u>大的虚拟连接视图</u>。没有物化（由于并没有规范化，它会比星型模式大几倍）并且您可能不想查询它（太多列）。 那么它有什么用呢？ 正如我们上面所说，(a)  **lattice**  声明了一些非常有用的主键和外键约束，(b) 它帮助 **planner** 将用户查询映射到 `filter-join-aggregate` 的物化视图（数仓查询最有用的物化视图类型），(c) 为 Calcite 提供了一个框架，在该框架内收集有关数据量和用户查询的统计信息，(d) 允许 Calcite 自动设计和填充物化视图。
 
-**大多数星型模式模型强制您选择列是维度还是度量**。 在 **lattice**   中，每一列都是一个维度列。 （也就是说，它可以成为 GROUP BY 子句中的列之一，以在特定维度查询星型模式）。 任何列也可以用于度量； 您可以通过提供列和聚合函数来定义度量。
+**大多数==星型模式模型==强制您选择列是维度还是度量**。在 **lattice** 中，每列都可以是维度列，即都可以成为 GROUP BY 子句中的列之一，以查询特定维度的**星型模型**。每列也可以用于度量；可以通过列上的聚合函数来定义度量。
 
-如果**单位销售额**往往更多地被用作度量而不是维度，那么 Calcite 的算法**应该**注意到它很少聚合，并且倾向于不在其上创建聚合的 **tile**。（我所说的“应该”是指“可以而且有一天会”。在设计 **tile** 时，算法目前不考虑查询历史。）
+<u>如果**单位销售额**往往更多地被用作度量而不是维度，那么 Calcite 的算法**应该**注意到它很少聚合，并且倾向于不在其上创建聚合的 **tile**</u>。我所说的“应该”是指“可以而且有一天会”。在设计 **tile** 时，算法目前不考虑查询历史。
 
-但有人可能想知道，少于 5 件的订单是否比多于 100 件的订单更有利可图。 突然，**单位销售额**变成了一个维度。如果将一列声明为维度列的成本几乎为零，则将它们全部设为维度列。
+但有人可能想知道，少于 5 件的订单是否比多于 100 件的订单更有利可图。突然，**单位销售额**变成了一个维度。如果将一列声明为维度列的成本几乎为零，则将它们全部设为维度列。
 
 这种模型允许使用不同的表别名多次使用某张表。您可以使用它来建模 OrderDate 和 ShipDate，时间维度表有两种用途。
 
@@ -589,9 +588,11 @@ To further modify the `OverCall`, call its methods:
 
 **Tile** 是 **lattice**   中的物化表，具有特定的维度。 [lattice JSON 元素](https://calcite.apache.org/docs/model.html#lattice) 的 **tiles** 属性定义了一组要物化的初始 tiles。
 
-## Demonstration
+## Demonstration（演示）
 
-Create a model that includes a lattice:
+>  Create a model that includes a lattice:
+
+创建包含 lattice 的模型
 
 ```json
 {
@@ -626,14 +627,20 @@ Create a model that includes a lattice:
 }
 ```
 
-This is a cut-down version of [hsqldb-foodmart-lattice-model.json](https://github.com/apache/calcite/blob/master/core/src/test/resources/hsqldb-foodmart-lattice-model.json) that does not include the “tiles” attribute, because we are going to generate tiles automatically. Let’s log into sqlline and connect to this schema:
+> This is a cut-down version of [hsqldb-foodmart-lattice-model.json](https://github.com/apache/calcite/blob/master/core/src/test/resources/hsqldb-foodmart-lattice-model.json) that does not include the “tiles” attribute, because we are going to generate tiles automatically. Let’s log into sqlline and connect to this schema:
+
+这是 [hsqldb-foodmart-lattice-model.json](https://github.com/apache/calcite/blob/master/core/src/test/resources/hsqldb-foodmart-lattice-model.json) 的精简版，不包含 **tiles** 属性，因为我们将自动生成切片。我们登录 sqlline 并连接到这个 schema：
+
+> 这里的 [schema 等价于数据库](https://www.zhihu.com/question/20355738)？
 
 ```
 $ sqlline version 1.3.0
 sqlline> !connect jdbc:calcite:model=core/src/test/resources/hsqldb-foodmart-lattice-model.json "sa" ""
 ```
 
-You’ll notice that it takes a few seconds to connect. Calcite is running the optimization algorithm, and creating and populating materialized views. Let’s run a query and check out its plan:
+> You’ll notice that it takes a few seconds to connect. Calcite is running the optimization algorithm, and creating and populating materialized views. Let’s run a query and check out its plan:
+
+您会注意到连接需要几秒钟。 Calcite 正在运行优化算法，并创建和填充物化视图。 让我们运行一个查询并查看它的计划：
 
 ```
 sqlline> select "the_year","the_month", count(*) as c
@@ -672,9 +679,13 @@ sqlline> explain plan for
 +--------------------------------------------------------------------------------+
 ```
 
-The query gives the right answer, but plan is somewhat surprising. It doesn’t read the `sales_fact_1997` or `time_by_day` tables, but instead reads from a table called `m{16, 17, 27, 31, 32, 36, 37}`. This is one of the tiles created at the start of the connection.
+> The query gives the right answer, but plan is somewhat surprising. It doesn’t read the `sales_fact_1997` or `time_by_day` tables, but instead reads from a table called `m{16, 17, 27, 31, 32, 36, 37}`. This is one of the tiles created at the start of the connection.
+>
+> It’s a real table, and you can even query it directly. It has only 120 rows, so is a more efficient way to answer the query:
 
-It’s a real table, and you can even query it directly. It has only 120 rows, so is a more efficient way to answer the query:
+查询给出了正确的答案，但计划有点令人惊讶。 它不读取 `sales_fact_1997` 或 `time_by_day` 表，而是从名为 `m{16, 17, 27, 31, 32, 36, 37}` 的表中读取。 这是在连接开始时创建的切片之一。
+
+它是一个真实的表，您甚至可以直接查询它。 它只有 120 行，因此是一种更有效的方式来回答查询：
 
 ```
 sqlline> !describe "adhoc"."m{16, 17, 27, 31, 32, 36, 37}"
@@ -701,7 +712,9 @@ sqlline> select count(*) as c
 1 row selected (0.12 seconds)
 ```
 
-Let’s list the tables, and you will see several more tiles. There are also tables of the `foodmart` schema, and the system tables `TABLES` and `COLUMNS`, and the lattice itself, which appears as a table called `star`.
+> Let’s list the tables, and you will see several more tiles. There are also tables of the `foodmart` schema, and the system tables `TABLES` and `COLUMNS`, and the lattice itself, which appears as a table called `star`.
+
+让我们列出所有表，你会看到更多的切片。 还有 `foodmart` 数据库里的表，系统表 `TABLES` 和 `COLUMNS`，以及 lattice 自身，显示为名为 `star` 的表。
 
 ```
 sqlline> !tables
@@ -730,9 +743,13 @@ sqlline> !tables
 
 ## Statistics
 
-The algorithm that chooses which tiles of a lattice to materialize depends on a lot of statistics. It needs to know `select count(distinct a, b, c) from star` for each combination of columns (`a, b, c`) it is considering materializing. As a result the algorithm takes a long time on schemas with many rows and columns.
+> The algorithm that chooses which tiles of a lattice to materialize depends on a lot of statistics. It needs to know `select count(distinct a, b, c) from star` for each combination of columns (`a, b, c`) it is considering materializing. As a result the algorithm takes a long time on schemas with many rows and columns.
+>
+> We are working on a [data profiler](https://issues.apache.org/jira/browse/CALCITE-1616) to address this.
 
-We are working on a [data profiler](https://issues.apache.org/jira/browse/CALCITE-1616) to address this.
+选择要具体化那些切片的算法取决于大量统计数据。对于正在考虑物化的列（`a, b, c`）的每个组合，需要知道 `select count(distinct a, b, c) from star`。 因此，该算法在大量行和列的数据库上需要很长的时间。
+
+我们正在开发一个[数据分析器](https://issues.apache.org/jira/browse/CALCITE-1616)来解决这个问题。
 
 ## Lattice suggester
 
@@ -1131,6 +1148,671 @@ GROUP BY empid, deptname
 
 - [GL01] Jonathan Goldstein and Per-åke Larson. [Optimizing queries using materialized views: A practical, scalable solution](https://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.95.113). In *Proc. ACM SIGMOD Conf.*, 2001.
 
+# JSON/YAML models
+
+Calcite models can be represented as JSON/YAML files. This page describes the structure of those files.
+
+Models can also be built programmatically using the `Schema` SPI.
+
+## Elements
+
+### Root
+
+#### JSON
+
+```
+{
+  version: '1.0',
+  defaultSchema: 'mongo',
+  schemas: [ Schema... ]
+}
+```
+
+#### YAML
+
+```
+version: 1.0
+defaultSchema: mongo
+schemas:
+- [Schema...]
+```
+
+`version` (required string) must have value `1.0`.
+
+`defaultSchema` (optional string). If specified, it is the name (case-sensitive) of a schema defined in this model, and will become the default schema for connections to Calcite that use this model.
+
+`schemas` (optional list of [Schema](http://calcite.apache.org/docs/model.html#schema) elements).
+
+### Schema
+
+Occurs within `root.schemas`.
+
+#### JSON
+
+```json
+{
+  name: 'foodmart',
+  path: ['lib'],
+  cache: true,
+  materializations: [ Materialization... ]
+}
+```
+
+#### YAML
+
+```yaml
+name: foodmart
+path:
+  lib
+cache: true
+materializations:
+- [ Materialization... ]
+```
+
+`name` (required string) is the name of the schema.
+
+`type` (optional string, default `map`) indicates sub-type. Values are:
+
+- `map` for [Map Schema](http://calcite.apache.org/docs/model.html#map-schema)
+- `custom` for [Custom Schema](http://calcite.apache.org/docs/model.html#custom-schema)
+- `jdbc` for [JDBC Schema](http://calcite.apache.org/docs/model.html#jdbc-schema)
+
+`path` (optional list) is the SQL path that is used to resolve functions used in this schema. If specified it must be a list, and each element of the list must be either a string or a list of strings. For example,
+
+#### JSON
+
+```json
+  path: [ ['usr', 'lib'], 'lib' ]
+```
+
+#### YAML
+
+```yaml
+path:
+- [usr, lib]
+- lib
+```
+
+declares a path with two elements: the schema ‘/usr/lib’ and the schema ‘/lib’. Most schemas are at the top level, and for these you can use a string.
+
+`materializations` (optional list of [Materialization](http://calcite.apache.org/docs/model.html#materialization)) defines the tables in this schema that are materializations of queries.
+
+`cache` (optional boolean, default true) tells Calcite whether to cache metadata (tables, functions and sub-schemas) generated by this schema.
+
+- If `false`, Calcite will go back to the schema each time it needs metadata, for example, each time it needs a list of tables in order to validate a query against the schema.
+- If `true`, Calcite will cache the metadata the first time it reads it. This can lead to better performance, especially if name-matching is case-insensitive.
+
+However, it also leads to the problem of cache staleness. A particular schema implementation can override the `Schema.contentsHaveChangedSince` method to tell Calcite when it should consider its cache to be out of date.
+
+Tables, functions, types, and sub-schemas explicitly created in a schema are not affected by this caching mechanism. They always appear in the schema immediately, and are never flushed.
+
+### Map Schema
+
+Like base class [Schema](http://calcite.apache.org/docs/model.html#schema), occurs within `root.schemas`.
+
+#### JSON
+
+```json
+{
+  name: 'foodmart',
+  type: 'map',
+  tables: [ Table... ],
+  functions: [ Function... ],
+  types: [ Type... ]
+}
+```
+
+#### YAML
+
+```yaml
+name: foodmart
+type: map
+tables:
+- [ Table... ]
+functions:
+- [ Function... ]
+types:
+- [ Type... ]
+```
+
+`name`, `type`, `path`, `cache`, `materializations` inherited from [Schema](http://calcite.apache.org/docs/model.html#schema).
+
+`tables` (optional list of [Table](http://calcite.apache.org/docs/model.html#table) elements) defines the tables in this schema.
+
+`functions` (optional list of [Function](http://calcite.apache.org/docs/model.html#function) elements) defines the functions in this schema.
+
+`types` defines the types in this schema.
+
+### Custom Schema
+
+Like base class [Schema](http://calcite.apache.org/docs/model.html#schema), occurs within `root.schemas`.
+
+#### JSON
+
+```
+{
+  name: 'mongo',
+  type: 'custom',
+  factory: 'org.apache.calcite.adapter.mongodb.MongoSchemaFactory',
+  operand: {
+    host: 'localhost',
+    database: 'test'
+  }
+}
+```
+
+#### YAML
+
+```
+name: mongo
+type: custom
+factory: org.apache.calcite.adapter.mongodb.MongoSchemaFactory
+operand:
+  host: localhost
+  database: test
+```
+
+`name`, `type`, `path`, `cache`, `materializations` inherited from [Schema](http://calcite.apache.org/docs/model.html#schema).
+
+`factory` (required string) is the name of the factory class for this schema. Must implement interface [org.apache.calcite.schema.SchemaFactory](http://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/SchemaFactory.html) and have a public default constructor.
+
+`operand` (optional map) contains attributes to be passed to the factory.
+
+### JDBC Schema
+
+Like base class [Schema](http://calcite.apache.org/docs/model.html#schema), occurs within `root.schemas`.
+
+#### JSON
+
+```json
+{
+  name: 'foodmart',
+  type: 'jdbc',
+  jdbcDriver: TODO,
+  jdbcUrl: TODO,
+  jdbcUser: TODO,
+  jdbcPassword: TODO,
+  jdbcCatalog: TODO,
+  jdbcSchema: TODO
+}
+```
+
+#### YAML
+
+```yaml
+name: foodmart
+type: jdbc
+jdbcDriver: TODO
+jdbcUrl: TODO
+jdbcUser: TODO
+jdbcPassword: TODO
+jdbcCatalog: TODO
+jdbcSchema: TODO
+```
+
+`name`, `type`, `path`, `cache`, `materializations` inherited from [Schema](http://calcite.apache.org/docs/model.html#schema).
+
+`jdbcDriver` (optional string) is the name of the JDBC driver class. If not specified, uses whichever class the JDBC DriverManager chooses.
+
+`jdbcUrl` (optional string) is the JDBC connect string, for example “jdbc:mysql://localhost/foodmart”.
+
+`jdbcUser` (optional string) is the JDBC user name.
+
+`jdbcPassword` (optional string) is the JDBC password.
+
+`jdbcCatalog` (optional string) is the name of the initial catalog in the JDBC data source.
+
+`jdbcSchema` (optional string) is the name of the initial schema in the JDBC data source.
+
+### Materialization
+
+Occurs within `root.schemas.materializations`.
+
+#### JSON
+
+```
+{
+  view: 'V',
+  table: 'T',
+  sql: 'select deptno, count(*) as c, sum(sal) as s from emp group by deptno'
+}
+```
+
+#### YAML
+
+```
+view: V
+table: T
+sql: select deptno, count(*) as c, sum(sal) as s from emp group by deptno
+```
+
+> `view` (optional string) is the name of the view; null means that the table already exists and is populated with the correct data.
+>
+> `table` (required string) is the name of the table that materializes the data in the query. If `view` is not null, the table might not exist, and if it does not, Calcite will create and populate an in-memory table.
+>
+> `sql` (optional string, or list of strings that will be concatenated as a multi-line string) is the SQL definition of the materialization.
+
+`view`（可选字符串）是视图的名称； null 表示该表已经存在并且填充了正确的数据。
+
+`table`（必需字符串）是在查询中具体化数据的表的名称。 如果`view` 不为空，则该表可能不存在，如果不存在，Calcite 将创建并填充一个内存表。
+
+`sql`（可选字符串，或将连接为多行字符串的字符串列表）是物化的 SQL 定义。
+
+### Table
+
+Occurs within `root.schemas.tables`.
+
+#### JSON
+
+```
+{
+  name: 'sales_fact',
+  columns: [ Column... ]
+}
+```
+
+#### YAML
+
+```
+name: sales_fact
+columns:
+  [ Column... ]
+```
+
+`name` (required string) is the name of this table. Must be unique within the schema.
+
+`type` (optional string, default `custom`) indicates sub-type. Values are:
+
+- `custom` for [Custom Table](http://calcite.apache.org/docs/model.html#custom-table)
+- `view` for [View](http://calcite.apache.org/docs/model.html#view)
+
+`columns` (list of [Column](http://calcite.apache.org/docs/model.html#column) elements, required for some kinds of table, optional for others such as View)
+
+### View
+
+Like base class [Table](http://calcite.apache.org/docs/model.html#table), occurs within `root.schemas.tables`.
+
+#### JSON
+
+```
+{
+  name: 'female_emps',
+  type: 'view',
+  sql: "select * from emps where gender = 'F'",
+  modifiable: true
+}
+```
+
+#### YAML
+
+```
+name: female_emps
+type: view
+sql: select * from emps where gender = 'F'
+modifiable: true
+```
+
+`name`, `type`, `columns` inherited from [Table](http://calcite.apache.org/docs/model.html#table).
+
+`sql` (required string, or list of strings that will be concatenated as a multi-line string) is the SQL definition of the view.
+
+`path` (optional list) is the SQL path to resolve the query. If not specified, defaults to the current schema.
+
+`modifiable` (optional boolean) is whether the view is modifiable. If null or not specified, Calcite deduces whether the view is modifiable.
+
+A view is modifiable if contains only SELECT, FROM, WHERE (no JOIN, aggregation or sub-queries) and every column:
+
+- is specified once in the SELECT clause; or
+- occurs in the WHERE clause with a `column = literal` predicate; or
+- is nullable.
+
+The second clause allows Calcite to automatically provide the correct value for hidden columns. It is useful in multi-tenant environments, where the `tenantId` column is hidden, mandatory (NOT NULL), and has a constant value for a particular view.
+
+Errors regarding modifiable views:
+
+- If a view is marked `modifiable: true` and is not modifiable, Calcite throws an error while reading the schema.
+- If you submit an INSERT, UPDATE or UPSERT command to a non-modifiable view, Calcite throws an error when validating the statement.
+- If a DML statement creates a row that would not appear in the view (for example, a row in `female_emps`, above, with `gender = 'M'`), Calcite throws an error when executing the statement.
+
+### Custom Table
+
+Like base class [Table](http://calcite.apache.org/docs/model.html#table), occurs within `root.schemas.tables`.
+
+#### JSON
+
+```
+{
+  name: 'female_emps',
+  type: 'custom',
+  factory: 'TODO',
+  operand: {
+    todo: 'TODO'
+  }
+}
+```
+
+#### YAML
+
+```
+name: female_emps
+type: custom
+factory: TODO
+operand:
+  todo: TODO
+```
+
+`name`, `type`, `columns` inherited from [Table](http://calcite.apache.org/docs/model.html#table).
+
+`factory` (required string) is the name of the factory class for this table. Must implement interface [org.apache.calcite.schema.TableFactory](http://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/TableFactory.html) and have a public default constructor.
+
+`operand` (optional map) contains attributes to be passed to the factory.
+
+### Stream
+
+Information about whether a table allows streaming.
+
+Occurs within `root.schemas.tables.stream`.
+
+#### JSON
+
+```
+{
+  stream: true,
+  history: false
+}
+```
+
+#### YAML
+
+```
+stream: true
+history: false
+```
+
+`stream` (optional; default true) is whether the table allows streaming.
+
+`history` (optional; default false) is whether the history of the stream is available.
+
+### Column
+
+Occurs within `root.schemas.tables.columns`.
+
+#### JSON
+
+```
+{
+  name: 'empno'
+}
+```
+
+#### YAML
+
+```
+name: empno
+```
+
+`name` (required string) is the name of this column.
+
+### Function
+
+Occurs within `root.schemas.functions`.
+
+#### JSON
+
+```
+{
+  name: 'MY_PLUS',
+  className: 'com.example.functions.MyPlusFunction',
+  methodName: 'apply',
+  path: []
+}
+```
+
+#### YAML
+
+```
+name: MY_PLUS
+className: com.example.functions.MyPlusFunction
+methodName: apply
+path: {}
+```
+
+`name` (required string) is the name of this function.
+
+`className` (required string) is the name of the class that implements this function.
+
+`methodName` (optional string) is the name of the method that implements this function.
+
+If `methodName` is specified, the method must exist (case-sensitive) and Calcite will create a scalar function. The method may be static or non-static, but if non-static, the class must have a public constructor with no parameters.
+
+If `methodName` is “*”, Calcite creates a function for every method in the class.
+
+If `methodName` is not specified, Calcite looks for a method called “eval”, and if found, creates a table macro or scalar function. It also looks for methods “init”, “add”, “merge”, “result”, and if found, creates an aggregate function.
+
+`path` (optional list of string) is the path for resolving this function.
+
+### Type
+
+Occurs within `root.schemas.types`.
+
+#### JSON
+
+```
+{
+  name: 'mytype1',
+  type: 'BIGINT',
+  attributes: [
+    {
+      name: 'f1',
+      type: 'BIGINT'
+    }
+  ]
+}
+```
+
+#### YAML
+
+```
+name: mytype1
+type: BIGINT
+attributes:
+- name: f1
+  type: BIGINT
+```
+
+`name` (required string) is the name of this type.
+
+`type` (optional) is the SQL type.
+
+`attributes` (optional) is the attribute list of this type. If `attributes` and `type` both exist at the same level, `type` takes precedence.
+
+### Lattice
+
+Occurs within `root.schemas.lattices`.
+
+#### JSON
+
+```json
+{
+  name: 'star',
+  sql: [
+    'select 1 from "foodmart"."sales_fact_1997" as "s"',
+    'join "foodmart"."product" as "p" using ("product_id")',
+    'join "foodmart"."time_by_day" as "t" using ("time_id")',
+    'join "foodmart"."product_class" as "pc" on "p"."product_class_id" = "pc"."product_class_id"'
+  ],
+  auto: false,
+  algorithm: true,
+  algorithmMaxMillis: 10000,
+  rowCountEstimate: 86837,
+  defaultMeasures: [ {
+    agg: 'count'
+  } ],
+  tiles: [ {
+    dimensions: [ 'the_year', ['t', 'quarter'] ],
+    measures: [ {
+      agg: 'sum',
+      args: 'unit_sales'
+    }, {
+      agg: 'sum',
+      args: 'store_sales'
+    }, {
+      agg: 'count'
+    } ]
+  } ]
+}
+```
+
+#### YAML
+
+```json
+name: star
+sql: >
+  select 1 from "foodmart"."sales_fact_1997" as "s"',
+  join "foodmart"."product" as "p" using ("product_id")',
+  join "foodmart"."time_by_day" as "t" using ("time_id")',
+  join "foodmart"."product_class" as "pc" on "p"."product_class_id" = "pc"."product_class_id"
+auto: false
+algorithm: true
+algorithmMaxMillis: 10000
+rowCountEstimate: 86837
+defaultMeasures:
+- agg: count
+tiles:
+- dimensions: [ 'the_year', ['t', 'quarter'] ]
+  measures:
+  - agg: sum
+    args: unit_sales
+  - agg: sum
+    args: store_sales
+  - agg: 'count'
+```
+
+> `name` (required string) is the name of this lattice.
+>
+> `sql` (required string, or list of strings that will be concatenated as a multi-line string) is the SQL statement that defines the fact table, dimension tables, and join paths for this lattice.
+>
+> `auto` (optional boolean, default true) is whether to materialize tiles on need as queries are executed.
+>
+> `algorithm` (optional boolean, default false) is whether to use an optimization algorithm to suggest and populate an initial set of tiles.
+>
+> `algorithmMaxMillis` (optional long, default -1, meaning no limit) is the maximum number of milliseconds for which to run the algorithm. After this point, takes the best result the algorithm has come up with so far.
+>
+> `rowCountEstimate` (optional double, default 1000.0) estimated number of rows in the lattice
+>
+> `tiles` (optional list of [Tile](http://calcite.apache.org/docs/model.html#tile) elements) is a list of materialized aggregates to create up front.
+>
+> `defaultMeasures` (optional list of [Measure](http://calcite.apache.org/docs/model.html#measure) elements) is a list of measures that a tile should have by default. Any tile defined in `tiles` can still define its own measures, including measures not on this list. If not specified, the default list of measures is just ‘count(*)’:
+
+`name`（必需的字符串）是 **lattice** 的名字。
+
+`sql`（必需的字符串，或为字符串列表，可连接为多行字符串）为此 **lattice** 定义<u>事实表</u>、<u>维度表</u>和<u>关联关系</u>的 SQL 语句。
+
+`auto`（可选布尔值，默认为 true）是在执行查询时是否根据需要**物化切片**。
+
+`algorithm`（可选布尔值，默认为 false）是是否使用优化算法来建议和填充<u>初始的物化视图集</u>。
+
+`algorithmMaxMillis`（可选 long，默认 -1，表示无限制）是运行算法的最大毫秒数。超过改时间之后，采用算法迄今为止提出的最佳结果。
+
+`rowCountEstimate`（可选double，默认1000.0）估计 **lattice** 中的行数
+
+`tiles`（[Tile](http://calcite.apache.org/docs/model.html#tile) 元素的可选列表）是一个预先创建的物化聚合列表。
+
+`defaultMeasures`（[Measure](http://calcite.apache.org/docs/model.html#measure) 元素的可选列表）是切片默认应具有的度量列表。`tiles` 中定义的任何 tile 仍然可以定义自己的度量，包括不在此列表中的度量。如果没有指定，默认的度量列表就是‘count(*)’：
+
+#### JSON
+
+```
+[ { name: 'count' } ]
+```
+
+#### YAML
+
+```
+name: count
+```
+
+`statisticProvider` (optional name of a class that implements [org.apache.calcite.materialize.LatticeStatisticProvider](http://calcite.apache.org/javadocAggregate/org/apache/calcite/materialize/LatticeStatisticProvider.html)) provides estimates of the number of distinct values in each column.
+
+You can use a class name, or a class plus a static field. Example:
+
+```
+  "statisticProvider": "org.apache.calcite.materialize.Lattices#CACHING_SQL_STATISTIC_PROVIDER"
+```
+
+If not set, Calcite will generate and execute a SQL query to find the real value, and cache the results.
+
+See also: [Lattices](http://calcite.apache.org/docs/lattice.html).
+
+### Tile
+
+Occurs within `root.schemas.lattices.tiles`.
+
+```
+{
+  dimensions: [ 'the_year', ['t', 'quarter'] ],
+  measures: [ {
+    agg: 'sum',
+    args: 'unit_sales'
+  }, {
+    agg: 'sum',
+    args: 'store_sales'
+  }, {
+    agg: 'count'
+  } ]
+}
+```
+
+#### YAML
+
+```
+dimensions: [ 'the_year', ['t', 'quarter'] ]
+measures:
+- agg: sum
+  args: unit_sales
+- agg: sum
+  args: store_sales
+- agg: count
+```
+
+`dimensions` (list of strings or string lists, required, but may be empty) defines the dimensionality of this tile. Each dimension is a column from the lattice, like a `GROUP BY` clause. Each element can be either a string (the unique label of the column within the lattice) or a string list (a pair consisting of a table alias and a column name).
+
+`measures` (optional list of [Measure](http://calcite.apache.org/docs/model.html#measure) elements) is a list of aggregate functions applied to arguments. If not specified, uses the lattice’s default measure list.
+
+### Measure
+
+Occurs within `root.schemas.lattices.defaultMeasures` and `root.schemas.lattices.tiles.measures`.
+
+#### JSON
+
+```
+{
+  agg: 'sum',
+  args: [ 'unit_sales' ]
+}
+```
+
+#### YAML
+
+```
+agg: sum
+args: unit_sales
+```
+
+`agg` is the name of an aggregate function (usually ‘count’, ‘sum’, ‘min’, ‘max’).
+
+`args` (optional) is a column label (string), or list of zero or more column labels
+
+Valid values are:
+
+- Not specified: no arguments
+- null: no arguments
+- Empty list: no arguments
+- String: single argument, the name of a lattice column
+- List: multiple arguments, each a column label
+
+Unlike lattice dimensions, measures can not be specified in qualified format, {@code [“table”, “column”]}. When you define a lattice, make sure that each column you intend to use as a measure has a unique label within the lattice (using “{@code AS label}” if necessary), and use that label when you want to pass the column as a measure argument.
+
 # 其他
 
 重写逻辑基于 Goldstein 和 Larson 的**使用物化视图优化查询：一个实用的、可扩展的解决方案**。
@@ -1229,3 +1911,4 @@ RelNode rel;
 double rowCount = rel.metadata(RowCount.class).rowCount();
 ```
 
+ 

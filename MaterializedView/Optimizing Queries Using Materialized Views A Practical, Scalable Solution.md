@@ -742,7 +742,7 @@ Group by c_nationkey
 > Due to space constraints, we will not describe insertion and deletion algorithms for lattice indexes. They are not complex but some care is required with the details.
 >
 
-集合间<u>子集的关系</u>在集合间强加了一个**偏序**，它可以表示为一个 lattice。顾名思义，lattice 索引将键组织在与 lattice 结构相对应的图中。除了前述的（键，向下指针）对之外，lattice索引中的节点还包含两个指针集合：**超集指针**和**子集指针**。节点 *V* 的超集指针指向的节点，是 *V* 所表示集合的最小超集。类似，*V* 的子集指针指向的节点，是 *V* 所表示集合的最大子集。 没有子集的集合称为根，没有超集的集合称为顶部。lattice 索引还包含一个指向顶部的指针数组和一个指向根的指针数组。图1显示了存储八个键集的lattice 索引。
+集合间<u>子集的关系</u>在集合间强加了一个**偏序**，它可以表示为一个 lattice。顾名思义，lattice 索引将 Key 组织在与 lattice 结构相对应的图中。除了前述的（键，向下指针）对之外，lattice索引中的节点还包含两个指针集合：**超集指针**和**子集指针**。节点 *V* 的超集指针指向的节点，是 *V* 所表示集合的最小超集。类似，*V* 的子集指针指向的节点，是 *V* 所表示集合的最大子集。 没有子集的集合称为根，没有超集的集合称为顶部。lattice 索引还包含一个指向顶部的指针数组和一个指向根的指针数组。图1显示了存储八个键集的lattice 索引。
 
 > 图1
 
@@ -764,13 +764,13 @@ Group by c_nationkey
 >
 > We build a lattice index using the view’s set of source tables as the key. Given a query’s set of source tables, we search the lattice index for partitions containing views that satisfy this condition.
 
-可以丢弃<u>缺少查询所需表的视图</u>。由下面的条件决定：
+缺少查询所需的某些表的视图可以被丢弃。由下面的条件决定：
 
 **源表条件**：除非视图源表集是查询源表集的**超集**，否则无法从视图计算查询。
 
-我们使用<u>视图的源表集</u>作为键来构建 lattice 索引。给定查询的源表集，我们在 lattice 索引中搜索包含满足此条件的视图分区。
+我们使用<u>视图的源表集</u>作为 key 来构建 lattice 索引。给定查询的源表集，我们在 lattice 索引中搜索包含满足此条件的视图分区。
 
-> 等价于在视图源表集的 lattice 索引上，搜索查询源表集的超集，
+> 等价于在视图源表集的 lattice 索引上，搜索查询源表集的超集
 
 #### 4.2.2 视图中心条件（Hub condition）
 
@@ -782,7 +782,7 @@ Group by c_nationkey
 >
 > The algorithm outlined above for computing view hubs tends to produce hubs that are unnecessarily small because it takes into account only foreign-key joins. It can be improved by also taking into account other predicates. Suppose *T* is a table that would be eliminated from the hub by the algorithm above. **Let *T.C* be a column not participating in any non-trivial equivalence class**. If *T.C* is referenced in a range or other predicate, we can leave *T* in the hub. The join is no longer guaranteed to be cardinality preserving because the predicate on *T.C* may reject some rows in *T*. The only way the reference to *T.C* can be rerouted to another column is if the query contains a column equality predicate involving *T.C*. However, if that is the case, then *T* must also be among the query’s source tables so leaving *T* in the hub will not cause the view to be rejected.
 
-回顾[3.2节]()中从视图中删除多余表的算法。在那里，算法将源表的集合减少到与查询一样就足够了。但可以让算法继续运行，直到无法从视图中删除更多表为止，从而将剩余的表减少到最小可能的集合。**我们将剩下的表集合称为视图中心**。如3.2节所述，除非我们可以通过保留基数的关联消除所有多余的表，否则视图不能用于回答查询。 当无法进一步减少视图中心时，很明显，我们可以忽略视图中心不是查询源表集合子集的任何视图。 这为我们提供了以下条件。
+回顾 [3.2节]() 中从视图中删除多余表的算法。在那里，算法将源表的集合减少到与查询一样就足够了。但可以让算法继续运行，直到无法从视图中删除更多表为止，从而将剩余的表减少到最小可能的集合。**我们将剩下的表集合称为视图中心**。如3.2节所述，除非我们可以通过保留基数的关联消除所有多余的表，否则视图不能用于回答查询。 当无法进一步减少视图中心时，很明显，我们可以忽略视图中心不是查询源表集合子集的任何视图。 这为我们提供了以下条件。
 
 **中心条件**：视图中心必须是查询源表集合的子集，否则无法从视图计算查询。
 
