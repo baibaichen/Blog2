@@ -1851,45 +1851,7 @@ Unlike lattice dimensions, measures can not be specified in qualified format, {@
 
 # 其他2
 
-https://issues.apache.org/jira/browse/CALCITE-1389
 
-## [CALCITE-1682: New metadata providers for expression column origin and all predicates in plan](https://issues.apache.org/jira/browse/CALCITE-1682)
-
-我正在研究 Hive 中物化视图重写的集成。
-
-一旦视图与 `operator plan` 相匹配，重写就分为两个步骤。
-
-1. 第一步将验证<u>匹配计划</u>的<u>根运算符</u>的<u>输入</u>是否等价或包含在表示视图查询的<u>根运算符</u>的输入中。
-2. 第二步将触发一个**统一**规则，它尝试将匹配的**运算符树**重写为对**视图的扫描**，可能还有一些额外的运算符来计算查询所需的确切结果（比较改变列顺序的 `Project`，视图上额外的 `Filter`、额外的 `Join` 操作等）
-
-如果我们专注于**第一步**，即检查等价性/包含性，我想扩展 Calcite 中的 **metadata provider**，以便为我们提供有关匹配（子）计划的更多信息。特别是，我在考虑：
-
-- **表达式列原点**。目前 Calcite 可以提供某个列的<u>列起源以及它是否派生</u>。但是，我们需要获取生成特定列的表达式。此表达式应包含对输入表的引用。例如，给定表达式列 c，新的 **metadata provider** 将返回它是由表达式 `A.a + B.b` 生成。
-- **所有谓词**。目前 Calcite 可以提取已应用于 `RelNode` 输出的谓词（我们可以将它们视为对输出的约束）。但是，我想提取已应用于给定 `RelNode`（子）计划的所有谓词。由于节点可能不是输出的一部分，表达式应该包含对输入表的引用。例如，新的  **metadata provider** 可能会返回表达式 `A.a + B.b > C.c AND D.d = 100`。
-- **PK-FK 关系**。我不打算立即实施这个。但是，公开此信息（如果已提供）可以帮助我们触发更多包含 `Join` 运算符的重写。因此，我想知道是否值得添加它。
-
-一旦此信息可用，我们就可以依靠它来实现类似于 [[1]](#Optimizing Queries Using Materialized Views: A Practical, Scalable Solution) 的逻辑，以检查给定（子）计划是否**等价或包含在给定视图中**。
-
-有一个问题是关于将**<u>表列</u>**表示为 `RexNode`，因为我认为这是新 **metadata provider** 返回的最简单方法。我检查了 `RexPatternFieldRef` 并且我认为它会满足我们的要求：alpha 将是合格的表名，而索引是表的列 idx。
-
-**想法？**
-
-我已经开始研究这个，很快就会提供一个补丁；非常感谢反馈
-
-## [CALCITE-1731: Rewriting of queries using materialized views with joins and aggregates](https://issues.apache.org/jira/browse/CALCITE-1731)
-
-还是类似 [[1]](#Optimizing Queries Using Materialized Views: A Practical, Scalable Solution) 来重写**计划**
-
-我试图在 [CALCITE-1389](https://issues.apache.org/jira/browse/CALCITE-1389) 的基础上工作。然而，最后我还是创建了一个新的替代规则。主要原因是我想更密切地 <u>==follow==</u> 论文，而不是依赖于 物化视图重写中触发的规则来查找表达式是否等价。相反，我们使用 [CALCITE-1682](https://issues.apache.org/jira/browse/CALCITE-1682) 中提出的新 **metadata provider** 从<u>查询计划</u>和<u>物化视图计划</u>中提取信息，然后我们使用该信息来验证和执行重写。
-
-我还在规则中实现了新的统一/重写逻辑，因为现有的聚合统一规则假设查询中的聚合输入和物化视图需要等价（相同的 Volcano 节点）。该条件可以放宽，因为我们在规则中通过使用如上所述的新 **metadata provider**  验证查询结果是否包含在 物化视图 中。
-
-我添加了多个测试，==但欢迎任何指向可以添加以检查正确性/覆盖率的新测试的反馈==。算法可以触发对同一个查询节点的多次重写。此外，<u>支持在查询/MV 中多次使用表</u>。
-
-将遵循此问题的一些扩展：
-
-- 扩展逻辑以过滤给定查询节点的相关 MV，因此该方法可随着 MV 数量的增长而扩展。
-- 使用联合运算符生成重写，例如，可以从 MV (year = 2014) 和查询 (not(year = 2014)) 部分回答给定的查询。如果存储了 MV，例如在 Driud 中，这种重写可能是有益的。与其他重写一样，是否最终使用重写的决定应该基于成本。
 
 ## 元数据信息
 

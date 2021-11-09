@@ -2,7 +2,9 @@
 
 ## 第一次支持[视图匹配](https://github.com/apache/calcite/commit/13136f9e4b7f4341d5cdce5b9ca8d498f353bb30) 
 
-具体算法不知道
+具体算法不知道。随后的 Commit，[Before planning a query, prune the materialized tables used to those that might help](https://github.com/apache/calcite/commit/0eb66bbb462bfb9bfd3bdfc9f2fb2d602958bcbd) 在 `VocanoPlanner` 里增加了一个 `originalRoot`。
+
+> 优化查询之前，找到那些可能有帮助的物化表。
 
 ## 第一次实现视图 [`SubstitutionVisitor`](https://github.com/apache/calcite/commit/026ff5186edb1c1735b7caa8e2b569e22a1b998c) 算法
 
@@ -19,20 +21,110 @@ result = SELECT a, c FROM mv WHERE b = 4
 
 请注意，结果使用了物化视图表 mv 和简化条件 b = 4。使用**自下而上**的匹配算法。节点不需要完全相同。 每层都返回残差。输入必须只包含核心**关系运算符**：`TableAccessRel`, `FilterRel`, `ProjectRel`, `JoinRel`, `UnionRel`, `AggregateRel`.
 
-## [支持视图 Filter](https://github.com/apache/calcite/commit/60e4da419027885e772abe209b2bfb04371c67ae)
+## 🔴 [支持视图 Filter](https://github.com/apache/calcite/commit/60e4da419027885e772abe209b2bfb04371c67ae)
 
 识别包含过滤器的物化视图。为此，添加了将谓词（例如“x = 1 和 y = 2”）拆分为由底层谓词“y = 2”处理和未处理的部分的算法。
 
-## [增加 `StarTable`](https://github.com/apache/calcite/commit/ef0acca555e6d78d08ea1aa5ecc6d7b42f689544)
+## 2013-11-15 [增加 `StarTable`](https://github.com/apache/calcite/commit/ef0acca555e6d78d08ea1aa5ecc6d7b42f689544)
 
 这是**识别复杂物化**的第一步，**星型表**是通过多对一关系连接在一起的真实表组成的虚拟表。定义物化视图的查询和最终用户的查询按照星型表规范化。匹配(尚未完成)将是寻找 `sort`、`groupBy`、`Project` 的问题。
 
-现在，我们已经添加了一个虚拟模式 mat 和一个虚拟星型表 star。稍后，模型将允许显式定义星型表。
+==现在，我们已经添加了一个虚拟模式 mat 和一个虚拟星型表 star。稍后，模型将允许显式定义星型表==。
 
-## 第一次实现 `Lattice` 结构 - [CALCITE-344](https://issues.apache.org/jira/browse/CALCITE-344)
+- `StarTable`：**虚拟表**由两个或多个 `Join` 在一起的表组成。`StarTable` 不会出现在最终用户查询中，由优化器引入，以有助于查询和物化视图之间的匹配，并且仅在优化过程中使用。定义物化视图时，如果涉及 J`oin`，则将其转换为基于 `StarTable` 的查询。候选查询和物化视图映射到同一个 `StarTable` 上
 
-- [ ] x
-- [ ] 
+###  `OptiqMaterializer`：填充 `Prepare.Materialization` 的上下文
+
+识别并替换 `queryRel` 中的 `StarTable`。
+
+- 可能没有 `StarTable` 匹配。 没关系，但是识别的物化模式不会那么丰富。
+- 可能有多个 StarTable 匹配。**TBD**：我们应该选择最好的（不管这意味着什么），还是全部？
+
+###   `RelOptMaterialization`：记录由特定表物化的特定查询
+
+- `tryUseStar(...)`：将关系表达式转换为使用 `StarTable` 的关系表达式。 根据 `toLeafJoinForm(RelNode)`，关系表达式已经是**==叶连接形式==**。
+
+## 🔴Support filter query on project materialization, where project contains expressions.
+
+编译失败
+
+## 🔴Support Group By
+
+编译失败
+
+## 2014-7-14 第一次实现 `Lattice` 结构 - [CALCITE-344](https://issues.apache.org/jira/browse/CALCITE-344)
+
+添加数据结构 `lattice` ，以组织、收集统计信息并推荐物化查询。
+
+这是一个可能的 SQL DDL 语法：
+
+```SQL
+CREATE LATTICE SalesStar AS
+SELECT *
+FROM SalesFact AS s
+JOIN TimeDim AS t USING (timeId)
+JOIN CustomerDim AS c USING (customerId)
+```
+
+- **结构**：物化查询可能属于某个 lattice。
+- **约束**：创建 lattice 意味着第一个表是星型模式的事实表，所有连接都是多对一的。也就是说，隐含了外键、主键和 NOT NULL 约束。
+- **统计数据**：当查询可以使用 **lattice** 时，计数器会增加。
+- **推荐**：==代理==可以根据星型模式（例如表和列基数）的静态分析以及过去使用的统计信息推荐要创建的**物化视图**。
+- **视图匹配**：优化器使用 **lattice** 来识别可以满足查询的物化查询。没有 latttice，这样的空间会大得多，因为优化器必须考虑许多连接排列。
+
+## [CALCITE-1389: Add rule to perform rewriting of queries using materialized views with joins](https://issues.apache.org/jira/browse/CALCITE-1389)
+
+第一次按 Optimizing Queries Using Materialized Views: A Practical, Scalable Solution 这篇 paper 来实现
+
+> 自由形式的物化视图的问题在于它们往往有很多。这篇论文旨在解决这个问题，**lattice** 也是如此。但是 lattice 更好：它们可以收集统计数据，并建议创建不存在但可能有用的视图。
+>
+> **Lattice** 本质上与论文中描述的 ==SPJ 视图==相同，当然，今天需要手工创建它们。我认为对于 DW 风格的工作负载，手工创建格子比手工创建 MV 实用得多。这不仅是为了让优化器的工作更轻松，也是为了让 DBA 的工作更轻松。MV 并不容易操作管理。无论如何，如果人们手工创建了很多 MV，我的想法是拥有一种自动创建 lattice 的算法，从而降低检查所有这些 MV 的成本。
+>
+> 在我看来，主要的缺失部分是一种算法，该算法在给定一组 MV 的情况下，创建一组最佳的 lattice，使得每个 MV 都属于一个格子。
+
+## 2017-01-31: [CALCITE-1500: Decouple materialization and lattice substitution from VolcanoPlanner](https://issues.apache.org/jira/browse/CALCITE-1500)
+
+
+
+## [CALCITE-1682: New metadata providers for expression column origin and all predicates in plan](https://issues.apache.org/jira/browse/CALCITE-1682)
+
+我正在研究 Hive 中物化视图重写的集成。
+
+一旦视图与 `operator plan` 相匹配，重写就分为两个步骤。
+
+1. 第一步将验证<u>匹配计划</u>的<u>根运算符</u>的<u>输入</u>是否等价或包含在表示视图查询的<u>根运算符</u>的输入中。
+2. 第二步将触发一个**统一**规则，它尝试将匹配的**运算符树**重写为对**视图的扫描**，可能还有一些额外的运算符来计算查询所需的确切结果（比较改变列顺序的 `Project`，视图上额外的 `Filter`、额外的 `Join` 操作等）
+
+如果我们专注于**第一步**，即检查等价性/包含性，我想扩展 Calcite 中的 **metadata provider**，以便为我们提供有关匹配（子）计划的更多信息。特别是，我在考虑：
+
+- **表达式列原点**。目前 Calcite 可以提供某个列的<u>列起源以及它是否派生</u>。但是，我们需要获取生成特定列的表达式。此表达式应包含对输入表的引用。例如，给定表达式列 c，新的 **metadata provider** 将返回它是由表达式 `A.a + B.b` 生成。
+- **所有谓词**。目前 Calcite 可以提取已应用于 `RelNode` 输出的谓词（我们可以将它们视为对输出的约束）。但是，我想提取已应用于给定 `RelNode`（子）计划的所有谓词。由于节点可能不是输出的一部分，表达式应该包含对输入表的引用。例如，新的  **metadata provider** 可能会返回表达式 `A.a + B.b > C.c AND D.d = 100`。
+- **PK-FK 关系**。我不打算立即实施这个。但是，公开此信息（如果已提供）可以帮助我们触发更多包含 `Join` 运算符的重写。因此，我想知道是否值得添加它。
+
+一旦此信息可用，我们就可以依靠它来实现类似于 [[1]](#Optimizing Queries Using Materialized Views: A Practical, Scalable Solution) 的逻辑，以检查给定（子）计划是否**等价或包含在给定视图中**。
+
+有一个问题是关于将**<u>表列</u>**表示为 `RexNode`，因为我认为这是新 **metadata provider** 返回的最简单方法。我检查了 `RexPatternFieldRef` 并且我认为它会满足我们的要求：alpha 将是合格的表名，而索引是表的列 idx。
+
+**想法？**
+
+我已经开始研究这个，很快就会提供一个补丁；非常感谢反馈
+
+## [CALCITE-1731: Rewriting of queries using materialized views with joins and aggregates](https://issues.apache.org/jira/browse/CALCITE-1731)
+
+还是类似 [[1]](#Optimizing Queries Using Materialized Views: A Practical, Scalable Solution) 来重写**计划**
+
+我试图在 [CALCITE-1389](https://issues.apache.org/jira/browse/CALCITE-1389) 的基础上工作。然而，最后我还是创建了一个新的替代规则。主要原因是我想更密切地 <u>==follow==</u> 论文，而不是依赖于 物化视图重写中触发的规则来查找表达式是否等价。相反，我们使用 [CALCITE-1682](https://issues.apache.org/jira/browse/CALCITE-1682) 中提出的新 **metadata provider** 从<u>查询计划</u>和<u>物化视图计划</u>中提取信息，然后我们使用该信息来验证和执行重写。
+
+我还在规则中实现了新的统一/重写逻辑，因为现有的聚合统一规则假设查询中的聚合输入和物化视图需要等价（相同的 Volcano 节点）。该条件可以放宽，因为我们在规则中通过使用如上所述的新 **metadata provider**  验证查询结果是否包含在 物化视图 中。
+
+我添加了多个测试，==但欢迎任何指向可以添加以检查正确性/覆盖率的新测试的反馈==。算法可以触发对同一个查询节点的多次重写。此外，<u>支持在查询/MV 中多次使用表</u>。
+
+将遵循此问题的一些扩展：
+
+- 扩展逻辑以过滤给定查询节点的相关 MV，因此该方法可随着 MV 数量的增长而扩展。
+- 使用联合运算符生成重写，例如，可以从 MV (year = 2014) 和查询 (not(year = 2014)) 部分回答给定的查询。如果存储了 MV，例如在 Driud 中，这种重写可能是有益的。与其他重写一样，是否最终使用重写的决定应该基于成本。
+
+
 
 ---
 # 基本概念
