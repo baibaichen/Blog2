@@ -1,4 +1,1025 @@
-# 历史
+# 背景
+
+> Apache Calcite is a dynamic data management framework.
+>
+> It contains many of the pieces that comprise a typical database management system, but omits some key functions: storage of data, algorithms to process data, and a repository for storing metadata.
+>
+> Calcite intentionally stays out of the business of storing and processing data. As we shall see, this makes it an excellent choice for **mediating** between applications and one or more data storage locations and data processing engines. It is also a perfect foundation for building a database: just add data.
+>
+> To illustrate, let’s create an empty instance of Calcite and then point it at some data.
+
+Apache Calcite 是一个动态数据管理框架。
+
+它包含构成典型数据库管理系统的许多部分，但省略了一些关键功能：数据存储、处理数据的算法以及用于存储元数据的存储库。
+
+Calcite 有意不参与存储和处理数据的业务。正如我们将看到的，这使其成为在应用程序与一个或多个数据存储位置和数据处理引擎之间进行**调解**的绝佳选择。它也是构建数据库的完美基础：只需添加数据。
+
+为了说明这一点，让我们创建一个 Calcite 的空实例，然后将其指向一些数据。
+
+```JAVA
+public static class HrSchema {
+  public final Employee[] emps = 0;
+  public final Department[] depts = 0;
+}
+Class.forName("org.apache.calcite.jdbc.Driver");
+Properties info = new Properties();
+info.setProperty("lex", "JAVA");
+Connection connection =
+    DriverManager.getConnection("jdbc:calcite:", info);
+CalciteConnection calciteConnection =
+    connection.unwrap(CalciteConnection.class);
+SchemaPlus rootSchema = calciteConnection.getRootSchema();
+Schema schema = new ReflectiveSchema(new HrSchema());
+rootSchema.add("hr", schema);
+Statement statement = calciteConnection.createStatement();
+ResultSet resultSet = statement.executeQuery(
+    "select d.deptno, min(e.empid)\n"
+    + "from hr.emps as e\n"
+    + "join hr.depts as d\n"
+    + "  on e.deptno = d.deptno\n"
+    + "group by d.deptno\n"
+    + "having count(*) > 1");
+print(resultSet);
+resultSet.close();
+statement.close();
+connection.close();
+```
+
+> Where is the database? There is no database. The connection is completely empty until new ReflectiveSchema registers a Java object as a schema and its collection fields emps and depts as tables.
+>
+> Calcite does not want to own data; it does not even have a favorite data format. This example used in-memory data sets, and processed them using operators such as groupBy and join from the linq4j library. But Calcite can also process data in other data formats, such as JDBC. In the first example, replace
+
+数据库在哪里？没有数据库。在 `new ReflectiveSchema` 将 Java 对象注册为 Schema，并将其集合字段 `emps` 和 `depts` 注册为表之前，连接是完全空的。
+
+Calcite 不想拥有数据；它甚至没有最喜欢的数据格式。此示例使用内存数据集，并使用来自 `linq4j` 库的 `groupBy` 和 `join` 等运算符处理它们。 但是 Calcite 也可以处理其他数据格式的数据，例如 JDBC。 在第一个示例中，替换
+
+```java
+Schema schema = new ReflectiveSchema(new HrSchema());
+```
+
+为
+
+```java
+Class.forName("com.mysql.jdbc.Driver");
+BasicDataSource dataSource = new BasicDataSource();
+dataSource.setUrl("jdbc:mysql://localhost");
+dataSource.setUsername("username");
+dataSource.setPassword("password");
+Schema schema = JdbcSchema.create(rootSchema, "hr", dataSource, null, "name");
+```
+
+> and Calcite will execute the same query in JDBC. To the application, the data and API are the same, but behind the scenes the implementation is very different. Calcite uses optimizer rules to push the JOIN and GROUP BY operations to the source database.
+>
+> In-memory and JDBC are just two familiar examples. Calcite can handle any data source and data format. To add a data source, you need to write an adapter that tells Calcite what collections in the data source it should consider “tables”.
+>
+> For more advanced integration, you can write optimizer rules. Optimizer rules allow Calcite to access data of a new format, allow you to register new operators (such as a better join algorithm), and allow Calcite to optimize how queries are translated to operators. Calcite will combine your rules and operators with built-in rules and operators, apply cost-based optimization, and generate an efficient plan.
+
+那么 Calcite 将在 JDBC 中执行相同的查询。对应用来说，数据和 API 是一样的，但幕后的实现却大不相同。Calcite 使用优化器规则将 `JOIN` 和 `GROUP BY` 操作推送到源数据库。
+
+In-memory 和 JDBC 只是两个熟悉的例子。Calcite 可以处理任何数据源和数据格式。要添加数据源，您需要编写一个适配器，告诉 Calcite 应将数据源中的哪些集合视为“表”。
+
+对于更高级的集成，您可以编写优化器规则。 优化器规则允许 Calcite 访问新格式的数据，允许您注册新的运算符（例如更好的连接算法），使得 Calcite 优化如何将查询转换为运算符。Calcite 将您的规则和运算符与内置规则和运算符相结合，应用基于成本的优化，并生成有效的计划。
+
+## 编写 Adapter
+
+example/csv 下的子项目提供了一个 CSV 适配器，功能齐全，可用于应用程序，但如果您正在编写自己的适配器，它也足够简单，可以作为一个很好的模板。
+
+有关使用 CSV 适配器和编写其他适配器的信息，请参阅[教程](https://calcite.apache.org/docs/tutorial.html)。
+
+有关使用其他适配器以及一般使用 Calcite 的更多信息，请参阅 [HOWTO](https://calcite.apache.org/docs/howto.html)。
+
+## 当前状态
+
+以下功能是完整的。
+
+- 查询解析器、验证器和优化器
+- 支持读取 JSON 格式的**模型**
+- 许多标准函数和聚合函数
+- 针对 Linq4j 和 JDBC 后端的 JDBC 查询
+- Linq4j 前端
+- SQL特性：SELECT、FROM（包括JOIN语法）、WHERE、GROUP BY（包括GROUPING SETS）、聚合函数（包括COUNT(DISTINCT ...)和FILTER）、HAVING、ORDER BY（包括NULLS FIRST/LAST）、集合操作（ UNION、INTERSECT、MINUS）、子查询（包括相关子查询）、窗口聚合、LIMIT（语法为Postgres）； SQL 参考中的更多详细信
+- 本地和远程 JDBC 驱动程序； 见 [Avatica](https://calcite.apache.org/avatica/docs/index.html)
+- 几个适配器
+
+# 教程
+
+This is a step-by-step tutorial that shows how to build and connect to Calcite. It uses a simple adapter that makes a directory of CSV files appear to be a schema containing tables. Calcite does the rest, and provides a full SQL interface.
+
+Calcite-example-CSV is a fully functional adapter for Calcite that reads text files in CSV (comma-separated values) format. It is remarkable that a couple of hundred lines of Java code are sufficient to provide full SQL query capability.
+
+CSV also serves as a template for building adapters to other data formats. Even though there are not many lines of code, it covers several important concepts:
+
+- user-defined schema using SchemaFactory and Schema interfaces;
+- declaring schemas in a model JSON file;
+- declaring views in a model JSON file;
+- user-defined table using the Table interface;
+- determining the record type of a table;
+- a simple implementation of Table, using the ScannableTable interface, that enumerates all rows directly;
+- a more advanced implementation that implements FilterableTable, and can filter out rows according to simple predicates;
+- advanced implementation of Table, using TranslatableTable, that translates to relational operators using planner rules.
+
+## 下载和编译
+
+您需要 Java（版本 8、9 或 10）和 Git。
+
+```shell
+$ git clone https://github.com/apache/calcite.git
+$ cd calcite/example/csv
+$ ./sqlline
+```
+
+## 第一个查询
+
+现在让我们使用 [sqlline](https://github.com/julianhyde/sqlline) 连接到 Calcite，这是一个包含在这个项目中的 SQL shell。
+
+```shell
+$ ./sqlline
+sqlline> !connect jdbc:calcite:model=src/test/resources/model.json admin admin
+```
+
+（如果您运行的是 Windows，则命令为 sqlline.bat。）
+
+执行元数据查询：
+
+```
+sqlline> !tables
++------------+--------------+-------------+---------------+----------+------+
+| TABLE_CAT  | TABLE_SCHEM  | TABLE_NAME  |  TABLE_TYPE   | REMARKS  | TYPE |
++------------+--------------+-------------+---------------+----------+------+
+| null       | SALES        | DEPTS       | TABLE         | null     | null |
+| null       | SALES        | EMPS        | TABLE         | null     | null |
+| null       | SALES        | HOBBIES     | TABLE         | null     | null |
+| null       | metadata     | COLUMNS     | SYSTEM_TABLE  | null     | null |
+| null       | metadata     | TABLES      | SYSTEM_TABLE  | null     | null |
++------------+--------------+-------------+---------------+----------+------+
+```
+
+> JDBC 专家注意：sqlline 的 `!tables` 命令只是在后台执行 [`DatabaseMetaData.getTables()`](https://docs.oracle.com/javase/7/docs/api/java/sql/DatabaseMetaData.html#getTables(java.lang.String,%20java.lang.String,%20java.lang.String,%20java.lang.String[]))。它还有其他命令来查询 JDBC 元数据，例如 `!columns` 和 `!describe`。
+
+系统中有 5 个表：当前 `SALES` schema 中的表 `EMPS`、`DEPTS` 和 `HOBBIES`，系统元数据 schema 中的 `COLUMNS` 和 `TABLES`。系统表始终存在于 Calcite 中，但其它的表由特定实现的 Schema 提供；本例中，`EMPS` 和 `DEPTS` 表基于 `resources/sales` 目录中的 `EMPS.csv` 和 `DEPTS.csv` 文件。
+
+对这些表执行一些查询，以表明 Calcite 提供了 SQL 的完整实现。 首先，表扫描：
+
+```shell
+sqlline> SELECT * FROM emps;
++--------+--------+---------+---------+----------------+--------+-------+---+
+| EMPNO  |  NAME  | DEPTNO  | GENDER  |      CITY      | EMPID  |  AGE  | S |
++--------+--------+---------+---------+----------------+--------+-------+---+
+| 100    | Fred   | 10      |         |                | 30     | 25    | t |
+| 110    | Eric   | 20      | M       | San Francisco  | 3      | 80    | n |
+| 110    | John   | 40      | M       | Vancouver      | 2      | null  | f |
+| 120    | Wilma  | 20      | F       |                | 1      | 5     | n |
+| 130    | Alice  | 40      | F       | Vancouver      | 2      | null  | f |
++--------+--------+---------+---------+----------------+--------+-------+---+
+```
+
+然后是 `Join` 和 `Group by`：
+
+```shell
+sqlline> SELECT d.name, COUNT(*)
+. . . .> FROM emps AS e JOIN depts AS d ON e.deptno = d.deptno
+. . . .> GROUP BY d.name;
++------------+---------+
+|    NAME    | EXPR$1  |
++------------+---------+
+| Sales      | 1       |
+| Marketing  | 2       |
++------------+---------+
+```
+
+最后，`VALUES` 运算符生成单行，是测试表达式和 SQL 内置函数的便捷方法：
+
+```shell
+sqlline> VALUES CHAR_LENGTH('Hello, ' || 'world!');
++---------+
+| EXPR$0  |
++---------+
+| 13      |
++---------+
+```
+
+Calcite 有许多其他 SQL 特性。 我们没有时间在这里介绍它们。可以写一些查询来试验。
+
+## Schema
+
+现在，Calcite 如何找到这些表？请记住，Calcite Core 对 CSV 文件一无所知。 作为**没有存储层的数据库**，Calcite 不知道任何文件格式。Calcite 知道这些表，因为我们告诉它运行 `calcite-example-csv` 项目中的代码。
+
+这里有几个步骤。**首先**，我们根据模型文件中的 <u>Schema 工厂类</u>定义 Schema 。**然后** <u>Schema 工厂</u>创建 Schema，Schema 创建几个表，每个表都知道如何通过扫描 CSV 文件获取数据。**最后**，在 Calcite 解析查询并计划它使用这些表之后，Calcite 在执行查询时调用这些表来读取数据。现在让我们更详细地了解这些步骤。
+
+在 JDBC 连接字符串上，我们以 JSON 格式给出了模型的路径。 这是模型：
+
+```json
+{
+  version: '1.0',
+  defaultSchema: 'SALES',
+  schemas: [
+    {
+      name: 'SALES',
+      type: 'custom',
+      factory: 'org.apache.calcite.adapter.csv.CsvSchemaFactory',
+      operand: {
+        directory: 'sales'
+      }
+    }
+  ]
+}
+```
+
+该模型定义了一个名为 `SALES` 的 Schema，它由插件类 [`org.apache.calcite.adapter.csv.CsvSchemaFactory`](https://github.com/apache/calcite/blob/master/example/csv/src/main/java/org/apache/calcite/adapter/csv/CsvSchemaFactory.java) 提供支持，该类是 calcite-example-csv 项目的一部分，并实现了 Calcite [`SchemaFactory`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/SchemaFactory.html) 接口，其 `create` 方法实例化一个模式，从模型文件中传入目录参数：
+
+```java
+public Schema create(SchemaPlus parentSchema, String name,
+    Map<String, Object> operand) {
+  String directory = (String) operand.get("directory");
+  String flavorName = (String) operand.get("flavor");
+  CsvTable.Flavor flavor;
+  if (flavorName == null) {
+    flavor = CsvTable.Flavor.SCANNABLE;
+  } else {
+    flavor = CsvTable.Flavor.valueOf(flavorName.toUpperCase());
+  }
+  return new CsvSchema(new File(directory), flavor);
+}
+```
+
+模型驱动下，模式工厂实例化了一个名为 `SALES` 的 Schema。 该 Schema 是 [`org.apache.calcite.adapter.csv.CsvSchema`](https://github.com/apache/calcite/blob/master/example/csv/src/main/java/org/apache/calcite/adapter/csv/CsvSchema.java) 的一个实例，并实现了 Calcite [Schema 接口](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/Schema.html)。
+
+Shcema 的工作是生成表的列表。它还可以列出子 schema 和**表函数**，但这些是高级功能，calcite-example-csv 不支持它们。表实现了 Calcite 的 [`Table` 接口](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/Table.html)。CsvSchema 生成的表是 [`CsvTable`](https://github.com/apache/calcite/blob/master/example/csv/src/main/java/org/apache/calcite/adapter/csv/CsvTable.java) 及其子类的实例。
+
+这是来自 `CsvSchema` 的相关代码，覆盖了 `AbstractSchema` 基类中的 `getTableMap()` 方法。
+
+```java
+rotected Map<String, Table> getTableMap() {
+  // Look for files in the directory ending in ".csv", ".csv.gz", ".json",
+  // ".json.gz".
+  File[] files = directoryFile.listFiles(
+      new FilenameFilter() {
+        public boolean accept(File dir, String name) {
+          final String nameSansGz = trim(name, ".gz");
+          return nameSansGz.endsWith(".csv")
+              || nameSansGz.endsWith(".json");
+        }
+      });
+  if (files == null) {
+    System.out.println("directory " + directoryFile + " not found");
+    files = new File[0];
+  }
+  // Build a map from table name to table; each file becomes a table.
+  final ImmutableMap.Builder<String, Table> builder = ImmutableMap.builder();
+  for (File file : files) {
+    String tableName = trim(file.getName(), ".gz");
+    final String tableNameSansJson = trimOrNull(tableName, ".json");
+    if (tableNameSansJson != null) {
+      JsonTable table = new JsonTable(file);
+      builder.put(tableNameSansJson, table);
+      continue;
+    }
+    tableName = trim(tableName, ".csv");
+    final Table table = createTable(file);
+    builder.put(tableName, table);
+  }
+  return builder.build();
+}
+
+/** 根据 flavor 属性创建不同的表子类型 **/
+private Table createTable(File file) {
+  switch (flavor) {
+  case TRANSLATABLE:
+    return new CsvTranslatableTable(file, null);
+  case SCANNABLE:
+    return new CsvScannableTable(file, null);
+  case FILTERABLE:
+    return new CsvFilterableTable(file, null);
+  default:
+    throw new AssertionError("Unknown flavor " + flavor);
+  }
+}
+```
+
+**Schema** 扫描目录并找到名称以 `.csv` 结尾的所有文件，并为它们创建表。本例中， `sales` 目录包含文件 `EMPS.csv` 和 `DEPTS.csv`，它们成为表 `EMPS` 和 `DEPTS`。
+
+## Schema 中的表和视图
+
+**注意**，我们不需要在模型中定义任何表； schema 自动生成表。除了自动创建的表之外，您还可以使用 Schema 的 `tables` 属性定义额外的表。
+
+让我们看看如何创建一个重要且有用的表类型，即视图。当您编写查询时，视图看起来像一张表，但它不存储数据。它通过执行查询获得结果。在优划查询时，会展开视图，因此查询优化器通常可以执行优化，比如从 `SELECT` 子句中删除最终结果中没有使用的表达式。
+
+这是定义视图的 Schema：
+
+```json
+{
+  version: '1.0',
+  defaultSchema: 'SALES',
+  schemas: [
+    {
+      name: 'SALES',
+      type: 'custom',
+      factory: 'org.apache.calcite.adapter.csv.CsvSchemaFactory',
+      operand: {
+        directory: 'sales'
+      },
+      tables: [
+        {
+          name: 'FEMALE_EMPS',
+          type: 'view',
+          sql: 'SELECT * FROM emps WHERE gender = \'F\''
+        }
+      ]
+    }
+  ]
+}
+```
+
+`type:'view'` 将 `FEMALE_EMPS` 标记为视图，而不是常规的表或者自定义的表。注意，视图定义中的单引号使用反斜杠转义，这是 JSON 的正常方式。
+
+JSON 并不便于写长字符串，因此 Calcite 支持另一种语法。如果创建视图是一个很长的 SQL ，可以改为提供行列表而不是单个字符串：
+
+```java
+{
+  name: 'FEMALE_EMPS',
+  type: 'view',
+  sql: [
+    'SELECT * FROM emps',
+    'WHERE gender = \'F\''
+  ]
+}
+```
+
+现在我们已经定义了一个视图，我们可以在查询中使用它，就像它是一个表一样：
+
+```shell
+sqlline> SELECT e.name, d.name FROM female_emps AS e JOIN depts AS d on e.deptno = d.deptno;
++--------+------------+
+|  NAME  |    NAME    |
++--------+------------+
+| Wilma  | Marketing  |
++--------+------------+
+```
+
+## 自定以表
+
+自定义表是由用户代码实现的表，不需要在自定义模式的中定义它们。在 `model-with-custom-table.json` 中有一个例子:
+
+```json
+{
+  version: '1.0',
+  defaultSchema: 'CUSTOM_TABLE',
+  schemas: [
+    {
+      name: 'CUSTOM_TABLE',
+      tables: [
+        {
+          name: 'EMPS',
+          type: 'custom',
+          factory: 'org.apache.calcite.adapter.csv.CsvTableFactory',
+          operand: {
+            file: 'sales/EMPS.csv.gz',
+            flavor: "scannable"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+我们可以用通常的方式查询表：
+
+```shell
+sqlline> !connect jdbc:calcite:model=src/test/resources/model-with-custom-table.json admin admin
+sqlline> SELECT empno, name FROM custom_table.emps;
++--------+--------+
+| EMPNO  |  NAME  |
++--------+--------+
+| 100    | Fred   |
+| 110    | Eric   |
+| 110    | John   |
+| 120    | Wilma  |
+| 130    | Alice  |
++--------+--------+
+```
+
+这是一个常规 Schema，并包含一个由 [`org.apache.calcite.adapter.csv.CsvTableFactory`](https://github.com/apache/calcite/blob/master/example/csv/src/main/java/org/apache/calcite/adapter/csv/CsvTableFactory.java) 支持的自定义表，它实现了 Calcite [TableFactory](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/TableFactory.html) 接口。 它的 `create` 方法实例化一个 `CsvScannableTable`，`file` 参数从模型文件中传入：
+
+```java
+public CsvTable create(SchemaPlus schema, String name,
+    Map<String, Object> map, RelDataType rowType) {
+  String fileName = (String) map.get("file");
+  final File file = new File(fileName);
+  final RelProtoDataType protoRowType =
+      rowType != null ? RelDataTypeImpl.proto(rowType) : null;
+  return new CsvScannableTable(file, protoRowType);
+}
+```
+
+实现自定义表通常是实现自定义模式的更简单的替代方法。这两种方法最终可能会创建 `Table` 接口的类似实现，对于自定义表，您不需要实现元数据发现。`CsvTableFactory` 创建一个 `CsvScannableTable`，就像 `CsvSchema` 一样，但表实现不会扫描文件系统以查找 `.csv` 文件。
+
+自定义表需要模型文件的作者做更多的工作（作者需要明确指定每个表及其文件），但也给作者更多的控制权（例如，为每个表提供不同的参数）。
+
+## 模型文件的注释
+
+模型文件可以使用 /* ... */ 和 // 语法包含注释：
+
+```json
+{
+  version: '1.0',
+  /* Multi-line
+     comment. */
+  defaultSchema: 'CUSTOM_TABLE',
+  // Single-line comment.
+  schemas: [
+    ..
+  ]
+}
+```
+
+注释不是标准的 JSON，而是一种无害的扩展。
+
+## 使用优化器规则优化查询
+
+只要表不包含大量数据，我们目前看到的表实现就可以了。但是，如果你客户的表有一百列和一百万行，那你肯定希望你的系统每次查询不要检索所有数据。您希望 Calcite 与适配器协商并找到一种更有效的数据访问方式。
+
+这种协商是查询优化的一种简单形式。Calcite 通过添加优化器规则来支持查询优化。优化器规则通过在查询解析树中查找某种模式（例如某种表顶部的 `Project`）来操作，并用一组新的、实现了优化的节点替换树中匹配的节点。
+
+就像 Schema 和表一样，优化器规则也是可扩展的。因此，如果您有一个要通过 SQL 访问的数据存储，则首先定义自定义表或 Schema·，然后定义一些规则以提高访问效率。
+
+要查看实际效果，让我们使用优化器规则访问 CSV 文件中的列子集。我们对两个非常相似的模式运行相同的查询：
+
+```json
+sqlline> !connect jdbc:calcite:model=src/test/resources/model.json admin admin
+sqlline> explain plan for select name from emps;
++-----------------------------------------------------+
+| PLAN                                                |
++-----------------------------------------------------+
+| EnumerableCalcRel(expr#0..9=[{inputs}], NAME=[$t1]) |
+|   EnumerableTableScan(table=[[SALES, EMPS]])        |
++-----------------------------------------------------+
+sqlline> !connect jdbc:calcite:model=src/test/resources/smart.json admin admin
+sqlline> explain plan for select name from emps;
++-----------------------------------------------------+
+| PLAN                                                |
++-----------------------------------------------------+
+| EnumerableCalcRel(expr#0..9=[{inputs}], NAME=[$t1]) |
+|   CsvTableScan(table=[[SALES, EMPS]])               |
++-----------------------------------------------------+
+```
+
+是什么导致执行计划上的差异？让我们跟着证据的线索走，在 `smart.json` 模型文件中，只有一行：
+
+```json
+flavor: "translatable"
+```
+
+这会导致创建一个带有 `flavor = TRANSLATABLE` 的 `CsvSchema`，并且它的 `createTable` 方法创建 `CsvTranslatableTable` 而不是 `CsvScannableTable` 的实例。
+
+`CsvTranslatableTable` 实现 `TranslatableTable.toRel()` 方法来创建 `CsvTableScan`。 表扫描是查询运算符树的叶节点。 通常的实现是 `EnumerableTableScan`，但我们创建了一个独特的子类型，这将触发规则。
+
+这是完整的规则：
+
+```java
+public class CsvProjectTableScanRule
+    extends RelRule<CsvProjectTableScanRule.Config> {
+  /** Creates a CsvProjectTableScanRule. */
+  protected CsvProjectTableScanRule(Config config) {
+    super(config);
+  }
+
+  @Override public void onMatch(RelOptRuleCall call) {
+    final LogicalProject project = call.rel(0);
+    final CsvTableScan scan = call.rel(1);
+    int[] fields = getProjectFields(project.getProjects());
+    if (fields == null) {
+      // Project contains expressions more complex than just field references.
+      return;
+    }
+    call.transformTo(
+        new CsvTableScan(
+            scan.getCluster(),
+            scan.getTable(),
+            scan.csvTable,
+            fields));
+  }
+
+  private int[] getProjectFields(List<RexNode> exps) {
+    final int[] fields = new int[exps.size()];
+    for (int i = 0; i < exps.size(); i++) {
+      final RexNode exp = exps.get(i);
+      if (exp instanceof RexInputRef) {
+        fields[i] = ((RexInputRef) exp).getIndex();
+      } else {
+        return null; // not a simple projection
+      }
+    }
+    return fields;
+  }
+
+  /** Rule configuration. */
+  public interface Config extends RelRule.Config {
+    Config DEFAULT = EMPTY
+        .withOperandSupplier(b0 ->
+            b0.operand(LogicalProject.class).oneInput(b1 ->
+                b1.operand(CsvTableScan.class).noInputs()))
+        .as(Config.class);
+
+    @Override default CsvProjectTableScanRule toRule() {
+      return new CsvProjectTableScanRule(this);
+    }
+}
+```
+
+规则的默认实例驻留在 `CsvRules` 持有者类中：
+
+```java
+public abstract class CsvRules {
+  public static final CsvProjectTableScanRule PROJECT_SCAN =
+      CsvProjectTableScanRule.Config.DEFAULT.toRule();
+}
+```
+
+在默认配置（ `Config` 接口中 `DEFAULT` 字段）中对 `withOperandSupplier` 方法的调用，声明了触发规则的关系表达式模式。如果规划器看到一个 `LogicalProject`，它的唯一输入是一个没有输入的 `CsvTableScan`，就会调用该规则。
+
+规则的是可变的。例如，不同的规则实例可能与 `CsvTableScan` 上的 `EnumerableProject` 匹配。`onMatch` 方法生成一个新的关系表达式并调用 [`RelOptRuleCall.transformTo()`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/plan/RelOptRuleCall.html#transformTo(org.apache.calcite.rel.RelNode)) 以指示规则已成功触发。
+
+## 查询优化过程
+
+关于 Calcite 的查询优化器有多聪明可以说很多，但我们不在这里说。这种聪明的设计是为了减轻你，即优化规则作者的负担。
+
+**首先**，Calcite 不会按照规定的顺序触发规则。优化查询分支树中的各种分支，就像下棋程序检查许多可能的移动序列一样。如果规则 A 和 B 都匹配查询运算符树的给定部分，则 Calcite 可以同时触发。
+
+**其次**，Calcite 使用成本选择计划，但成本模型并不能阻止规则的触发，这在短期内似乎更昂贵。
+
+许多优化器都有一个线性优化方案。如上所述，面对规则 A 和规则 B 之间的选择，这样的优化器需要立即做出选择。它可能有这样的策略：将规则 A 应用于整棵树，然后将规则 B 应用于整棵树，或者应用基于成本的策略，应用生成成本更低结果的规则。
+
+Calcite 不需要这样的妥协。这使得组合各种规则集变得简单。如果，假设您想将识别物化视图的规则与从 CSV 和 JDBC 源系统读取的规则结合起来，您只需将所有规则的集合提供给 Calcite，并告诉它进行操作。
+
+Calcite 确实使用成本模型。成本模型决定最终使用哪个计划，有时裁剪搜索树以防止搜索空间爆炸，但它从不强迫您在规则 A 和规则 B 之间进行选择。这很重要，因为它避免<u>陷入局部最小值，但在实际上不是最优的搜索空间</u>。
+
+此外（您已经猜到了）成本模型是可插入的，它所基于的表和查询运算符统计也是如此，但这可以以后再谈。
+
+## JDBC 适配器
+
+JDBC 适配器将 JDBC 数据源中的 Schema 映射为 Calcite Schema。例如，这个 Schema 从 MySQL foodmart 数据库中读取：
+
+```json
+{
+  version: '1.0',
+  defaultSchema: 'FOODMART',
+  schemas: [
+    {
+      name: 'FOODMART',
+      type: 'custom',
+      factory: 'org.apache.calcite.adapter.jdbc.JdbcSchema$Factory',
+      operand: {
+        jdbcDriver: 'com.mysql.jdbc.Driver',
+        jdbcUrl: 'jdbc:mysql://localhost/foodmart',
+        jdbcUser: 'foodmart',
+        jdbcPassword: 'foodmart'
+      }
+    }
+  ]
+```
+
+使用过 Mondrian OLAP 引擎的人应该比较熟悉 **FoodMart** 数据库，因为它是 Mondrian 的主要测试数据集。要加载数据集，请按照 Mondrian 的安装说明进行操作。
+
+**当前限制**：JDBC 适配器当前只下推表扫描操作； 所有其他处理（过滤、连接、聚合等）都发生在 Calcite 中。我们的目标是**将**尽可能多的处理，如翻译语法、数据类型和内置函数等推入源系统。如果 Calcite 查询基于来自单个 JDBC 数据库的表，原则上整个查询应该转到该数据库。如果表来自多个 JDBC 源，或者 JDBC 和非 JDBC 的混合，Calcite 将尽可能使用最有效的分布式查询方法。
+
+## 克隆 JDBC 适配器
+
+克隆的 JDBC 适配器会创建一个混合数据库。数据来自 JDBC 数据库，但每个表在第一次访问时，会被读入内存表。Calcite 基于这些内存表响应查询，实际上是数据库的缓存。
+
+例如，以下模型从 MySQL foodmart 数据库读取表：
+
+```json
+{
+  version: '1.0',
+  defaultSchema: 'FOODMART_CLONE',
+  schemas: [
+    {
+      name: 'FOODMART_CLONE',
+      type: 'custom',
+      factory: 'org.apache.calcite.adapter.clone.CloneSchema$Factory',
+      operand: {
+        jdbcDriver: 'com.mysql.jdbc.Driver',
+        jdbcUrl: 'jdbc:mysql://localhost/foodmart',
+        jdbcUser: 'foodmart',
+        jdbcPassword: 'foodmart'
+      }
+    }
+  ]
+}
+```
+
+另一种技术是在现有 Schema 上克隆 Schema。可以使用 `source` 属性来引用模型中先前定义的 schema，如下所示：
+
+```json
+{
+  version: '1.0',
+  defaultSchema: 'FOODMART_CLONE',
+  schemas: [
+    {
+      name: 'FOODMART',
+      type: 'custom',
+      factory: 'org.apache.calcite.adapter.jdbc.JdbcSchema$Factory',
+      operand: {
+        jdbcDriver: 'com.mysql.jdbc.Driver',
+        jdbcUrl: 'jdbc:mysql://localhost/foodmart',
+        jdbcUser: 'foodmart',
+        jdbcPassword: 'foodmart'
+      }
+    },
+    {
+      name: 'FOODMART_CLONE',
+      type: 'custom',
+      factory: 'org.apache.calcite.adapter.clone.CloneSchema$Factory',
+      operand: {
+        source: 'FOODMART'
+      }
+    }
+  ]
+}
+```
+
+您可以使用这种方法在任何类型的 Scheam 上克隆 Schama，而不仅仅是 JDBC。
+
+克隆适配器并不是万能的。我们计划开发更复杂的缓存策略，以及更完整和更高效的内存表实现，但现在克隆 JDBC 适配器展示了可能的内容，并允许我们尝试我们的初始实现。
+
+## 后续话题
+
+还有许多扩展 Calcite 的方法没在本教程中描述。[适配器规范](https://calcite.apache.org/docs/adapter.html)描述了所涉及的 API。
+
+# 代数
+
+内容在其他
+
+# 适配器
+
+## Schema 适配器
+
+Schema 适配器允许 Calcite 读取特定类型的数据，将数据呈现为 Schema 中的表。
+
+- Cassandra adapter (calcite-cassandra)
+
+- CSV adapter (example/csv)
+
+- Druid adapter (calcite-druid)
+
+- Elasticsearch adapter (calcite-elasticsearch)
+
+- File adapter (calcite-file)
+
+- Geode adapter (calcite-geode)
+
+- InnoDB adapter (calcite-innodb)
+
+- JDBC adapter (part of calcite-core)
+
+- MongoDB adapter (calcite-mongodb)
+
+- OS adapter (calcite-os)
+
+- Pig adapter (calcite-pig)
+
+- Redis adapter (calcite-redis)
+
+- Solr cloud adapter (solr-sql)
+
+- Spark adapter (calcite-spark)
+
+- Splunk adapter (calcite-splunk)
+
+- Eclipse Memory Analyzer (MAT) adapter (mat-calcite-plugin)
+
+- Apache Kafka adapter
+
+其他语言的接口
+
+- Piglet (calcite-piglet) runs queries in a subset of Pig Latin
+
+## 引擎
+
+许多项目和产品使用 Apache Calcite 进行 SQ L解析、查询优化、数据虚拟化/联合和物化视图重写。其中一些在 [Power by  Calcite](https://calcite.apache.org/docs/powered_by.html) 页面上列出。
+
+## 驱动
+
+驱动程序允许您从应用程序连接到 Calcite。
+
+- [JDBC 驱动](https://calcite.apache.org/javadocAggregate/org/apache/calcite/jdbc/package-summary.html)
+
+ JDBC 驱动程序由 Avatica 提供支持。连接可以是本地的或远程的（JSON over HTTP 或 Protobuf over HTTP）。JDBC 连接字符串的基本形式是 `jdbc:calcite:property=value;property2=value2` 其中，`property`、`property2` 是如下所述的属性。 连接字符串符合 OLE DB 连接字符串语法，由 Avatica 的 [`ConnectStringParser`](https://calcite.apache.org/avatica/javadocAggregate/org/apache/calcite/avatica/ConnectStringParser.html) 实现。
+
+##  JDBC 连接字符串参数 
+
+| Property                                                     | Description                                                  |
+| :----------------------------------------------------------- | :----------------------------------------------------------- |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#APPROXIMATE_DECIMAL">approximateDecimal</a> | Whether approximate results from aggregate functions on `DECIMAL` types are acceptable. |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#APPROXIMATE_DISTINCT_COUNT">approximateDistinctCount</a> | Whether approximate results from `COUNT(DISTINCT ...)` aggregate functions are acceptable. |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#APPROXIMATE_TOP_N">approximateTopN</a> | Whether approximate results from "Top N" queries (`ORDER BY aggFun() DESC LIMIT n`) are acceptable. |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#CASE_SENSITIVE">caseSensitive</a> | Whether identifiers are matched case-sensitively. If not specified, value from `lex` is used. |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#CONFORMANCE">conformance</a> | SQL conformance level. Values: DEFAULT (the default, similar to PRAGMATIC_2003), LENIENT, MYSQL_5, ORACLE_10, ORACLE_12, PRAGMATIC_99, PRAGMATIC_2003, STRICT_92, STRICT_99, STRICT_2003, SQL_SERVER_2008. |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#CREATE_MATERIALIZATIONS">createMaterializations</a> | Whether Calcite should create materializations. Default false. |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#DEFAULT_NULL_COLLATION">defaultNullCollation</a> | How NULL values should be sorted if neither NULLS FIRST nor NULLS LAST are specified in a query. The default, HIGH, sorts NULL values the same as Oracle. |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#DRUID_FETCH">druidFetch</a> | How many rows the Druid adapter should fetch at a time when executing SELECT queries. |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#FORCE_DECORRELATE">forceDecorrelate</a> | Whether the planner should try de-correlating as much as possible. Default true. |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#FUN">fun</a> | Collection of built-in functions and operators. Valid values are "standard" (the default), "oracle", "spatial", and may be combined using commas, for example "oracle,spatial". |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#LEX">lex</a> | Lexical policy. Values are BIG_QUERY, JAVA, MYSQL, MYSQL_ANSI, ORACLE (default), SQL_SERVER. |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#MATERIALIZATIONS_ENABLED">materializationsEnabled</a> | Whether Calcite should use materializations. Default false.  |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#MODEL">model</a> | URI of the JSON/YAML model file or inline like `inline:{...}` for JSON and `inline:...` for YAML. |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#PARSER_FACTORY">parserFactory</a> | Parser factory. The name of a class that implements [<code>interface SqlParserImplFactory</code>]({{ site.apiRoot }}/org/apache/calcite/sql/parser/SqlParserImplFactory.html) and has a public default constructor or an `INSTANCE` constant. |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#QUOTING">quoting</a> | How identifiers are quoted. Values are DOUBLE_QUOTE, BACK_TICK, BACK_TICK_BACKSLASH, BRACKET. If not specified, value from `lex` is used. |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#QUOTED_CASING">quotedCasing</a> | How identifiers are stored if they are quoted. Values are UNCHANGED, TO_UPPER, TO_LOWER. If not specified, value from `lex` is used. |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#SCHEMA">schema</a> | Name of initial schema.                                      |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#SCHEMA_FACTORY">schemaFactory</a> | Schema factory. The name of a class that implements [<code>interface SchemaFactory</code>]({{ site.apiRoot }}/org/apache/calcite/schema/SchemaFactory.html) and has a public default constructor or an `INSTANCE` constant. Ignored if `model` is specified. |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#SCHEMA_TYPE">schemaType</a> | Schema type. Value must be "MAP" (the default), "JDBC", or "CUSTOM" (implicit if `schemaFactory` is specified). Ignored if `model` is specified. |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#SPARK">spark</a> | Specifies whether Spark should be used as the engine for processing that cannot be pushed to the source system. If false (the default), Calcite generates code that implements the Enumerable interface. |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#TIME_ZONE">timeZone</a> | Time zone, for example "gmt-3". Default is the JVM's time zone. |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#TYPE_SYSTEM">typeSystem</a> | Type system. The name of a class that implements [<code>interface RelDataTypeSystem</code>]({{ site.apiRoot }}/org/apache/calcite/rel/type/RelDataTypeSystem.html) and has a public default constructor or an `INSTANCE` constant. |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#UNQUOTED_CASING">unquotedCasing</a> | How identifiers are stored if they are not quoted. Values are UNCHANGED, TO_UPPER, TO_LOWER. If not specified, value from `lex` is used. |
+| <a href="{{ site.apiRoot }}/org/apache/calcite/config/CalciteConnectionProperty.html#TYPE_COERCION">typeCoercion</a> | Whether to make implicit type coercion when type mismatch during sql node validation, default is true. |
+
+要根据内置 Schema 类型连接到单个 Schema，无需指定**模型**。例如，使用通过 JDBC Schema 适配器对应到 **foodmart** 数据库的 schema 创建连接。
+
+```java
+jdbc:calcite:schemaType=JDBC; schema.jdbcUser=SCOTT; schema.jdbcPassword=TIGER; schema.jdbcUrl=jdbc:hsqldb:res:foodmart
+```
+
+同样，您可以基于用户定义的 Schema  适配器连接到单个 Schema 。 例如，
+
+```java
+jdbc:calcite:schemaFactory=org.apache.calcite.adapter.cassandra.CassandraSchemaFactory; schema.host=localhost; schema.keyspace=twissandra
+```
+
+与 Cassandra 适配器建立连接，相当于编写以下模型文件：
+
+```json
+{
+  "version": "1.0",
+  "defaultSchema": "foodmart",
+  "schemas": [
+    {
+      type: 'custom',
+      name: 'twissandra',
+      factory: 'org.apache.calcite.adapter.cassandra.CassandraSchemaFactory',
+      operand: {
+        host: 'localhost',
+        keyspace: 'twissandra'
+      }
+    }
+  ]
+}
+```
+
+请注意操作数部分中的每个 key 如何与 schema 一起出现.
+
+## Server
+
+Calcite 的核心模块（calcite-core）支持 SQL 查询（`SELECT`）和 DML 操作（`INSERT、UPDATE、DELETE、MERGE`），但不支持 `CREATE SCHEMA` 或 `CREATE TABLE` 等 DDL 操作。 正如我们将看到的，DDL 使<u>==存储库的状态模型复杂化==</u>，并使解析器更难以扩展，因此我们将 DDL 排除在核心之外。
+
+服务器模块 (calcite-server) 为 Calcite 添加了 DDL 支持。 使用与子项目相同的机制扩展 SQL 解析器，添加了一些 DDL 命令：
+
+- `CREATE` 和 `DROP SCHEMA`
+- `CREATE` 和 `DROP FOREIGN SCHEMA`
+- `CREATE` 和 `DROP TABLE` (包括 `CREATE TABLE ... AS SELECT`)
+- `CREATE` 和 `DROP MATERIALIZED VIEW`
+- `CREATE` 和 `DROP VIEW`
+- `CREATE` 和 `DROP FUNCTION`
+- `CREATE` 和 `DROP TYPE`
+
+[SQL 参考](https://calcite.apache.org/docs/reference.html#ddl-extensions)中描述了命令
+
+类路径中包含 calcite-server.jar，并将 `parserFactory=org.apache.calcite.sql.parser.ddl.SqlDdlParserImpl#FACTORY`  添加到 JDBC 连接字符串（请参阅连接字符串属性 `parserFactory`），即可启用。下面使用 sqlline shell 的示例：
+
+```shell
+$ ./sqlline
+sqlline version 1.3.0
+> !connect jdbc:calcite:parserFactory=org.apache.calcite.sql.parser.ddl.SqlDdlParserImpl#FACTORY sa ""
+> CREATE TABLE t (i INTEGER, j VARCHAR(10));
+No rows affected (0.293 seconds)
+> INSERT INTO t VALUES (1, 'a'), (2, 'bc');
+2 rows affected (0.873 seconds)
+> CREATE VIEW v AS SELECT * FROM t WHERE i > 1;
+No rows affected (0.072 seconds)
+> SELECT count(*) FROM v;
++---------------------+
+|       EXPR$0        |
++---------------------+
+| 1                   |
++---------------------+
+1 row selected (0.148 seconds)
+> !quit
+```
+
+`calcite-server` 模块是可选的。它的目标之一是使用简洁的示例展示 Calcite  的功能(例如物化视图、外部表和生成的列)，您可以从SQL命令行尝试这些示例。`calcite-server` 使用的所有功能都可以通过 `calcite-core` 中的 API 获得。
+
+如果您是子项目的作者，您的语法扩展不太可能与 `calcite-server` 中的匹配，因此我们建议您通过[扩展核心解析器](https://calcite.apache.org/docs/adapter.html#extending-the-parser)来添加您的 SQL 语法扩展；如果您需要 DDL 命令，您可以从 `calcite-server` 复制粘贴到您的项目中。
+
+目前，还没有持久化<u>==存储库==</u>。在执行DDL命令时，通过添加和删除可从根 [Schema](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/Schema.html) 访问的对象来修改内存<u>==存储库==</u>。同一 SQL Session 中的所有命令都会看到这些对象。通过执行相同的SQL命令脚本，可以在以后的会话中创建相同的对象。
+
+Calcite 还可以充当数据虚拟化或联合服务器：Calcite 管理多个外部 Schema 中的数据，但对于客户端而言，这些数据似乎都在同一个地方。Calcite 选择应在何处进行处理，以及是否创建数据副本以提高效率。 calcite-server 模块是朝着这个目标迈出的一步；行业实力的解决方案需要进一步包装（使 Calcite 作为服务可运行）、<u>==存储库==</u>持久性、授权和安全性。
+
+## 可扩展性
+
+还有许多其他 API 允许您扩展 Calcite 的功能。
+
+在本节中，我们将简要介绍这些 API，让您了解哪些是可能的。 要充分使用这些 API，您需要阅读其他文档，例如接口的 javadoc，并可能需要查找我们为它们编写的测试。
+
+### 函数和运算符
+
+有多种方法可以向 Calcite 添加运算符或函数。 我们将首先描述最简单的（也是最不强大的）。
+
+1. 用户定义的函数是最简单的（但最不强大的）。 它们编写起来很简单（您只需编写一个 Java 类并将其注册到您的模式中），但在参数的数量和类型、解析重载函数或派生返回类型方面没有提供很大的灵活性。
+2. 如果您想要这种灵活性，您可能需要编写一个用户定义的运算符（请参阅 [SqlOperator](https://calcite.apache.org/javadocAggregate/org/apache/calcite/sql/SqlOperator.html) 接口）。
+3. 如果运算符不遵守标准的 SQL 函数语法 `f(arg1, arg2, ...)`，则需要扩展解析器。
+
+测试中有许多很好的例子：`class UdfTest` 测试用户定义函数和用户定义聚合函数。
+
+### 聚合函数
+
+**用户定义的聚合函数**类似于用户定义的函数，但每个函数都有几个对应的 Java 方法，对应于聚合生命周期中的每个阶段：
+
+- `init` 创建一个累加器
+- `add` 将一行的值添加到累加器
+- `merge` 将两个累加器合二为一
+- `result` 结束累加器并将其转换为结果。
+
+例如，`SUM(int)` 的方法（伪代码）如下：
+
+```c++
+struct Accumulator {
+  final int sum;
+}
+Accumulator init() {
+  return new Accumulator(0);
+}
+Accumulator add(Accumulator a, int x) {
+  return new Accumulator(a.sum + x);
+}
+Accumulator merge(Accumulator a, Accumulator a2) {
+  return new Accumulator(a.sum + a2.sum);
+}
+int result(Accumulator a) {
+  return a.sum;
+}
+```
+
+以下是计算列值为 4 和 7 的两行之和的调用序列：
+
+```sh
+a = init()    # a = {0}
+a = add(a, 4) # a = {4}
+a = add(a, 7) # a = {11}
+return result(a) # returns 11
+```
+
+### 窗口函数
+
+窗口函数类似于聚合函数，但它应用于由 `OVER` 子句而不是 `GROUP BY` 子句收集的一组行。 每个聚合函数都可以用作窗口函数，但有一些关键的区别。窗口函数看到的行可能是有序的，**依赖于顺序（例如 `RANK`）的窗口函数不能用作聚合函数**。另一个区别是窗口是不相交的：特定行可以出现在多个窗口中。 例如，10:37 出现在 9:00-10:00 和 9:15-9:45 两个时间段。
+
+窗口函数是递增计算的：当时钟从 10:14 到 10:15 滴答作响时，可能有两行进入窗口，而三行离开。 为此，窗口函数有一个额外的生命周期操作：
+
+- `remove` 从累加器中移除一个值。
+
+`SUM(int)` 的伪码是：
+
+```c++
+Accumulator remove(Accumulator a, int x) {
+  return new Accumulator(a.sum - x);
+}
+```
+
+以下是计算前 2 行的移动总和的调用序列，其中 4 行的值为 4、7、2 和 3：
+
+```sh
+a = init()       # a = {0}
+a = add(a, 4)    # a = {4}
+emit result(a)   # emits 4
+a = add(a, 7)    # a = {11}
+emit result(a)   # emits 11
+a = remove(a, 4) # a = {7}
+a = add(a, 2)    # a = {9}
+emit result(a)   # emits 9
+a = remove(a, 7) # a = {2}
+a = add(a, 3)    # a = {5}
+emit result(a)   # emits 5
+```
+
+### 分组窗口函数
+
+> 和流有关
+
+分组窗口函数是操作 `GROUP BY` 子句将记录收集到集合中的函数。实现 [`SqlGroupedWindowFunction`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/sql/SqlGroupedWindowFunction.html) 接口来定义附加功能。内置的分组窗口函数是 `HOP`、`TUMBLE` 和 `SESSION`。 
+
+### 表函数和表宏
+
+用户定义表函数的定义方式与定义普通的 UDF 函数类似，但在查询的 `FROM` 子句中使用。以下查询使用名为 `Ramp` 的表函数：
+
+```sql
+SELECT * FROM TABLE(Ramp(3, 4))
+```
+
+用户定义的表宏使用与表函数相同的 SQL 语法，但定义不同。它们不是生成数据，而是生成关系表达式。在查询准备期间调用**表宏**，然后可以优化它们生成的关系表达式。Calcite 的视图实现使用了表宏。
+
+[`TableFunctionTest`](https://github.com/apache/calcite/blob/master/core/src/test/java/org/apache/calcite/test/TableFunctionTest.java) 测试表函数并包含几个有用的示例
+
+### 扩展 parser
+
+假设您需要扩展 Calcite 的 SQL 语法，使其与将来对语法的更改兼容。 在项目中复制语法文件 Parser.jj 是愚蠢的，因为会经常编辑这个语法文件。
+
+幸运的是，`Parser.jj` 实际上是一个 [Apache FreeMarker](https://freemarker.apache.org/) 模板，它包含可替换变量的。
+
+`calcite-core` 中的解析器用变量的默认值实例化模板，通常为空，但可以覆盖。如果您的项目需要不同的解析器，您可以提供自己的 `config.fmpp` 和 `parserImpls.ftl` 文件，从而生成扩展解析器。
+
+在 [[CALCITE-707]](https://issues.apache.org/jira/browse/CALCITE-707) 中创建并添加 DDL 语句，如 `CREATE TABLE` 的`calcite-server` 模块就是您可以遵循的一个示例。参见类`ExtensionSqlParserTest`。
+
+### 生成并使用 SQL 方言
+
+要自定义 parser 应接受的 SQL 扩展，请实现接口 [SqlConformance](https://calcite.apache.org/javadocAggregate/org/apache/calcite/sql/validate/SqlConformance.html) 或使用枚举 [SqlConformanceEnum](https://calcite.apache.org/javadocAggregate/org/apache/calcite/sql/validate/SqlConformanceEnum.html) 中的内置值之一。
+
+要控制如何为外部数据库生成 SQL（通常通过 JDBC 适配器），请使用 `SqlDialect`。该方言还描述了引擎的功能，例如它是否支持 `OFFSET` 和 `FETCH` 子句。
+
+### 自定义 schema
+
+要定义自定义 Schema，您需要实现 [SchemaFactory](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/SchemaFactory.html) 接口
+
+在查询准备期间，Calcite 将调用此接口，以找出您的 Schema 包含哪些表和子Schema。当查询中引用架构中的表时，Calcite 将要求您的架构创建接口表的实例。当在查询中引用 Schema 中的表时，Calcite 将要求 Schema 创建 [table](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/Table.html) 接口的实例。
+
+这个表将被包装在 `TableScan` 中，并将经历查询优化过程。
+
+### 反射的 Schema
+
+反射 Schema [ReflectiveSchema](https://calcite.apache.org/javadocAggregate/org/apache/calcite/adapter/java/ReflectiveSchema.html) 是一种包装 Java 对象以将其显示为 Schema 的方法。其集合值字段将显示为表，它不是一个 Schema 工厂，而是一个实际的 Schema； 您必须创建对象并通过调用 API 将其包装在 Schema 中。
+
+请参见类 [ReflectiveSchemaTest](https://github.com/apache/calcite/blob/master/core/src/test/java/org/apache/calcite/test/ReflectiveSchemaTest.java)
+
+### 自定义表
+
+要定义自定义表，需要实现 [TableFactory](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/TableFactory.html) 接口。 Schema 工厂是一组**==已命名表==**，而**表工厂**在绑定到具有特定名称的 Schema 时（以及可选的一组额外操作数）会生成单个表。
+
+### 修改数据
+
+如果您的表要支持DML操作(插入`INSERT`、更新`UPDATE`、删除`DELETE`、合并`MERGE`)，那么 `Table` 接口的实现必须实现 [ModifiableTable](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/ModifiableTable.html) 接口。
+
+### Streaming
+
+如果您的表要支持流式查询，则 `Table` 接口必须实现 [StreamableTable](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/StreamableTable.html) 接口。
+
+有关示例，请参见 [StreamTest](https://github.com/apache/calcite/blob/master/core/src/test/java/org/apache/calcite/test/StreamTest.java)。
+
+### 计算下推
+
+如果您希望将处理下推到自定义表的源系统，请考虑实现 [`FilterableTable`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/FilterableTable.html) 接口或 `ProjectableFilterableTable` 接口。
+
+如果你想要更多的控制，你应该写一个[优化规则](https://calcite.apache.org/docs/adapter.html#planner-rule)。 这将允许您下推表达式，就是否下推处理做出基于成本的决定，并下推更复杂的操作，如连接、聚合和排序。
+
+### 类型系统
+
+通过实现 [RelDataTypeSystem](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/type/RelDataTypeSystem.html) 接口来自定义类型系统的某些方面。
+
+### 关系运算符
+
+所有关系运算符都实现 [RelNode](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/RelNode.html) 接口，大多数扩展至类 [AbstractRelNode](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/AbstractRelNode.html)。核心运算符（由 [SqlToRelConverter](https://calcite.apache.org/javadocAggregate/org/apache/calcite/sql2rel/SqlToRelConverter.html) 使用并涵盖常规关系代数）是 [`TableScan`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/TableScan.html)、[`TableModify`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/TableModify.html)、[`Values`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Values.html)、[`Project`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Project.html)、[`Filter`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Filter.html)、[`Aggregate`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Aggregate.html)、[`Join`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Join.html)、[`Sort`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Sort.html)、[`Union`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Union.html)、[`Intersect`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Intersect.html)、[`Minus`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Minus.html)、[`Window`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Window.html) 和 [`Match`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Match.html)。
+
+其中每一个都有一个**纯**的逻辑子类，比如 [`LogicalProject`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/logical/LogicalProject.html) 等等。任何给定的适配器都有对应的引擎可以有效实现的操作，例如，Cassandra 适配器有 [`CassandraProject`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/adapter/cassandra/CassandraProject.html) 但没有 `CassandraJoin`。
+
+您可以定义自己的 `RelNode` 子类来添加新的运算符，或在特定引擎中实现现有运算符。
+
+为了使运算符有用且强大，您需要[优化器规则](https://calcite.apache.org/docs/adapter.html#planner-rule)将其与现有运算符相结合。并提供元数据，见[下文](https://calcite.apache.org/docs/adapter.html#statistics-and-cost)。**这是代数，效果是组合的：您编写一些规则，但它们组合起来处理指数数量的查询模式**。
+
+如果可能，让你的运算符成为现有运算符的子类；那么您就可以重新使用或调整其规则。更好的是，如果您的运算符是一个可以根据现有运算符实现的逻辑运算（仍通过优化器规则），那么就应该这样做。您将无需额外工作即可重复使用这些运算符的规则、元数据和实现。
+
+### 优化器规则
+
+优化规则（[RelOptRule](https://calcite.apache.org/javadocAggregate/org/apache/calcite/plan/RelOptRule.html)）将关系表达式转换为等价的关系表达式。
+
+优划器引擎有许多已注册的规则，触发这些规则将输入查询转换为更有效的查询。因此，优化规则是优化过程的核心，但令人惊讶的是，每个规则本身并不用关心成本。优划器引擎负责<u>以生成最佳计划的顺序</u>触发规则，但是每个单独的规则只关注其自身的正确性。
+
+Calcite 有两个内置的优化器引擎：[VolcanoPlanner](https://calcite.apache.org/javadocAggregate/org/apache/calcite/plan/volcano/VolcanoPlanner.html) 使用动态规划，适合穷极搜索，而 [HepPlanner](https://calcite.apache.org/javadocAggregate/org/apache/calcite/plan/hep/HepPlanner.html) 则以更固定的顺序触发一系列规则。
+
+### 调用约定
+
+调用约定是特定数据引擎使用的协议。例如，Cassandra 引擎有一系列关系运算符，`CassandraProject`、`CassandraFilter` 等，这些运算符可以相互连接，而无需将数据从一种格式转换为另一种格式。
+
+如果数据需要从一种调用约定转换为另一种调用约定，Calcite 使用一个特殊的**关系表达式子类**，称为转换器（请参考 [Converter](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/convert/Converter.html) 接口）。当然，数据转换有运行成本。
+
+在规划使用多个引擎的查询时，Calcite 根据其调用约定为关系表达式树的区域**着色**。规划器通过优化规则将操作推送到数据源中。如果引擎不支持特定操作，则规则不会触发。有时一项操作可能会发生在多个地方，最终会根据成本选择最佳方案。
+
+**调用约定**是一个实现 [Convention](https://calcite.apache.org/javadocAggregate/org/apache/calcite/plan/Convention.html) 接口的类、一个辅助接口（例如 [CassandraRel](https://calcite.apache.org/javadocAggregate/org/apache/calcite/adapter/cassandra/CassandraRel.html) 接口），以及一组 [`RelNode`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/RelNode.html) 的子类，这些子类为核心关系操作符（Project、Filter、Aggregate 等）实现该接口。
+
+### 内置的 SQL实现
+
+如果适配器没有实现所有核心关系运算符，Calcite 如何实现 SQL？
+
+答案是特定的内置调用约定 [`EnumerableConvention`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/adapter/enumerable/EnumerableConvention.html)。可枚举约定的关系表达式被实现为“内置”：Calcite 生成 Java 代码，编译它，并在它自己的 JVM 中执行。`EnumerableConvention` 的效率不如运行在面向列的数据文件上的分布式引擎，但它可以实现所有**核心关系运算符**和所有内置 SQL 函数和运算符。如果数据源无法实现关系运算符，则 `EnumerableConvention` 是一种后备。
+
+### 统计和执行开销
+
+Calcite 有一个元数据系统，允许您定义有关关系运算符的成本函数和统计信息，统称为元数据。每种元数据（通常）都有一个带有一个方法的接口。例如，选择性由 [`RelMdSelectivity`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/metadata/RelMdSelectivity.html) 和方法 [`getSelectivity(RelNode rel, RexNode predicate)`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/metadata/RelMetadataQuery.html#getSelectivity(org.apache.calcite.rel.RelNode,org.apache.calcite.rex.RexNode)) 定义。
+
+有许多内置的元数据，包括[排序规则](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/metadata/RelMdCollation.html)、列起源、列唯一性、不同行数、分布、解释可见性、表达式沿袭、最大行数、节点类型、并行度、原始行百分比、人口大小、谓词、行计数、选择性、大小、表引用和唯一键；你也可以定义你自己的。
+
+然后，您可以提供一个**元数据 provider**，为 `RelNode` 的特定子类计算这种类型的元数据。**元数据 provider** 可以处理内置和扩展的元数据类型，以及内置和扩展的 `RelNode` 类型。在准备查询时，Calcite 将所有适用的 **元数据 provider** 组合在一起，并维护一个缓存，以便只计算一次给定的元数据（例如特定 `Filter` 运算符中条件 `x > 10` 的选择性）。
+
+
+# 历史 
 
 ## 第一次支持[视图匹配](https://github.com/apache/calcite/commit/13136f9e4b7f4341d5cdce5b9ca8d498f353bb30) 
 
@@ -324,3 +1345,59 @@ private RelSubset registerImpl(RelNode rel, RelSet set)
 4. 将这个 RelNode 的 inputs 设置为其对应 RelSubset 的 children 节点（实际的操作时，是在 RelSet 的 `parents` 中记录其父节点）；
 5. 强制重新计算当前 RelNode 对应 RelSubset 的 importance；
 6. 如果这个 RelSubset 是新建的，会再触发一次 `fireRules()` 方法（会先对 RelNode 触发一次），遍历找到所有可以 match 的 Rule，对每个 Rule 都会创建一个 VolcanoRuleMatch 对象（会记录 RelNode、RelOptRuleOperand 等信息，RelOptRuleOperand 中又会记录 Rule 的信息），并将这个 VolcanoRuleMatch 添加到对应的 RuleQueue 中（就是前面图中的那个 RuleQueue）。
+
+# 其他有趣的 issue
+
+## [[CALCITE-707]](https://issues.apache.org/jira/browse/CALCITE-707) Add "server" module, with built-in support for simple DDL statements
+
+> I would like Calcite to support simple DDL.
+>
+> DDL (and other commands such as KILL STATEMENT) make it possible to do a wide range of operations over a REST or JDBC interface. We can't expect everything do be done locally, using Java method calls.
+>
+> I expect that projects that use Calcite will define their own DDL. (In fact Drill and Phoenix already do; see PHOENIX-1706.) Those projects are very likely to have their own variations on CREATE TABLE etc. so they will want to extend the parser. What I did in Phoenix (which was in turn adapted from Drill) is a model that other projects can follow.
+>
+> But the base Calcite project should have CREATE TABLE, DROP TABLE, CREATE SCHEMA, DROP SCHEMA, CREATE [ OR REPLACE ] VIEW etc. There will be an AST (extending SqlNode) for each of these commands, and a command-handler. Each project that uses Calcite could extend those
+>
+> ASTs, but it would be fine if it built its own AST and command-handler.
+
+See [Server](http://calcite.apache.org/docs/adapter.html#server)
+
+The default parser in core does not contain DDL. We do not want to impose our DDL dialect on sub-projects. 
+
+1. In server module's parser, add CREATE [FOREIGN] SCHEMA, DROP SCHEMA, CREATE TABLE, CREATE TABLE AS ..., DROP TABLE, CREATE VIEW, CREATE MATERIALIZED VIEW, DROP VIEW.
+2. CREATE TABLE supports STORED and VIRTUAL generated columns, default column values, and constraints.
+3. Add Quidem test in server module; QuidemTest is now abstract, and has sub-class CoreQuidemTest in core module.
+4. Add class ColumnStrategy, which describes how a column is populated.
+5. All CREATE commands have IF NOT EXISTS (except CREATE VIEW, which has OR REPLACE), and all DROP commands have IF EXISTS.
+
+6. Add SqlDdl as base class for SqlCreate and SqlDrop. Add SqlOperator as first argument to SqlCreate and SqlDrop constructors, and deprecate
+   previous constructors. 
+7. Ensure that collations deduced for Calc are sorted.
+
+8. Add Static.cons as short-hand for ConsList.of.
+
+##  [[CALCITE-2280]](https://issues.apache.org/jira/browse/CALCITE-2280) Liberal "babel" parser that accepts all SQL dialects
+
+> Create a parser that accepts all SQL dialects.
+>
+> It would accept common dialects such as Oracle, MySQL, PostgreSQL, BigQuery. If you have preferred dialects, please let us know in the comments section. (If you're willing to work on a particular dialect, even better!)
+>
+> We would do this in a new module, inheriting and extending the parser in the same way that the DDL parser in the "server" module does.
+>
+> This would be a messy and difficult project, because we would have to comply with the rules of each parser (and its set of built-in functions) rather than writing the rules as we would like them to be. That's why I would keep it out of the core parser. But it would also have large benefits.
+>
+> This would be new territory Calcite: as a tool for manipulating/understanding SQL, not (necessarily) for relational algebra or execution.
+>
+> Some possible uses:
+>
+> 1. analyze query lineage (what tables and columns are used in a query);
+> 2. translate from one SQL dialect to another (using the JDBC adapter to generate SQL in the target dialect);
+> 3. a "deep" compatibility mode (much more comprehensive than the current compatibility mode) where Calcite could pretend to be, say, Oracle;
+> 4. SQL parser as a service: a REST call gives a SQL query, and returns a JSON or XML document with the parse tree.
+>
+> If you can think of interesting uses, please discuss in the comments.
+>
+> There are similarities with Uber's QueryParser tool. Maybe we can collaborate, or make use of their test cases.
+>
+> We will need a lot of sample queries. If you are able to contribute sample queries for particular dialects, please discuss in the comments section. It would be good if the sample queries are based on a familiar schema (e.g. scott or foodmart) but we can be flexible about this.
+
