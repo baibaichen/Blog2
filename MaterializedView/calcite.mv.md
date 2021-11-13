@@ -697,7 +697,7 @@ Schema 适配器允许 Calcite 读取特定类型的数据，将数据呈现为 
 
 ## 引擎
 
-许多项目和产品使用 Apache Calcite 进行 SQ L解析、查询优化、数据虚拟化/联合和物化视图重写。其中一些在 [Power by  Calcite](https://calcite.apache.org/docs/powered_by.html) 页面上列出。
+许多项目和产品使用 Apache Calcite 进行 SQL 解析、查询优化、数据虚拟化/联合和物化视图重写。其中一些在 [Power by  Calcite](https://calcite.apache.org/docs/powered_by.html) 页面上列出。
 
 ## 驱动
 
@@ -820,7 +820,7 @@ Calcite 还可以充当数据虚拟化或联合服务器：Calcite 管理多个�
 
 还有许多其他 API 允许您扩展 Calcite 的功能。
 
-在本节中，我们将简要介绍这些 API，让您了解哪些是可能的。 要充分使用这些 API，您需要阅读其他文档，例如接口的 javadoc，并可能需要查找我们为它们编写的测试。
+在本节中，我们将简要介绍这些 API，让您了解哪些是可能的。要充分使用这些 API，您需要阅读其他文档，例如接口的 javadoc，并可能需要查找我们为它们编写的测试。
 
 ### 函数和运算符
 
@@ -966,7 +966,7 @@ SELECT * FROM TABLE(Ramp(3, 4))
 
 ### 计算下推
 
-如果您希望将处理下推到自定义表的源系统，请考虑实现 [`FilterableTable`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/FilterableTable.html) 接口或 `ProjectableFilterableTable` 接口。
+如果您希望将处理下推到自定义表的源系统，请考虑实现 [`FilterableTable`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/FilterableTable.html) 接口或 [`ProjectableFilterableTable`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/ProjectableFilterableTable.html) 接口。
 
 如果你想要更多的控制，你应该写一个[优化规则](https://calcite.apache.org/docs/adapter.html#planner-rule)。 这将允许您下推表达式，就是否下推处理做出基于成本的决定，并下推更复杂的操作，如连接、聚合和排序。
 
@@ -1150,7 +1150,17 @@ JOIN CustomerDim AS c USING (customerId)
 ---
 # 基本概念
 
-## RelOptRule
+## `RelNode`
+
+`RelNode` 是一个关系表达式。
+
+关系表达式处理数据，因此它们的名称通常是动词：**Sort**、**Join**、**Project**、**Filter**、**Scan**、**Sample**。关系表达式不是标量表达式；请参阅 `SqlNode` 和 `RexNode`。如果这种类型的关系表达式有一些特定的优化器规则，实现公共方法 `AbstractRelNode.register`。
+
+当要实现一个**关系表达式**时，系统会分配一个 `org.apache.calcite.plan.RelImplementor` 来管理这个过程。每个可实现的关系表达式都有一个描述其物理属性的 `RelTraitSet`。`RelTraitSet` 总是包含一个 `Convention`，描述表达式如何将数据传递给其**消费关系表达式**，但可能包含其他 **trait**，包括一些应用于外部的 **trait**。因为 **trait** 可以在外部应用，所以 `RelNode` 的实现永远不应该假设其**特征集**的大小或内容（超出由 `RelNode` 本身配置的那些 **trait**）。
+
+每个调用约定都有对应的 `RelNode`子接口。例如，`EnumerableRel` 具有管理转换为 `EnumerableConvention` 调用约定的操作，并且它与 `EnumerableRelImplementor` 交互。关系表达式仅在实际实现时才需要实现其调用约定的接口，即转换为计划/程序。这意味着无法实现的关系表达式，例如转换器，不需要实现其约定的接口。每个关系表达式都必须从 `AbstractRelNode` 派生。那为什么要有 `RelNode` 接口呢？我们需要一个根接口，因为接口只能从接口派生。
+
+## `RelOptRule`
 
 在 Calcite 中所有**规则类**都是从基类 `RelOptRule` 派生。`RelOptRule` 定义了Calcite 规则的基本结构和方法。`RelOptRule` 中包含一个 `RelOptRuleOperand` 的列表，这个列表在规则匹配<u>要变换的关系表达式中</u>有重要作用。`RelOptRuleOperand` 的列表中的 Operand 都是有层次结构的，对应着要匹配的关系表达式结构。当规则匹配到了目标的关系表达式后 `onMatch` 方法会被调用，规则生成的新的关系表达式通过 `RelOptRuleCall` 的 `transform()` 方法让优化器知道关系表达式的变化结果。
 
