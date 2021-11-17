@@ -332,7 +332,7 @@ private Table createTable(File file) {
 
 `type:'view'` 将 `FEMALE_EMPS` 标记为视图，而不是常规的表或者自定义的表。注意，视图定义中的单引号使用反斜杠转义，这是 JSON 的正常方式。
 
-JSON 并不便于写长字符串，因此 Calcite 支持另一种语法。如果创建视图是一个很长的 SQL ，可以改为提供行列表而不是单个字符串：
+JSON 并不便于写长字符串，因此 Calcite 支持另一种语法。如果创建视图是一个很长的 SQL ，可以改为提供<u>行列表</u>而不是<u>单个字符串</u>：
 
 ```java
 {
@@ -412,7 +412,7 @@ public CsvTable create(SchemaPlus schema, String name,
 }
 ```
 
-实现自定义表通常是实现自定义模式的更简单的替代方法。这两种方法最终可能会创建 `Table` 接口的类似实现，对于自定义表，您不需要实现元数据发现。`CsvTableFactory` 创建一个 `CsvScannableTable`，就像 `CsvSchema` 一样，但表实现不会扫描文件系统以查找 `.csv` 文件。
+实现自定义表通常是实现自定义 Schema 更简单的替代方法。这两种方法最终可能会创建 `Table` 接口的类似实现，对于自定义表，您不需要实现**<u>元数据发现</u>**。`CsvTableFactory` 创建一个 `CsvScannableTable`，就像 `CsvSchema` 一样，但<u>**表实现**</u>不会扫描文件系统以查找 `.csv` 文件。
 
 自定义表需要模型文件的作者做更多的工作（作者需要明确指定每个表及其文件），但也给作者更多的控制权（例如，为每个表提供不同的参数）。
 
@@ -558,7 +558,7 @@ Calcite 确实使用成本模型。成本模型决定最终使用哪个计划，
 
 ## JDBC 适配器
 
-JDBC 适配器将 JDBC 数据源中的 Schema 映射为 Calcite Schema。例如，这个 Schema 从 MySQL foodmart 数据库中读取：
+JDBC 适配器将 JDBC 数据源中的 Schema 映射为 ==Calcite Schema==。例如，这个 Schema 从 MySQL foodmart 数据库中读取：
 
 ```json
 {
@@ -645,7 +645,7 @@ JDBC 适配器将 JDBC 数据源中的 Schema 映射为 Calcite Schema。例如�
 
 ## 后续话题
 
-还有许多扩展 Calcite 的方法没在本教程中描述。[适配器规范](https://calcite.apache.org/docs/adapter.html)描述了所涉及的 API。
+还有许多扩展 Calcite 的方法本教程没描述。[适配器规范](https://calcite.apache.org/docs/adapter.html)描述了所涉及的 API。
 
 # 代数
 
