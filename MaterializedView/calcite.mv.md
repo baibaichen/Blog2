@@ -1356,6 +1356,32 @@ private RelSubset registerImpl(RelNode rel, RelSet set)
 5. 强制重新计算当前 RelNode 对应 RelSubset 的 importance；
 6. 如果这个 RelSubset 是新建的，会再触发一次 `fireRules()` 方法（会先对 RelNode 触发一次），遍历找到所有可以 match 的 Rule，对每个 Rule 都会创建一个 VolcanoRuleMatch 对象（会记录 RelNode、RelOptRuleOperand 等信息，RelOptRuleOperand 中又会记录 Rule 的信息），并将这个 VolcanoRuleMatch 添加到对应的 RuleQueue 中（就是前面图中的那个 RuleQueue）。
 
+## 数据读取相关
+
+### `Table`
+
+创建 `Table` 的典型方式是，当 Calcite 询问用户定义的 Schema，以验证出现在 SQL 查询中的名称时。Calcite 通过调用 **Connection** 上的 **Root Schema** 的 `Schema.getSubSchema(String)` 来找到 **Schema**，然后通过调用 `Schema.getTable(String)` 获取一个表。
+
+注意，`Table` 不知道自己的名称。事实上，一个 `Table` 可能在多个名称下或在多个 Schema 下被多次使用。与 UNIX 文件系统中的 ==i-node== 概念进行比较。
+
+一个特定的表实例也可以实现 `Wrapper`，以提供对子对象的访问。
+
+`AbstractTable` 用于实现 Table 的抽象基类。如果子类的表可能包含汇总值，则子类应覆盖 `isRolledUp` 和 `Table.rolledUpColumnValidInsideAgg(String, SqlCall, SqlNode, CalciteConnectionConfig)`。 验证器使用此信息来检查这些列的非法使用。
+
+`JBDCTable` 从 JDBC 连接的表中获取数据的可查询对象。然而，我们不会读取整个表。这里的思路是通过应用 `Queryable.where(org.apache.calcite.linq4j.function.Predicate2)` 等 `Queryable` 运算符，将其用作查询的构建块。然后，可以将结果查询转换为 SQL 查询，该查询可以在 JDBC 服务器上高效执行。
+
+### `TableScan`
+
+返回  <u>`Table`</u> 内容的关系运算符。
+
+### `RelOptTable`
+
+表示 `RelOptSchema` 中的关系数据集。具有描述和实现自身的方法。
+
+### `RelOptSchema`
+
+`RelOptSchema` 是一组 RelOptTable 对象。
+
 # 其他有趣的 issue
 
 ## [[CALCITE-707]](https://issues.apache.org/jira/browse/CALCITE-707) Add "server" module, with built-in support for simple DDL statements
@@ -1411,3 +1437,18 @@ The default parser in core does not contain DDL. We do not want to impose our DD
 >
 > We will need a lot of sample queries. If you are able to contribute sample queries for particular dialects, please discuss in the comments section. It would be good if the sample queries are based on a familiar schema (e.g. scott or foodmart) but we can be flexible about this.
 
+##  [[CALCITE-3923]](https://issues.apache.org/jira/browse/CALCITE-3923) Refactor how planner rules are parameterized
+
+> People often want different variants of planner rules. An example is `FilterJoinRule`, which has a 'boolean smart’ parameter, a predicate (which returns whether to pull up filter conditions), operands (which determine the precise sub-classes of `RelNode` that the rule should match) and a `RelBuilderFactory` (which controls the type of `RelNode` created by this rule).
+>
+> Suppose you have an instance of `FilterJoinRule` and you want to change `smart` from true to false. The `smart` parameter is immutable (good!) but you can’t easily create a clone of the rule because you don’t know the values of the other parameters. Your instance might even be (unbeknownst to you) a sub-class with extra parameters and a private constructor.
+>
+> So, my proposal is to put all of the config information of a `RelOptRule` into a single `config` parameter that contains all relevant properties. Each sub-class of `RelOptRule` would have one constructor with just a ‘config’ parameter. Each config knows which sub-class of `RelOptRule` to create. Therefore it is easy to copy a config, change one or more properties, and create a new rule instance.
+>
+> Adding a property to a rule’s config does not require us to add or deprecate any constructors.
+>
+> The operands are part of the config, so if you have a rule that matches a `EnumerableFilter` on an `EnumerableJoin` and you want to make it match an `EnumerableFilter` on an `EnumerableNestedLoopJoin`, you can easily create one with one changed operand.
+>
+> The config is immutable and self-describing, so we can use it to automatically generate a unique description for each rule instance.
+>
+> (See the email thread [[DISCUSS\] Refactor how planner rules are parameterized](https://lists.apache.org/thread.html/rfdf6f9b7821988bdd92b0377e3d293443a6376f4773c4c658c891cf9%40).)
