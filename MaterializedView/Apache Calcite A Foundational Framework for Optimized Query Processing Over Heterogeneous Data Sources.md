@@ -113,20 +113,25 @@ Calcite 包含了一些常见的 traits，这些 traits描述了关系表达式�
 
 ## 5. 适配器
 
-一个适配器是一个架构模式，定义了 Calcite 是如何跟多种数据源交互，实现统一访问。图 3 描述了它的组件。本质上，一个适配器由一个 model、一个 schema 和一个 schema factory 构成。model 是一个数据源被访问的物理属性的描述。schema是在model中可以找到的数据定义（格式和布局）。数据本身物理上是通过tables访问的。Calcite的table接口定义在适配器中，能够读取数据，作为查询被执行。适配器也许会定义一系列规则，添加到planner中。例如，包含一些规则将各种逻辑关系表达式转为适配器约定（convention）的相应关系表达式。schema factory组件要求来自model的元数据信息来创建schema。
+一个适配器是一个结构模式，定义了 Calcite 如何和多种数据源交互，实现统一访问。图 3 描述了它的组件。本质上，一个适配器由一个 **model**、一个 **schema** 和一个 **schema factory** 构成。**model** 描述被访问数据源的物理属性。**schema** 是在 **model** 中可以找到的数据定义（格式和布局）。数据本身物理上是通过表访问的。Calcite 接口与适配器中定义的表连接，以便在执行查询时读取数据。适配器也许会定义一系列规则，并添加到 planner 中。例如，包含一些规则<u>将各种**逻辑关系表达式**转为**适配器调用约定**的相应**关系表达式**</u>。**Schema factory** 组件从 **model** 获取元数据信息来创建 **schema**。
+
+
 
 <p align="center">
  <img src="https://changbo.tech/blog/10fa9651/adapter_design.png" />
 图3 适配器设计
 </p>
+如第 4 节所述，Calcite 使用称为 **calling convention** 的 **physical trait** 来识别对应于特定数据库后端的关系运算符。<u>这些物理运算符在每个适配器中实现了底层表的访问路径</u>。当解析查询并转换为关系代数表达式时，将为每个表创建一个运算符，表示扫描该表上的数据，它是适配器必须实现的最小接口。如果适配器实现了**表扫描运算符**，Calcite 优化器就能够使用**客户端运算符**，比如 sorting，filtering 和 joins，在这些表上执行任意的 SQL 查询。
 
-在第四章节，已经讨论过，Calcite使用physical trait，即*calling convention*，来识别关系操作对应到特定的后端数据库。这些物理算子在每个适配器中实现了底层表的访问路径。当一个查询被解析，转为关系代数表达式，每个表会创建一个算子来表示在表上的scan操作，这是一个最小的接口，一个适配器必须实现。如果一个适配器实现了表的scan算子，这个Calcite优化器能够使用客户端侧的算子，比如sorting，filtering和joins，在这些表上来执行任意SQL的查询。
+这个**表扫描运算符**包含适配器向其后端数据库发出扫描所需的必要信息。为了扩展适配器提供的功能，Calcite 定义了一个**可枚举**的 **calling convention**。带有可枚举 **calling convention** 的关系运算符只是通过**迭代器接口**对元组进行操作。这种 **calling convention** 允许 Calcite 实现每个适配器后端可能不支持的运算符。例如，`EnumerableJoin` 运算符实现 `Join` 操作，从其子节点收集数据，并在需要的属性上进行 `Join` 操作。
 
-表的scan操作包含了适配器要求的必要的信息，将scan操作下发到后端数据库上。为了扩展适配器的功能，Calcite定义了一个*enumerable*的calling convention。带有enumerable calling convention的关系算子能够简化在元组上的操作，通过迭代器接口。这个calling convention允许Calcite实现的算子，不依赖每个适配的后端。例如，EnumerableJoin算子实现Join操作，通过从它的子节点中收集数据行，在需要的属性上进行join操作。
+对于只涉及表中一小部分数据的查询，让 Calcite 读取所有元组很低效。幸运的是，可以使用现有的基于规则的优化器，实现特定于适配器的优化规则。例如，假设查询涉及对表进行过滤和排序，可以在后端执行过滤的适配器可以实现匹配 `LogicalFilter` 的规则，并将其转换为适配器的 **calling convention**。该规则将 `LogicalFilter` 转换为另一个 `Filter` 的实例。新的 `Filter` 节点具有较低的成本，从而允许 Calcite 可以跨适配器来优化查询。
 
-这些查询仅仅是在表中的小数据集，enumerate（枚举）所有的元组，对于Calcite来说是非常低效的。幸运的是，相同的基于规则的优化器，能够被用于特定适配器规则的优化。例如，假设一个查询，涉及filtering和sorting。一个适配器能够在后端上执行filtering，需要实现一个规则，来匹配LogicalFilter，将它转为适配器的calling convention。这个规则将LogicalFilter转为另一个Filter实例。这个新的Filter节点（node)具有较低的关联成本，使得Calcite可以跨适配器来优化查询。
+使用适配器是一种强大的抽象，不仅支持对特定后端进行查询优化，而且支持跨多个后端进行查询优化。通过将所有可能的逻辑下推到每个后端，然后对结果数据执行连接和聚合，Calcite 能够回答涉及多个后端表的查询。实现适配器可以像提供**表扫描运算符**一样简单，也可以涉及许多高级优化的设计。**关系代数中表示的任何表达式都可以通过优化器规则下推到适配器**。
 
-使用适配器是一个强大的抽象，不仅可以针对特定后端进行查询优化，还可以跨多个后端。Calcite能够将查询涉及的多个后端上的表，将所有可能的逻辑下推到每个后端，然后在这个结果数据上执行joins和aggregations。实现一个适配器可以简单提供一个表scan算子或者涉及许多高级的优化设计。**在关系代数上的任意表达式都可以通过优化器规则下推到适配器**。
+> **==调用约定==**本质是表示可以在底层数据源执行的运算符。
+>
+> 这里本质是做各种下推？
 
 ## 6. 查询处理和优化
 
@@ -145,17 +150,17 @@ Calcite 包含了一些常见的 traits，这些 traits描述了关系表达式�
 
 例如，一个复杂用途的规则，看如下查询：
 
-```
+```SQL
 SELECT products.name, COUNT(*)
 FROM sales JOIN products USING (productId)
 WHERE sales.discount IS NOT NULL
 GROUP BY products.name
 ORDER BY COUNT(*) DESC;
 ```
-
-[![img](https://changbo.tech/blog/10fa9651/filterIntoJoin.png)](https://changbo.tech/blog/10fa9651/filterIntoJoin.png)
-
-图4 FilterIntoJoinRule应用
+<p align="center">
+ <img src="https://changbo.tech/blog/10fa9651/filterIntoJoin.png" />
+图4 FilterIntoJoinRule 应用
+</p>
 
 上述查询相应的关系代数表达式如图4所示。因为，Where仅仅作用在sales表上，我们可以在Join之前移动filter。这个优化能够极大减少查询执行的时间，因为我们不需要执行谓词没有匹配的行的Join操作。甚至，如果sales和products表都在同一个底层存储中，在Join前移动filter使得适配器将filter下推至底层。Calcite通过`FilterInoJoinRule`实现了这个优化，将filter节点和作为父节点的Join节点进行匹配，检测filter是否可以被join执行。这种优化方式，体现了Calcite优化方式的灵活性。
 
@@ -185,9 +190,9 @@ Calcite的providers接口可以允许数据处理系统将它们的元数据挂�
 - 用于尝试统一查询计划中的表达式的转换规则会触发；
 - 视图不需要准确地将查询中匹配的表达式进行替换，因为Calcite的重写算法可以创建部分重写，包含了用于计算所需表达式的额外操作，如带有剩余谓词条件的filters。
 
-第二个方法是基于栅格（*lattices*）[22]。一旦一个数据源被声明形成一个lattice，Calcite会将每个物化信息表示成一个*tile*，从而优化器可以使用它们来匹配进入的查询。一个方面，这个重写算法在用star schema组织的数据源上进行表达式匹配更加高效，通常用于OLAP应用。另一方面，它比视图替换更具限制性，因为它对底层模式施加了限制。
+第二个方法是基于 lattices[22]。一旦一个数据源被声明形成一个lattice，Calcite会将每个物化信息表示成一个*tile*，从而优化器可以使用它们来匹配进入的查询。一个方面，这个重写算法在用 star schema 组织的数据源上进行表达式匹配更加高效，通常用于 OLAP 应用。另一方面，它比视图替换更具限制性，因为它对底层模式施加了限制。
 
-## 7. 扩展Calcite
+## 7. 扩展 Calcite
 
 之前章节我们已经提到，Calcite不仅仅面向SQL处理进行定制。**实际上，Calcite提供了对SQL的扩展，来表达在其他数据抽象上的查询，比如半结构化、流式和地理空间的数据**。它的内部算子适配这些查询。除了对SQL的扩展，Calcite也包含了一种语言集成查询语言。我们将通过本章节来描述这些扩展，并提供一些示例。
 
@@ -323,7 +328,7 @@ JDBC适配器支持多个SQL方言，包括主流的RDBMS，比如PostgreSQL和M
 
 Calcite的未来工作聚焦于新特性的开发和适配器架构的扩展：
 
-- 强化Calcite设计，支持作为一个独立引擎来使用，要求**支持DDL，物化视图、索引和约束**；
+- 强化 Calcite 设计，支持作为一个独立引擎来使用，要求**支持DDL，物化视图、索引和约束**；
 - **继续改进planner的设计和灵活性，包括使它更加模块化，允许用户通过Calcite为执行器提供planner程序（规则集合或组织到各个计划阶段）**；
 - **将新的参数[53]纳入优化器设计**；
 - 支持SQL命令、函数和工具的扩展，**包括OpenGIS的完全兼容**；

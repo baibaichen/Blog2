@@ -1382,6 +1382,32 @@ private RelSubset registerImpl(RelNode rel, RelSet set)
 
 `RelOptSchema` 是一组 RelOptTable 对象。
 
+<img src='https://g.gravizo.com/svg?
+digraph G { 
+  rankdir=BT  
+  CatalogReader -> RelOptSchema [style=dashed]
+  CatalogReader -> SqlValidatorCatalogReader [style=dashed]
+  CatalogReader -> SqlOperatorTable [style=dashed]
+  CalciteCatalogReader -> CatalogReader 
+  CalciteCatalogReader -> CalciteSchema [dir=both, arrowtail=odiamond]
+  {
+      rank = same
+      CalciteCatalogReader
+      CalciteSchema
+  }  
+  PreparingTable -> RelOptTable [style=dashed]
+  PreparingTable -> SqlValidatorTable [style=dashed]
+  RelOptTableImpl->AbstractPreparingTable-> PreparingTable  
+  CatalogReader -> PreparingTable [dir=both, arrowtail=odiamond label=getTableForMember  style=dotted]
+  {
+      rank = same
+      CatalogReader
+      PreparingTable
+  }
+  CalciteSchema -> Schema -> Table  [dir=both, arrowtail=odiamond]  
+  Table -> PreparingTable [dir=both, arrowtail=odiamond]
+}'>
+
 # 其他有趣的 issue
 
 ## [[CALCITE-707]](https://issues.apache.org/jira/browse/CALCITE-707) Add "server" module, with built-in support for simple DDL statements
