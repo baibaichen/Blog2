@@ -1376,6 +1376,8 @@ private RelSubset registerImpl(RelNode rel, RelSet set)
 
 表示 `RelOptSchema` 中的关系数据集。具有描述和实现自身的方法。
 
+!translating a table to relational expression!
+
 ### `RelOptSchema`
 
 `RelOptSchema` 是一组 RelOptTable 对象。
