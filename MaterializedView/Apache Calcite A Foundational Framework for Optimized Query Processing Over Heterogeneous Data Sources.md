@@ -70,7 +70,7 @@ Calcite包含很多构成典型数据库管理系统的部分。然而，它跳�
 
 - 一些支持 SQL 查询的系统，没有或有限的查询优化。例如，Hive 和 Spark 早期就提供SQL支持，但不包含优化器。针对这样的场景，一旦查询已经被优化，Calcite 能够再次将关系算子树转为 SQL。这样的特性，可以使得 Calcite 可以独立运行在任何有 SQL 但没有优化器的数据管理系统之上。
 
-- Calcite 的架构不仅仅专为优化SQL查询。通常，数据处理系统针对它们自己的查询语言使用自己的解析。Calcite也能够有助于优化这些查询。事实上，Calcite允许算子树通过直接实例化来构建，使得构建变得更加容易。有一种是可以使用内置的relational expressions builder接口。例如，假设我们想使用expression builder来表达如下Pig[41]的脚本。
+- Calcite 的架构不仅仅专为优化SQL查询。通常，数据处理系统针对它们自己的查询语言使用自己的解析。Calcite也能够有助于优化这些查询。事实上，Calcite允许算子树通过直接实例化来构建，使得构建变得更加容易。有一种是可以使用内置的 relational expressions builder 接口。例如，假设我们想使用 expression builder 来表达如下 Pig[41] 的脚本。
 
   ```
   emp = LOAD 'empolyee_data' AS (deptno, sal);
@@ -94,7 +94,7 @@ Calcite包含很多构成典型数据库管理系统的部分。然而，它跳�
 
 ## 4. 查询代数
 
-**Operators**。关系代数[11]是 Calcite 的核心。除了表达常见的数据操作的算子之外，例如 `filter`，`project`，`join` 等，Calcite 还包含一些额外的操作，来满足不同的需求，例如简洁地表达复杂的操作和高效地识别优化的时机。例如，针对OLAP，决策制定和流式应用，使用 window 定义来表达复杂分析函数，如数量在一个时间周期或数据行数上的移动平均数，是很常见的。因此，Calcite 引入了*window* 算子来封装window定义，即上下边界、分区等，以及在每个窗口内执行聚合函数。
+**Operators**。关系代数[11]是 Calcite 的核心。除了表达常见的数据操作的算子之外，例如 `filter`，`project`，`join` 等，Calcite 还包含一些额外的操作，来满足不同的需求，例如简洁地表达复杂的操作和高效地识别优化的时机。例如，针对 OLAP，决策制定和流式应用，使用 window 定义来表达复杂分析函数，如数量在一个时间周期或数据行数上的移动平均数，是很常见的。因此，Calcite 引入了*window* 算子来封装window定义，即上下边界、分区等，以及在每个窗口内执行聚合函数。
 
 **Traits**。Calcite 没有使用不同的实体来表示逻辑和物理算子，而是通过使用 *traits* 关联一个算子，来描述它的物理属性。这些 traits 有助于优化器评估不同可选算子的成本。改变 trait 的值，并不是改变正在评估的逻辑表达式，即给定的算子输出的行还是一样的。
 
@@ -104,7 +104,7 @@ Calcite 包含了一些常见的 traits，这些 traits描述了关系表达式�
 
 除了这些属性，Calcite 的重要特性之一就是 **Calling convention** 的 trait。本质上，这个 trait 表明了该表达式将在相应的数据处理系统中执行。包含 **Calling convention** 的 trait，使得 Calcite 达到透明优化查询的目标，这些查询也许会横跨不同的引擎，即 **Calling convention** 将会被视为任何其他物理属性。
 
-例如，考虑将 MySQL 中的 Products 表连接到 Splunk 中的 Orders 表（参见图 2）。 最初，订单的扫描在 splunk 约定中进行，产品的扫描在 jdbc-mysql 约定中进行。 这些表必须在其各自的引擎内进行扫描。 连接符合逻辑约定，这意味着尚未选择任何实现。 此外，图 2 中的 SQL 查询包含一个过滤器（where 子句），它由特定于适配器的规则推送到 splunk（参见第 5 节）。 一种可能的实现是使用 Apache Spark 作为外部引擎：join 转换为 spark 约定，其输入是从 jdbc-mysql 和 splunk 到 spark 约定的转换器。 但是有一个更有效的实现：利用 Splunk 可以通过 ODBC 对 MySQL 执行查找的事实，规划器规则通过 splunk-to-spark 转换器推送连接，现在连接采用 splunk 约定，在 Splunk 引擎内部运行。
+例如，考虑将 MySQL 中的 Products 表连接到 Splunk 中的 Orders 表（参见图 2）。 最初，订单的扫描在 splunk 约定中进行，产品的扫描在 jdbc-mysql 约定中进行。 这些表必须在其各自的引擎内进行扫描。 连接符合**==逻辑约定==**，这意味着尚未选择任何实现。 此外，图 2 中的 SQL 查询包含一个过滤器（where 子句），它由特定于适配器的规则推送到 splunk（参见第 5 节）。 一种可能的实现是使用 Apache Spark 作为外部引擎：join 转换为 spark 约定，其输入是从 jdbc-mysql 和 splunk 到 spark 约定的转换器。 但是有一个更有效的实现：利用 Splunk 可以通过 ODBC 对 MySQL 执行查找的事实，规划器规则通过 splunk-to-spark 转换器推送连接，现在连接采用 splunk 约定，在 Splunk 引擎内部运行。
 
 <p align="center">
  <img src="https://changbo.tech/blog/10fa9651/optimization_process.png" />
@@ -113,7 +113,7 @@ Calcite 包含了一些常见的 traits，这些 traits描述了关系表达式�
 
 ## 5. 适配器
 
-一个适配器是一个结构模式，定义了 Calcite 如何和多种数据源交互，实现统一访问。图 3 描述了它的组件。本质上，一个适配器由一个 **model**、一个 **schema** 和一个 **schema factory** 构成。**model** 描述被访问数据源的物理属性。**schema** 是在 **model** 中可以找到的数据定义（格式和布局）。数据本身物理上是通过表访问的。Calcite 接口与适配器中定义的表连接，以便在执行查询时读取数据。适配器也许会定义一系列规则，并添加到 planner 中。例如，包含一些规则<u>将各种**逻辑关系表达式**转为**适配器调用约定**的相应**关系表达式**</u>。**Schema factory** 组件从 **model** 获取元数据信息来创建 **schema**。
+适配器是一个**结构模式**，定义了 Calcite 如何和多种数据源交互，实现统一访问。图 3 描述了它的组件。本质上，一个适配器由一个 **model**、一个 **schema** 和一个 **schema factory** 构成。**model** 描述被访问数据源的物理属性。**schema** 是在 **model** 中可以找到的数据定义（格式和布局）。数据本身物理上是通过表访问。Calcite 接口与适配器中定义的表连接，以便在执行查询时读取数据。适配器也许会定义一系列规则，并添加到 planner 中。例如，包含一些规则<u>将各种**逻辑关系表达式**转为**适配器调用约定**的相应**关系表达式**</u>。**Schema factory** 组件从 **model** 获取元数据信息来创建 **schema**。
 
 
 

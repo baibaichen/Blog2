@@ -137,7 +137,7 @@ $ ./sqlline
 sqlline> !connect jdbc:calcite:model=src/test/resources/model.json admin admin
 ```
 
-（如果您运行的是 Windows，则命令为 sqlline.bat。）
+（如果您运行的是 Windows，则命令为 sqlline.bat）
 
 执行元数据查询：
 
@@ -225,7 +225,7 @@ Calcite 有许多其他 SQL 特性。 我们没有时间在这里介绍它们。
 }
 ```
 
-该模型定义了一个名为 `SALES` 的 Schema，它由插件类 [`org.apache.calcite.adapter.csv.CsvSchemaFactory`](https://github.com/apache/calcite/blob/master/example/csv/src/main/java/org/apache/calcite/adapter/csv/CsvSchemaFactory.java) 提供支持，该类是 calcite-example-csv 项目的一部分，并实现了 Calcite [`SchemaFactory`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/SchemaFactory.html) 接口，其 `create` 方法实例化一个模式，从模型文件中传入目录参数：
+该模型定义了一个名为 `SALES` 的 Schema，它由插件类 [`CsvSchemaFactory`](https://github.com/apache/calcite/blob/master/example/csv/src/main/java/org/apache/calcite/adapter/csv/CsvSchemaFactory.java) 提供支持，该类是 calcite-example-csv 项目的一部分，并实现了 Calcite [`SchemaFactory`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/SchemaFactory.html) 接口，其 `create` 方法实例化一个模式，从模型文件中传入目录参数：
 
 ```java
 public Schema create(SchemaPlus parentSchema, String name,
@@ -242,7 +242,7 @@ public Schema create(SchemaPlus parentSchema, String name,
 }
 ```
 
-模型驱动下，模式工厂实例化了一个名为 `SALES` 的 Schema。 该 Schema 是 [`org.apache.calcite.adapter.csv.CsvSchema`](https://github.com/apache/calcite/blob/master/example/csv/src/main/java/org/apache/calcite/adapter/csv/CsvSchema.java) 的一个实例，并实现了 Calcite [Schema 接口](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/Schema.html)。
+模型驱动下，模式工厂实例化了一个名为 `SALES` 的 Schema。 该 Schema 是 [`CsvSchema`](https://github.com/apache/calcite/blob/master/example/csv/src/main/java/org/apache/calcite/adapter/csv/CsvSchema.java) 的一个实例，并实现了 Calcite [Schema 接口](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/Schema.html)。
 
 Shcema 的工作是生成表的列表。它还可以列出子 schema 和**表函数**，但这些是高级功能，calcite-example-csv 不支持它们。表实现了 Calcite 的 [`Table` 接口](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/Table.html)。CsvSchema 生成的表是 [`CsvTable`](https://github.com/apache/calcite/blob/master/example/csv/src/main/java/org/apache/calcite/adapter/csv/CsvTable.java) 及其子类的实例。
 
@@ -300,9 +300,9 @@ private Table createTable(File file) {
 
 ## Schema 中的表和视图
 
-**注意**，我们不需要在模型中定义任何表； schema 自动生成表。除了自动创建的表之外，您还可以使用 Schema 的 `tables` 属性定义额外的表。
+注意，**我们不需要在模型中定义任何表**； schema 自动生成表。除了自动创建的表之外，您还可以使用 Schema 的 `tables` 属性定义额外的表。
 
-让我们看看如何创建一个重要且有用的表类型，即视图。当您编写查询时，视图看起来像一张表，但它不存储数据。它通过执行查询获得结果。在优划查询时，会展开视图，因此查询优化器通常可以执行优化，比如从 `SELECT` 子句中删除最终结果中没有使用的表达式。
+让我们看看如何创建视图，一个重要且有用的表类型。当您编写查询时，视图看起来像一张表，但它不存储数据。它通过执行查询获得结果。在优划查询时，会展开视图，因此查询优化器通常可以执行优化，比如从 `SELECT` 子句中删除最终结果中没有使用的表达式。
 
 这是定义视图的 Schema：
 
@@ -330,9 +330,7 @@ private Table createTable(File file) {
 }
 ```
 
-`type:'view'` 将 `FEMALE_EMPS` 标记为视图，而不是常规的表或者自定义的表。注意，视图定义中的单引号使用反斜杠转义，这是 JSON 的正常方式。
-
-JSON 并不便于写长字符串，因此 Calcite 支持另一种语法。如果创建视图是一个很长的 SQL ，可以改为提供<u>行列表</u>而不是<u>单个字符串</u>：
+`type:'view'` 将 `FEMALE_EMPS` 标记为视图，而不是常规的表或者自定义的表。注意，视图定义中的单引号使用反斜杠转义，这是 JSON 的正常方式。JSON 并不便于写长字符串，因此 Calcite 支持另一种语法。如果创建视图是一个很长的 SQL ，可以写成多行：
 
 ```java
 {
@@ -358,7 +356,7 @@ sqlline> SELECT e.name, d.name FROM female_emps AS e JOIN depts AS d on e.deptno
 
 ## 自定以表
 
-自定义表是由用户代码实现的表，不需要在自定义模式的中定义它们。在 `model-with-custom-table.json` 中有一个例子:
+自定义表是由用户代码实现的表，不需要在自定义 Schema 的中定义它们。在 `model-with-custom-table.json` 中有一个例子:
 
 ```json
 {
@@ -399,7 +397,7 @@ sqlline> SELECT empno, name FROM custom_table.emps;
 +--------+--------+
 ```
 
-这是一个常规 Schema，并包含一个由 [`org.apache.calcite.adapter.csv.CsvTableFactory`](https://github.com/apache/calcite/blob/master/example/csv/src/main/java/org/apache/calcite/adapter/csv/CsvTableFactory.java) 支持的自定义表，它实现了 Calcite [TableFactory](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/TableFactory.html) 接口。 它的 `create` 方法实例化一个 `CsvScannableTable`，`file` 参数从模型文件中传入：
+这是一个常规 Schema，并包含一个由 [`CsvTableFactory`](https://github.com/apache/calcite/blob/master/example/csv/src/main/java/org/apache/calcite/adapter/csv/CsvTableFactory.java) 支持的自定义表，它实现了 Calcite [TableFactory](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/TableFactory.html) 接口。 它的 `create` 方法实例化一个 `CsvScannableTable`，`file` 参数从模型文件中传入：
 
 ```java
 public CsvTable create(SchemaPlus schema, String name,
