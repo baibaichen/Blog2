@@ -1,4 +1,4 @@
-背景
+# 背景
 
 > Apache Calcite is a dynamic data management framework.
 >
@@ -1649,9 +1649,10 @@ JOIN CustomerDim AS c USING (customerId)
 - 扩展逻辑以过滤给定查询节点的相关 MV，因此该方法可随着 MV 数量的增长而扩展。
 - 使用联合运算符生成重写，例如，可以从 MV (year = 2014) 和查询 (not(year = 2014)) 部分回答给定的查询。如果存储了 MV，例如在 Driud 中，这种重写可能是有益的。与其他重写一样，是否最终使用重写的决定应该基于成本。
 
+## [CALCITE-3409：Add a method in RelOptMaterializations to allow registering UnifyRule](https://issues.apache.org/jira/browse/CALCITE-3409)
 
+since 1.28
 
----
 # 基本概念
 
 ## `RelNode`
@@ -2154,7 +2155,7 @@ The following is a list of available Avatica clients. Several describe themselve
 
 
 
-![](//www.plantuml.com/plantuml/png/ZPD1JuGm48Nl_8hnfeVz0ys6hDbus8E9ojLB0ozAKWOiK-F-UokbDCL5zyhxtkjCUJsCegsupXGtyeuE9FsvE9eMBBGhwTWpevQsPqMrXHPKeiLpBBTtHL9fv-7PfiX2d6KQ9vIbq9xvr09QpEc8vHCfVA5sWcS7U_RfISa76Im6RN7FpIi_1Ck91PQrMSrKqYD4AqgEcVVSZp85QrEtWcGxTODHvFbncUGYaynu2lcAzljmIMMPTiwPQxCehbbzJ5lbeiV_EZEAsxOyVT4JGAhrSw5ZMUbvPFpNqTQyO7H6YWR_ph9zzo4ogbNxnjf_G0gzzbBd0f3QIWmboEeLsRafOPzLqrEF8nsm2f9Qcps9NrY32u_Y06vSPxu1)
+![](http://www.plantuml.com/plantuml/png/ZPD1JuGm48Nl_8hnfeVz0ys6hDbus8E9ojLB0ozAKWOiK-F-UokbDCL5zyhxtkjCUJsCegsupXGtyeuE9FsvE9eMBBGhwTWpevQsPqMrXHPKeiLpBBTtHL9fv-7PfiX2d6KQ9vIbq9xvr09QpEc8vHCfVA5sWcS7U_RfISa76Im6RN7FpIi_1Ck91PQrMSrKqYD4AqgEcVVSZp85QrEtWcGxTODHvFbncUGYaynu2lcAzljmIMMPTiwPQxCehbbzJ5lbeiV_EZEAsxOyVT4JGAhrSw5ZMUbvPFpNqTQyO7H6YWR_ph9zzo4ogbNxnjf_G0gzzbBd0f3QIWmboEeLsRafOPzLqrEF8nsm2f9Qcps9NrY32u_Y06vSPxu1)
 
 <img src='https://g.gravizo.com/svg?
 digraph G {

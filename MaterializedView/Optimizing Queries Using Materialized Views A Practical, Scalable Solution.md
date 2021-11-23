@@ -6,7 +6,7 @@
 
 > Materialized views can provide massive improvements in query processing time, especially for aggregation queries over large tables. To realize this potential, the query optimizer must know how and when to exploit materialized views. This paper presents a fast and scalable algorithm for determining whether part or all of a query can be computed from materialized views and describes how it can be incorporated in transformation-based optimizers. The current version handles views composed of selections, joins and a final group-by. Optimization remains fully cost based, that is, a single “best” rewrite is not selected by heuristic rules but multiple rewrites are generated and the optimizer chooses the best alternative in the normal way. Experimental results based on an implementation in Microsoft SQL Server show outstanding performance and scalability. Optimization time increases slowly with the number of views but remains low even up to a thousand
 
-物化视图可以大大地缩短查询处理时间，尤其是对于大数据表上的聚合查询。为了实现这种潜力，查询优化器必须知道如何以及何时利用物化视图。本文提出了一快速且可扩展的算法，用于确定是否可以从物化视图完成部分或全部查询，并描述如何将其合并到基于**转换**的优化器中。当前版本处理由<u>选择</u>、<u>连接</u>和<u>最后的 `group by`</u> 组成的视图。还是基于成本优化，也就是说，启发式规则不会选择单个“最佳”重写，而是生成多个重写，优化器以正常方式选择最佳执行方案。基于在 Microsoft SQL Server 中实现的实验结果表明，该算法具有良好的性能和可扩展性。优化时间随着视图数量的增加而缓慢增加，即使有 1000 个视图，优化时间仍然维持在较低的水平。
+物化视图可以大大地缩短查询处理时间，尤其是对于大数据表上的聚合查询。为了实现这种潜力，查询优化器必须知道如何以及何时利用物化视图。本文提出了一快速且可扩展的算法，用于确定是否可以从物化视图完成部分或全部查询，并描述如何将其合并到基于**转换**的优化器中。当前版本处理由<u>`Select`</u>、<u>`Join`</u> 和<u>最后 `group by`</u> 组成的视图。并且基于成本优化，也就是说，启发式规则不会选择单个**最佳**重写，而是生成多个重写，优化器以正常方式选择最佳执行方案。基于在 Microsoft SQL Server 中实现的实验结果表明，该算法具有良好的性能和可扩展性。优化时间随着视图数量的增加而缓慢增加，即使有 1000 个视图，优化时间仍然维持在较低的水平。
 
 ## 1. 简介（Introduction）
 
