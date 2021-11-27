@@ -207,7 +207,7 @@ sqlline> select count(*) as c
 
 让我们列出所有表，你会看到更多的切片。 还有 `foodmart` 数据库里的表，系统表 `TABLES` 和 `COLUMNS`，以及 lattice 自身，显示为名为 `star` 的表。
 
-```
+```bash
 sqlline> !tables
 +-------------+-------------------------------+--------------+
 | TABLE_SCHEM | TABLE_NAME                    | TABLE_TYPE   |
@@ -238,17 +238,15 @@ sqlline> !tables
 >
 > We are working on a [data profiler](https://issues.apache.org/jira/browse/CALCITE-1616) to address this.
 
-选择要具体化那些切片的算法取决于大量统计数据。对于正在考虑物化的列（`a, b, c`）的每个组合，需要知道 `select count(distinct a, b, c) from star`。 因此，该算法在大量行和列的数据库上需要很长的时间。
+选择要具体化那些 Tile 的算法取决于大量统计数据。对于正在考虑物化的列（`a, b, c`）的每个组合，需要知道 `select count(distinct a, b, c) from star`。 因此，该算法在大量行和列的数据库上需要很长的时间。
 
 我们正在开发一个[数据分析器](https://issues.apache.org/jira/browse/CALCITE-1616)来解决这个问题。
 
 ## Lattice suggester
 
-If you have defined a lattice, Calcite will self-tune within that lattice. But what if you have not defined a lattice?
+如果您定义了一个 **lattice**，Calcite 将在 lattice 内自调整。但是如果你还没有定义 **lattice** 呢？使用 Lattice Suggester，它根据传入的查询构建 lattice。 创建一个 Schema 为 `"autoLattice": true` 的模型：
 
-Enter the Lattice Suggester, which builds lattices based on incoming queries. Create a model with a schema that has `"autoLattice": true`:
-
-```
+```json
 {
   "version": "1.0",
   "defaultSchema": "foodmart",
@@ -266,24 +264,20 @@ Enter the Lattice Suggester, which builds lattices based on incoming queries. Cr
 }
 ```
 
-This is a cut-down version of [hsqldb-foodmart-lattice-model.json](https://github.com/apache/calcite/blob/master/core/src/test/resources/hsqldb-foodmart-lattice-model.json)
+这是 [hsqldb-foodmart-lattice-model.json](https://github.com/apache/calcite/blob/master/core/src/test/resources/hsqldb-foodmart-lattice-model.json) 的简化版本。运行查询时，Calcite 将开始基于这些查询构建 lattice。每个 lattice 都基于一个特定的事实表。当它在事实表上看到更多查询时，它将演化 lattice，将更多的维度表加入到星型模型，并添加度量。然后每个 lattice 将根据数据和查询来优化自身。目标是创建一个相对较小但基于更常用属性和度量的汇总表（Tile）。 
 
-As you run queries, Calcite will start to build lattices based on those queries. Each lattice is based on a particular fact table. As it sees more queries on that fact table, it will evolve the lattice, joining more dimension tables to the star, and adding measures.
+该特性仍处于试验阶段，但有可能使数据库比以前更加“自调优”。
 
-Each lattice will then optimize itself based on both the data and the queries. The goal is to create summary tables (tiles) that are reasonably small but are based on more frequently used attributes and measures.
+## Further directions（未来的方向）
 
-This feature is still experimental, but has the potential to make databases more “self-tuning” than before.
+以下是一些尚未实施的想法：
 
-## Further directions
-
-Here are some ideas that have not yet been implemented:
-
-- The algorithm that builds tiles takes into account a log of past queries.
-- Materialized view manager sees incoming queries and builds tiles for them.
-- Materialized view manager drops tiles that are not actively used.
-- Lattice suggester adds lattices based on incoming queries, transfers tiles from existing lattices to new lattices, and drops lattices that are no longer being used.
-- Tiles that cover a horizontal slice of a table; and a rewrite algorithm that can answer a query by stitching together several tiles and going to the raw data to fill in the holes.
-- API to invalidate tiles, or horizontal slices of tiles, when the underlying data is changed.
+- 构建 Tile 的算法考虑历史查询。
+- 物化视图管理器查看传入的查询并为它们构建 Tile。
+- 物化视图管理器会丢弃未主动使用的 Tile。
+- **Lattice** 建议器根据传入的查询添加 Lattice，将 Tile 从现有的 lattice 转移到新 lattice，并删除不再使用的 lattice。
+- 包含部分数据的 Tile；以及一种重写算法，该算法可以通过将几个 **Tile** 拼接在一起，并使用原始数据来填补空缺来回答查询。
+- 当底层数据发生变化时，使 Tile 整体或部分失效的 API。
 
 ## References
 
@@ -329,13 +323,10 @@ For details, see the [lattices documentation](https://calcite.apache.org/docs/la
 
 ### View-based query rewriting
 
-> View-based query rewriting aims to take an input query which can be answered using a preexisting view and rewrite the query to make use of the view. 
+> View-based query rewriting aims to take an input query which can be answered using a preexisting view and rewrite the query to make use of the view. Currently Calcite has two implementations of view-based query rewriting.
 >
-> Currently Calcite has two implementations of view-based query rewriting.
 
-基于视图的查询重写是当输入查询可以使用预先存在的视图进行回答时，重写改查询以利用该视图。
-
-目前，Calcite 有两种基于视图的查询重写的实现。
+基于视图的查询重写是当输入查询可以使用预先存在的视图进行回答时，重写改查询以利用该视图。目前，Calcite 有两种基于视图的查询重写的实现。
 
 #### Substitution via rules transformation
 
@@ -1046,7 +1037,7 @@ name: empno
 
 ### Function
 
-Occurs within `root.schemas.functions`.
+发生在 `root.schemas.functions` 中
 
 #### JSON
 
@@ -1179,27 +1170,11 @@ tiles:
   - agg: 'count'
 ```
 
-> `name` (required string) is the name of this lattice.
->
-> `sql` (required string, or list of strings that will be concatenated as a multi-line string) is the SQL statement that defines the fact table, dimension tables, and join paths for this lattice.
->
-> `auto` (optional boolean, default true) is whether to materialize tiles on need as queries are executed.
->
-> `algorithm` (optional boolean, default false) is whether to use an optimization algorithm to suggest and populate an initial set of tiles.
->
-> `algorithmMaxMillis` (optional long, default -1, meaning no limit) is the maximum number of milliseconds for which to run the algorithm. After this point, takes the best result the algorithm has come up with so far.
->
-> `rowCountEstimate` (optional double, default 1000.0) estimated number of rows in the lattice
->
-> `tiles` (optional list of [Tile](http://calcite.apache.org/docs/model.html#tile) elements) is a list of materialized aggregates to create up front.
->
-> `defaultMeasures` (optional list of [Measure](http://calcite.apache.org/docs/model.html#measure) elements) is a list of measures that a tile should have by default. Any tile defined in `tiles` can still define its own measures, including measures not on this list. If not specified, the default list of measures is just ‘count(*)’:
-
 `name`（必需的字符串）是 **lattice** 的名字。
 
 `sql`（必需的字符串，或为字符串列表，可连接为多行字符串）为此 **lattice** 定义<u>事实表</u>、<u>维度表</u>和<u>关联关系</u>的 SQL 语句。
 
-`auto`（可选布尔值，默认为 true）是在执行查询时是否根据需要**物化切片**。
+`auto`（可选布尔值，默认为 true）是在执行查询时是否根据需要物化 `Tile`。
 
 `algorithm`（可选布尔值，默认为 false）是是否使用优化算法来建议和填充<u>初始的物化视图集</u>。
 
@@ -1207,21 +1182,9 @@ tiles:
 
 `rowCountEstimate`（可选double，默认1000.0）估计 **lattice** 中的行数
 
-`tiles`（[Tile](http://calcite.apache.org/docs/model.html#tile) 元素的可选列表）是一个预先创建的物化聚合列表。
+`tiles`（[Tile](#Tile) 元素的可选列表）是一个预先创建的物化聚合列表。
 
 `defaultMeasures`（[Measure](http://calcite.apache.org/docs/model.html#measure) 元素的可选列表）是切片默认应具有的度量列表。`tiles` 中定义的任何 tile 仍然可以定义自己的度量，包括不在此列表中的度量。如果没有指定，默认的度量列表就是‘count(*)’：
-
-#### JSON
-
-```
-[ { name: 'count' } ]
-```
-
-#### YAML
-
-```
-name: count
-```
 
 `statisticProvider` (optional name of a class that implements [org.apache.calcite.materialize.LatticeStatisticProvider](http://calcite.apache.org/javadocAggregate/org/apache/calcite/materialize/LatticeStatisticProvider.html)) provides estimates of the number of distinct values in each column.
 
@@ -1239,7 +1202,7 @@ See also: [Lattices](http://calcite.apache.org/docs/lattice.html).
 
 Occurs within `root.schemas.lattices.tiles`.
 
-```
+```json
 {
   dimensions: [ 'the_year', ['t', 'quarter'] ],
   measures: [ {
@@ -1256,7 +1219,7 @@ Occurs within `root.schemas.lattices.tiles`.
 
 #### YAML
 
-```
+```yaml
 dimensions: [ 'the_year', ['t', 'quarter'] ]
 measures:
 - agg: sum
@@ -1266,13 +1229,13 @@ measures:
 - agg: count
 ```
 
-`dimensions` (list of strings or string lists, required, but may be empty) defines the dimensionality of this tile. Each dimension is a column from the lattice, like a `GROUP BY` clause. Each element can be either a string (the unique label of the column within the lattice) or a string list (a pair consisting of a table alias and a column name).
+`dimensions`（<u>**list of strings or string lists**</u>，必填，但可能为空）定义了此 `Tile` 的维度。每个维度都是 lattice 中的一列，就像一个 `GROUP BY` 子句。每个元素可以是一个字符串（lattice 内列的唯一标签）或一个字符串列表（由表别名和列名组成）。 
 
-`measures` (optional list of [Measure](http://calcite.apache.org/docs/model.html#measure) elements) is a list of aggregate functions applied to arguments. If not specified, uses the lattice’s default measure list.
+`measures`（[Measure](#Measure) 元素的可选列表）是**应用于参数的聚合函数列表**。如果未指定，则使用 `Lattice` 的默认度量列表。
 
 ### Measure
 
-Occurs within `root.schemas.lattices.defaultMeasures` and `root.schemas.lattices.tiles.measures`.
+发生在 `root.schemas.lattices.defaultMeasures` 和 `root.schemas.lattices.tiles.measures` 中。
 
 #### JSON
 
@@ -1290,9 +1253,9 @@ agg: sum
 args: unit_sales
 ```
 
-`agg` is the name of an aggregate function (usually ‘count’, ‘sum’, ‘min’, ‘max’).
+`agg` 聚合函数的名称（通常是 `count`、`sum`、`min`、`max`）。
 
-`args` (optional) is a column label (string), or list of zero or more column labels
+`args` (可选)  列标签（字符串），或零个或多个列标签的列表
 
 Valid values are:
 
@@ -1310,16 +1273,16 @@ Unlike lattice dimensions, measures can not be specified in qualified format, {@
 
 在查询端，规则匹配 `Project` 节点链或 `Aggregate` 和 `Join` 节点。这些节点的子计划必须由以下一个或多个算子组成：`TableScan`、`Project`、`Filter` 和 `Join`。
 
-对于每个加入MV，我们需要检查以下内容：
+对于每个 **Join MV**（Table Index），我们需要检查以下内容：
 
-1. 以<u>视图中的 Join 运算符为根的计划</u>生成以<u>查询中的 Join 运算符为根的计划</u>所需的所有行。
+1. 以<u>视图中的 Join 运算符为根的计划</u>**生成**以<u>查询中的 Join 运算符为根的计划</u>所需的**所有行**。=> 数据是否满足？
 2. <u>补偿谓词</u>所需的所有列（即需要在视图上强制执行的谓词）在视图输出中可用。
 3. 所有**输出表达式**都可以从视图的输出中计算出来。
 4. 所有输出行都以正确的重复因子出现。我们可能依赖现有的**唯一键 - 外键**关系来提取该信息。
 
-反过来，对于每个聚合 MV，我们需要检查以下内容：
+反过来，对于每个**聚合 MV**（Layout，Aggregate Index），我们需要检查以下内容：
 
-1. 以<u>视图中的聚合运算符为根的计划</u>生成以<u>查询中的聚合运算符为根的计划</u>所需的所有行。
+1. 以<u>视图中的聚合运算符为根的计划</u>**生成**以<u>查询中的聚合运算符为根的计划</u>所需的**所有行**。
 2. 补偿谓词所需的所有列，即需要在视图上强制执行的谓词，在视图输出中可用。
 3. **查询中的分组列是视图中分组列的子集**。
 4. **视图输出**中提供了执行进一步分组所需的所有列。
@@ -1329,14 +1292,37 @@ Unlike lattice dimensions, measures can not be specified in qualified format, {@
 
 工作步骤：
 
-1. Explore query plan to recognize whether preconditions to  try to generate a rewriting are met（探索查询计划以识别是否满足尝试生成重写的先决条件）
-2. Initialize all query related auxiliary data structures that will be used throughout query rewriting process Generate query table references（初始化将在整个查询重写过程中使用的所有查询相关的辅助数据结构生成查询表引用）
-3. We iterate through all applicable materializations trying to rewrite the given query（我们遍历所有适用的物化尝试重写给定的查询）
-   1. View checks before proceeding
-   2. Initialize all query related auxiliary data structures that will be used throughout query rewriting process Extract view predicates
+1. 检查查询计划是否满足视图重写的前提条件
+
+2. 初始化所有查询相关的辅助数据结构，我们将在整个查询重写过程中使用它们
+   1. 提取查询的表引用
+   2. 提取查询谓词
+
+3. 遍历所有适用的物化，尝试重写给定的查询
+   1. 提取物化视图的表引用
+   
+   2. 过滤不能用的物化视图。
+   
+      > - [ ] TODO：目前只检查物化视图是否包含查询使用的表，可以有更细粒度的方式过滤不相关物化视图。
+   
+   3. <u>View checks before proceeding</u>
+   
+   4. Initialize all query related auxiliary data structures that will be used throughout query rewriting process 
+   
+      1. 提取物化视图谓词
+      2. 提取物化视图的表
+   
+   > 我们尝试补偿，例如，对于连接查询，可能可以将缺失的表与视图连接起来以计算结果。 支持的两种情况：查询表是视图表的子集（我们需要检查它们是否是基数保留连接），或者视图表是查询表的子集（如果可能，通过连接添加额外的表）
+   
 4. We map every table in the query to a table with the same qualified name (all query tables are contained in the view, thus this is equivalent to mapping every table in the query to a view table).
+   
+   >  我们将查询中的每个表映射到具有相同限定名称的表(所有查询表都包含在视图中，因此这相当于将查询中的每个表映射到一个视图表)。
+   
    1. Compute compensation predicates, i.e., predicates that need to be enforced over the view to retain query semantics. The resulting  predicates are expressed using {@link RexTableInputRef} over the query. First, to establish relationship, we swap column references of the view predicates to point to query tables and compute equivalence classes.
-   2. 
+   
+      > 计算补偿谓词，即<u>要在视图上强制执行</u>以<u>保留查询语义</u>的谓词。在查询上使用 `RexTableInputRef}` 表示 **结果谓词**。 首先，为了建立关系，我们交换<u>视图上谓词的列引用</u>以指向查询表并计算等价类。
+   
+5. If a table is used multiple times, we will create multiple mappings, and we will try to rewrite the query using each of the mappings.  Then, we will try to map every source table (query) to a target table (view), and if we are successful, we will try to create compensation predicates to filter the view results further (if needed).
 
 ## 定义
 
@@ -1365,3 +1351,39 @@ double rowCount = rel.metadata(RowCount.class).rowCount();
 ```
 
  
+
+```
+@startuml
+!theme mars
+if(materializations.nonEmpty()?) then(empty RelOptMaterialization)
+  stop
+endif
+if (isValidPlan()?) then (不满足视图重写的前提条件)
+  stop
+endif
+
+partition Initialize {
+  :生成查询表引用;
+  :提取查询谓词;
+  :提取查询等价类;
+}
+
+partition rewrite {
+  repeat
+  if (isValidPlan(viewPlan)?) then (yes)
+    :提取物化视图谓词;
+    :提取物化视图的表;
+    if (是否需要补偿?) then (yes)
+  :处理所有\n绘制任务;
+else (no)
+  :仅处理
+  __时序图__ 和 __活动__ 图;
+endif
+   endif
+  repeat while(more?)
+}
+
+:行为;
+@enduml
+```
+

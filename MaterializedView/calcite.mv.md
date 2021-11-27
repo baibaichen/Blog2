@@ -1562,7 +1562,7 @@ result = SELECT a, c FROM mv WHERE b = 4
 
 识别并替换 `queryRel` 中的 `StarTable`。
 
-- 可能没有 `StarTable` 匹配。 没关系，但是识别的物化模式不会那么丰富。
+- 可能没有 `StarTable` 匹配。没关系，但是识别的物化模式不会那么丰富。
 - 可能有多个 StarTable 匹配。**TBD**：我们应该选择最好的（不管这意味着什么），还是全部？
 
 ###   `RelOptMaterialization`：记录由特定表物化的特定查询
@@ -1597,13 +1597,27 @@ JOIN CustomerDim AS c USING (customerId)
 - **推荐**：==代理==可以根据星型模式（例如表和列基数）的静态分析以及过去使用的统计信息推荐要创建的**物化视图**。
 - **视图匹配**：优化器使用 **lattice** 来识别可以满足查询的物化查询。没有 latttice，这样的空间会大得多，因为优化器必须考虑许多连接排列。
 
+## 2014-09-03 [CALCITE-402: Lattice should create materializations on demand](https://issues.apache.org/jira/browse/CALCITE-402)
+
+Lattice should create materializations (in memory) the first time it is asked for them, and use the same materialization for subsequent queries.
+
+Enabled by new connection parameter "createMaterializations".
+
+### `AggregateStarTableRule`
+
+在 `StarTable.StarTableScan` 之上匹配 `AggregateRelBase` 的优化器规则。此模式表明可能存在聚合表。 该规则要求**星表**提供所需聚合级别的聚合表。
+
+## 2014-09-13 [CALCITE-406: Add tile and measure elements to lattice model element](https://issues.apache.org/jira/browse/CALCITE-406)
+
+将 `Tile` 和 `Measure` 元素添加到 lattice 模型元素，加载模型（在连接初始化）时加载 lattice 的预定义 `Tile`。
+
 ## [CALCITE-1389: Add rule to perform rewriting of queries using materialized views with joins](https://issues.apache.org/jira/browse/CALCITE-1389)
 
-第一次按 Optimizing Queries Using Materialized Views: A Practical, Scalable Solution 这篇 paper 来实现
+第一次按 [Optimizing Queries Using Materialized Views: A Practical, Scalable Solution]() 这篇 paper 来实现
 
 > 自由形式的物化视图的问题在于它们往往有很多。这篇论文旨在解决这个问题，**lattice** 也是如此。但是 lattice 更好：它们可以收集统计数据，并建议创建不存在但可能有用的视图。
 >
-> **Lattice** 本质上与论文中描述的 ==SPJ 视图==相同，当然，今天需要手工创建它们。我认为对于 DW 风格的工作负载，手工创建格子比手工创建 MV 实用得多。这不仅是为了让优化器的工作更轻松，也是为了让 DBA 的工作更轻松。MV 并不容易操作管理。无论如何，如果人们手工创建了很多 MV，我的想法是拥有一种自动创建 lattice 的算法，从而降低检查所有这些 MV 的成本。
+> **Lattice** 本质上与论文中描述的 ==SPJ 视图==相同，当然，今天需要手工创建它们。我认为对于 DW 风格的工作负载，手工创建 lattice 比手工创建 MV 实用得多。这不仅是为了让优化器的工作更轻松，也是为了让 DBA 的工作更轻松。MV 并不容易操作管理。无论如何，如果人们手工创建了很多 MV，我的想法是拥有一种自动创建 lattice 的算法，从而降低检查所有这些 MV 的成本。
 >
 > 在我看来，主要的缺失部分是一种算法，该算法在给定一组 MV 的情况下，创建一组最佳的 lattice，使得每个 MV 都属于一个格子。
 
@@ -1968,12 +1982,25 @@ The default parser in core does not contain DDL. We do not want to impose our DD
 3. Add Quidem test in server module; QuidemTest is now abstract, and has sub-class CoreQuidemTest in core module.
 4. Add class ColumnStrategy, which describes how a column is populated.
 5. All CREATE commands have IF NOT EXISTS (except CREATE VIEW, which has OR REPLACE), and all DROP commands have IF EXISTS.
-
 6. Add SqlDdl as base class for SqlCreate and SqlDrop. Add SqlOperator as first argument to SqlCreate and SqlDrop constructors, and deprecate
    previous constructors. 
 7. Ensure that collations deduced for Calc are sorted.
-
 8. Add Static.cons as short-hand for ConsList.of.
+
+##  [[CALCITE-1216]](https://issues.apache.org/jira/browse/CALCITE-1216) Add new rules for Materialised view optimisation of join queries
+
+> 语义缓存
+
+This is to keep track of adding new rules that would enable optimisation using view of join queries. For instance, when we have materialised view of table 'X' named 'X_part' defined by query: " select * from X where X.a > '2016-01-01' " then we expect following query to be optimised by 'X_part':
+
+select * from X inner join Y on X.id = Y.xid inner join Z on Y.id=Z.yid where X.a > '2016-02-02' and Y.b = "Bangalore"
+
+Following are the changes done in Quark which we are planning to pull into Calcite:
+1. Add a new Rule for Filter on TableScan. Basically, after predicate has been pushed through join onto table scan, new rule checks if it can be optimised by Materialised View.
+https://github.com/qubole/quark/blob/master/optimizer/src/main/java/com/qubole/quark/planner/MaterializedViewFilterScanRule.java
+
+2. Add a new Unify rule to MaterialisedSubstitutionVisitor:
+https://github.com/qubole/incubator-calcite/commit/2d031d14d23810291377d92dc5ef2eaa515d35b7
 
 ##  [[CALCITE-2280]](https://issues.apache.org/jira/browse/CALCITE-2280) Liberal "babel" parser that accepts all SQL dialects
 
@@ -2015,8 +2042,6 @@ The default parser in core does not contain DDL. We do not want to impose our DD
 > The config is immutable and self-describing, so we can use it to automatically generate a unique description for each rule instance.
 >
 > (See the email thread [[DISCUSS\] Refactor how planner rules are parameterized](https://lists.apache.org/thread.html/rfdf6f9b7821988bdd92b0377e3d293443a6376f4773c4c658c891cf9%40).)
-
-
 
 # Avatica
 
@@ -2185,3 +2210,5 @@ digraph G {
   CalciteMaterializer->CalcitePreparingStmt -> Prepare
   CalciteSignature->Signature
 }'>
+
+![](http://www.plantuml.com/plantuml/png/TP31JiCm38RlVWfpHMeVO4BLE710uiHu0I-OKId9giGxeB5tfwd1IwXsI_t_ts__tMQX9AVWuKu-EJ1EdiO8OnHE7-GOtsZl6MYV9P4JV8gIll1y0USfPtmXaT7nCdqEavy5aEE1vwo4Pq0qq9pALvAkC65EqFV3TzSrM3s_Cc0M4rTdjPvZDzGxDtXWsGcbPOO3LDhzdnLkzRg2RQbNzhrfEqTHkxKf-XCVVvagHeMIyPzNKwdPSc1VPh3r0FR4lX_MjstG9IOfvI5Iu3oHus9RhZIRhcr8kC2Mu_if-1y0)
