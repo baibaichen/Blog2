@@ -1663,6 +1663,10 @@ Enabled by new connection parameter "createMaterializations".
 - 扩展逻辑以过滤给定查询节点的相关 MV，因此该方法可随着 MV 数量的增长而扩展。
 - 使用联合运算符生成重写，例如，可以从 MV (year = 2014) 和查询 (not(year = 2014)) 部分回答给定的查询。如果存储了 MV，例如在 Driud 中，这种重写可能是有益的。与其他重写一样，是否最终使用重写的决定应该基于成本。
 
+## [CALCITE-1870：Suggest lattices based on queries and data profiles](https://issues.apache.org/jira/browse/CALCITE-1870)
+
+
+
 ## [CALCITE-3409：Add a method in RelOptMaterializations to allow registering UnifyRule](https://issues.apache.org/jira/browse/CALCITE-3409)
 
 since 1.28
@@ -1928,6 +1932,49 @@ digraph G {
   CalciteSchema -> Schema -> Table  [dir=both, arrowtail=odiamond]  
   Table -> PreparingTable [dir=both, arrowtail=odiamond]
 }'>
+
+## LatticeSuggester
+
+[CALCITE-3286] In LatticeSuggester, allow join conditions that use expressions
+
+![](http://www.plantuml.com/plantuml/png/XLPDRzms4BthLxpwv03s0krHCHPntAOnaFGZszvycPLc9ROKgP2Z9axh_FQAeWYJwmryIGJEztjlPltA2pcP1brz9pqF3B7tbQ61_KWDOo1XfqYhBun_Aw3Hv3tUaOXgU3Uxn6VWFOrNxvINgvquPRhjHNBwW_QQjv3mt-oqEF_iQEolSeSBx8J7BRh5_ZKtmN6dlB0x_y3wrr7Yexo8dY4CrBO_jHsV5s7UJgxXYpjJl0gvZYMyXcPlZVn6octnDz_xaF6X0emLnjwAsA56dF6JabuPVEfLqqF7V1xyMNcfIbHIdOXAqV7o4k41QKN-LBroP6wX3AHdT06oJOK2-xhkSFRz6UpbvHPdvgneeNh8U4nHKzTnI1pQexqNHutWZPlzOiDOO7bhPofwE_gNsUFxANB8v2V7Mmpn8_diMAwMkX_u4EYENycgZA2nUXhCZPsClCn75plMk3K7wmOIPGreRoTPfXx9iH7O0mwATUjnS7O0mR5UN4dF98oElLVMR1wfc0V0EX1Ua-SRg-TcLaayVO-Yo7jogkkbndL00Sg3y9TL1eqrhPAYLfOdL4mGGAfrwbCipmxis3HXU13sv3d24n9dpCIyHqtTB8vmASTZAp-oK_zmcxg9p9safLh4-VaNspAuUbwNnnstiTBQz9qvbvu4ob-0J4R9YqUSCcXYP-LM1i6kEh6kLORqhVbzOdT_gfa_FGTDK8nBsqdu608sT-PwDJHai6TCdbiCrZ6a9mDh6ixwAdMTLBFxgA-xxiracYZ9hdFSaIJnxAtLJ0Qjyg9cd_Nvwu9tn7yBSjqqi14VhGdZi9Mdj9PLGKDQpuEyviOEx45fsz8vE0I4uYKgXbaWYpCKHzg7VzEX3cUFEtONEAsCI8CN7kU7PL-VhEjR6xRHI-ZrO1qehEfSRjBa8WthnRepjoQtHMB8j4l-Hn5xDA5GNF0lx2oOcdvbjCAw2RZwx_8osxZIKEg_GkPOrv9TolaZJLuXYugE2OdYj6O1yLxMTM_7qYUSdKVpitaYMQlZJCjpzTB1BVrA-LOe7-QmfCAZk0HIQ3fQWk67inpTXqePONUWXlEVikheCeHj3mNAmzoIa6V1ifanUjVqF53GXA0dZu6bjws7MBJi6wVsKHfg63M7dg74ipvigkFVhqs2fs0r_tDbKnoOEWhlQPw5WsUJn2MgrpNwLfKYJG8ibQzUiMcdGVyF)
+
+### `LatticeSpace`
+
+Lattice 存在的空间。
+
+###  `Hop`
+
+一跳是一个 Join 条件， 同一源和目标之间的**一跳或多跳**组合形成一个**Step**。
+
+表已注册，但 **Step** 未注册。在我们收集了几个 Join 条件之后，我们可能会发现这些 **key** 是组合的，例如：
+
+```sql
+x.a = y.a AND
+x.b = z.b AND
+x.c = y.c
+```
+
+有 3 个 ==semi-hops==:
+
+- x.a = y.a
+
+- x.b = z.b
+
+- x.c = y.c
+
+这变成了 2 个 Step，其中第一个是组合 Step：
+
+- x.[a, c] = y.[a, c]
+- x.b = z.b
+
+### `Step`
+
+连接图中的边。它是有向的：“父”必须是包含外键的“多”侧，“目标”是包含主键的“一”侧。 例如，`EMP → DEPT`。当通过 `LatticeSpace.addEdge(LatticeTable, LatticeTable, List)` 创建时，它在 `LatticeSpace` 中是唯一的。
+
+###  `LatticeSuggester#Frame`
+
+关系表达式中字段父级的相关信息。
 
 # 其他有趣的 issue
 
