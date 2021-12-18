@@ -60,7 +60,7 @@ Calcite包含很多构成典型数据库管理系统的部分。然而，它跳�
 图1给出了Calcite架构的主要组件，Calcite的优化器使用关系算子树来作为内部表示。这个优化器引擎，主要由三个组件构成：rules、metadata providers以及planner engines。在第六章我们将深入讨论这些组件的细节。途中的虚线表示和其他框架的外部集成，和 Calcite 集成有**很多种方式**。
 
 <p align="center">
- <img src="https://changbo.tech/blog/10fa9651/calcite_archi.png" />
+ <img src="http://loopjump.com/wp-content/uploads/2019/11/image-20191029173659790-1024x871.png"/>
 图1 Calcite 的架构和组件之间的交互
 </p>
 
@@ -107,9 +107,10 @@ Calcite 包含了一些常见的 traits，这些 traits描述了关系表达式�
 例如，考虑将 MySQL 中的 Products 表连接到 Splunk 中的 Orders 表（参见图 2）。 最初，订单的扫描在 splunk 约定中进行，产品的扫描在 jdbc-mysql 约定中进行。 这些表必须在其各自的引擎内进行扫描。 连接符合**==逻辑约定==**，这意味着尚未选择任何实现。 此外，图 2 中的 SQL 查询包含一个过滤器（where 子句），它由特定于适配器的规则推送到 splunk（参见第 5 节）。 一种可能的实现是使用 Apache Spark 作为外部引擎：join 转换为 spark 约定，其输入是从 jdbc-mysql 和 splunk 到 spark 约定的转换器。 但是有一个更有效的实现：利用 Splunk 可以通过 ODBC 对 MySQL 执行查找的事实，规划器规则通过 splunk-to-spark 转换器推送连接，现在连接采用 splunk 约定，在 Splunk 引擎内部运行。
 
 <p align="center">
- <img src="https://changbo.tech/blog/10fa9651/optimization_process.png" />
+ <img src="http://loopjump.com/wp-content/uploads/2019/11/image-20191030112430474-1024x462.png" />
 图2 查询优化过程
 </p>
+
 
 ## 5. 适配器
 
@@ -158,9 +159,10 @@ GROUP BY products.name
 ORDER BY COUNT(*) DESC;
 ```
 <p align="center">
- <img src="https://changbo.tech/blog/10fa9651/filterIntoJoin.png" />
+ <img src="http://loopjump.com/wp-content/uploads/2019/11/image-20191031115353130.png" />
 图4 FilterIntoJoinRule 应用
 </p>
+
 
 上述查询相应的关系代数表达式如图4所示。因为，Where仅仅作用在sales表上，我们可以在Join之前移动filter。这个优化能够极大减少查询执行的时间，因为我们不需要执行谓词没有匹配的行的Join操作。甚至，如果sales和products表都在同一个底层存储中，在Join前移动filter使得适配器将filter下推至底层。Calcite通过`FilterInoJoinRule`实现了这个优化，将filter节点和作为父节点的Join节点进行匹配，检测filter是否可以被join执行。这种优化方式，体现了Calcite优化方式的灵活性。
 
@@ -180,17 +182,13 @@ Calcite的providers接口可以允许数据处理系统将它们的元数据挂�
 
 用户选择使用已有的planner引擎，取决于他们具体的需要。当他们的系统需求改变时，可以从一个切换到另一个是很简单的。另外，用户可以选择生成多阶段优化逻辑，在优化过程的连续阶段应用不同的规则集合。重要的是，两种planner允许Calcite用户通过指导搜索不同的查询计划来减少整个优化时间。
 
-**Materialized Views**。在数仓中一个用来加速查询处理的强大技术，就是相关摘要数据预计算或者物化视图。多个Calcite适配器和依赖Calcite的项目有它们自己的物化视图的概念。例如，Cassandra允许用户基于已有的表定义物化视图，由系统自动维护。
+**Materialized Views**。在数仓中一个用来加速查询处理的强大技术，就是相关摘要数据预计算或者物化视图。多个Calcite 适配器和依赖 Calcite 的项目有它们自己的物化视图的概念。例如，Cassandra 允许用户基于已有的表定义物化视图，由系统自动维护。
 
-这些引擎将它们的物化视图暴露给Calcite，优化器就有机会通过使用视图来替换原表，来将接收的查询重写。尤其，**Calcite提供了两种不同的基于物化视图的重写算法**。
+这些引擎将它们的物化视图暴露给 Calcite，优化器就有机会通过使用视图来替换原表，来将接收的查询重写。尤其，**Calcite提供了两种不同的基于物化视图的重写算法**。
 
-第一个方法是基于视图替换（*view substitution*）[10,18]。这个目的是通过等价表达式（使用物化视图）来替换关系代数树中的一部分，这个算法流程如下：
+第一个方法是基于视图替换（*view substitution*）[10,18]。这个目的是通过等价表达式（使用物化视图）来替换关系代数树中的一部分，这个算法流程是：(i) 物化视图上的 scan 算子和定义物化视图的 plan 被注册到优化器中，以及 (ii) 并触发转换规则以统一 plan 中的表达式。视图不需要与被替换的查询中的表达式完全匹配，因为 Calcite 的重写算法可以产生部分重写，包含了用于计算所需表达式的额外操作，如带有剩余谓词条件的 filters。
 
-- 基于物化视图的scan算子和物化视图定义的plan注册到planner中；
-- 用于尝试统一查询计划中的表达式的转换规则会触发；
-- 视图不需要准确地将查询中匹配的表达式进行替换，因为Calcite的重写算法可以创建部分重写，包含了用于计算所需表达式的额外操作，如带有剩余谓词条件的filters。
-
-第二个方法是基于 lattices[22]。一旦一个数据源被声明形成一个lattice，Calcite会将每个物化信息表示成一个*tile*，从而优化器可以使用它们来匹配进入的查询。一个方面，这个重写算法在用 star schema 组织的数据源上进行表达式匹配更加高效，通常用于 OLAP 应用。另一方面，它比视图替换更具限制性，因为它对底层模式施加了限制。
+第二个方法是基于 lattices[22]。一旦一个数据源被声明形成一个 lattice，Calcite 会将每个物化信息表示成一个 **tile**，从而优化器可以使用它们来匹配进入的查询。一个方面，这个重写算法在用 star schema 组织的数据源上进行表达式匹配更加高效，通常用于 OLAP 应用。另一方面，它比视图替换更具限制性，因为它对底层模式施加了限制。
 
 ## 7. 扩展 Calcite
 
@@ -225,7 +223,7 @@ WHERE units > 25;
 
 由于流固有的无边界特性，windowing用于解除阻塞运算符，比如Aggregate和Joins。Calcite的流扩展使用SQL分析函数来表达**滑动和级联窗口聚合**，如下示例所示：
 
-```
+```sql
 SELECT STREAM 
   rowtime, 
   productId, 
@@ -295,10 +293,10 @@ Caclite得到了广泛的应用，尤其是在工业界中使用的开源项目�
 表1给出了使用Calcite的软件列表，包含以下几个维度：
 
 - 暴露给用户的查询接口；
-- 是否使用Calcite的JDBC驱动（Avatica）；
-- 是否使用Calcite中的SQL解析和验证；
-- 是否使用Calcite的查询代数来表示在数据上的操作；
-- 是否依赖Calcite引擎来执行，即使用自己的原生引擎还是Calcite算子（enumerable）或者其他项目。
+- 是否使用 Calcite 的 JDBC 驱动（Avatica）；
+- 是否使用 Calcite 中的 SQL 解析和验证；
+- 是否使用 Calcite 的查询代数来表示在数据上的操作；
+- 是否依赖 Calcite 引擎来执行，即使用自己的原生引擎还是 Calcit 算子（enumerable）或者其他项目。
 
 [![img](https://changbo.tech/blog/10fa9651/embed_calcite_systems.png)](https://changbo.tech/blog/10fa9651/embed_calcite_systems.png)
 
