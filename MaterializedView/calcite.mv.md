@@ -200,11 +200,11 @@ sqlline> VALUES CHAR_LENGTH('Hello, ' || 'world!');
 
 Calcite 有许多其他 SQL 特性。 我们没有时间在这里介绍它们。可以写一些查询来试验。
 
-## Schema
+## Schema 发现
 
-现在，Calcite 如何找到这些表？请记住，Calcite Core 对 CSV 文件一无所知。 作为**没有存储层的数据库**，Calcite 不知道任何文件格式。Calcite 知道这些表，因为我们告诉它运行 `calcite-example-csv` 项目中的代码。
+现在，Calcite 如何找到这些表？请记住，Calcite Core 对 CSV 文件一无所知。 作为**没有存储层的数据库**，Calcite 不知道任何文件格式。Calcite 之所以知道这些表，是因为我们告诉它运行 `calcite-example-csv` 项目中的代码。
 
-这里有几个步骤。**首先**，我们根据模型文件中的 <u>Schema 工厂类</u>定义 Schema 。**然后** <u>Schema 工厂</u>创建 Schema，Schema 创建几个表，每个表都知道如何通过扫描 CSV 文件获取数据。**最后**，在 Calcite 解析查询并计划它使用这些表之后，Calcite 在执行查询时调用这些表来读取数据。现在让我们更详细地了解这些步骤。
+这里有几个步骤。**首先**，我们在模型文件中的 <u>Schema 工厂类</u>内定义了 Schema 。**然后** <u>Schema 工厂</u>创建 Schema，Schema 创建几个表，每个表都知道如何通过扫描 CSV 文件获取数据。**最后**，在 Calcite 解析查询并计划它使用这些表之后，Calcite 在执行查询时调用这些表来读取数据。现在让我们更详细地了解这些步骤。
 
 在 JDBC 连接字符串上，我们以 JSON 格式给出了模型的路径。 这是模型：
 
@@ -1672,6 +1672,31 @@ Enabled by new connection parameter "createMaterializations".
 since 1.28
 
 # 基本概念
+
+## `Schema`
+
+**表**和**函数**的名称空间。[Schema](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/Schema.html) 还可以包含子 Schema，可以有任何层次的嵌套。大多数提供者的层次数量有限； 例如，大多数 JDBC 数据库有一个层次（Schema）或两个层次（Database 和 Catalog）。  
+
+可能存在多个有相同名称的重载**函数**，它们的参数数量或类型不同。出于这个原因， [`getFunctions(String)`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/Schema.html#getFunctions(java.lang.String)) 返回一个列表 同名的所有成员。 Calcite 将调用 [`Schemas.resolve(RelDataTypeFactory, String, Collection, List)`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/Schemas.html#resolve(org.apache. calcite.rel.type.RelDataTypeFactory,java.lang.String,java.util.Collection,java.util.List)) 选择合适的一个。
+
+最常见和最重要的成员类型是**没有参数且结果类型是记录集合的成员类型**，称为关系。相当于关系数据库中的一张表。例如，
+
+```SQL
+select * from sales.emps
+```
+如果 `sales` 是一个已注册的 Schema，并且 `emps` 是一个<u>没有参数的成员</u>，并且结果类型为  `Collection(Record(int: "empno"， String: "name"))` ，则查询有效。
+
+一个 Schema 可以嵌套在另一个 Schema 中；参见 [`getSubSchema(String)`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/Schema.html#getSubSchema(java.lang.String))。
+
+### `SchemaPlus`
+
+[`Schema`](#Schema) 接口的扩展。
+
+给定一个实现 [`Schema`](#Schema) 接口的自定义 Schema，Calcite 创建一个实现 `SchemaPlus ` 的接口。它提供了额外的功能，例如访问已显式添加的表。
+
+用户定义的 `Schema` 不需要实现这个接口，但是当 Schema 被传递给用户定义的 Schema 或用户定义的表中的方法时，它已经被包装在这个接口中。
+
+用户只使用`SchemaPlus` ，但不创建它们。用户应该只使用系统给他们的 `SchemaPlus`。 `SchemaPlus` 的目的是以只读方式向用户代码公开 Calcite 在注册 Schema 时创建的关于 Schema 的一些额外信息。它作为上下文出现在几个 SPI 调用中； 例如 [`SchemaFactory.create(SchemaPlus, String, Map)`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/schema/SchemaFactory.html#create(org.apache.calcite.schema .SchemaPlus,java.lang.String,java.util.Map)) 包含一个父 Schema，它可能是用户定义的 [`Schema`](#Schema) 的包装实例，或者不是。 
 
 ## `RelNode`
 
