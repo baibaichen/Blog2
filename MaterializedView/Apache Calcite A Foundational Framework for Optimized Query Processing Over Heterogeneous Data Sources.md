@@ -1,13 +1,14 @@
 # Apache Calcite A Foundational Framework for Optimized Query Processing Over Heterogeneous Data Sources
-## 摘要
 
-[Apache Calcite](https://calcite.apache.org/)是一个基础软件框架，提供了查询处理、优化和查询语言，支持多个主流开源数据处理系统，比如 Apache Hive，Apache Storm，Apache Flink，Druid和MapD。Calcite的架构由如下组件构成：
+**摘要**  [Apache Calcite](https://calcite.apache.org/)是一个基础软件框架，提供了查询处理、优化和查询语言，支持多个主流开源数据处理系统，比如 Apache Hive，Apache Storm，Apache Flink，Druid和MapD。Calcite的架构由如下组件构成：
 
 - 模块化、可扩展的优化器，内置了上百个优化规则；
 - 查询处理器，可以处理各种查询语言；
 - 适配器架构设计，用于扩展和支持异构数据源和存储（关系模型、半结构化、流和地理空间）。
 
 这个灵活、可内嵌和可扩展的架构，使得Calcite在大数据框架中被应用是一个很好的选择。这是一个很活跃的项目，会持续地引入新的数据类型，查询语言、查询处理和优化的方法。
+
+https://blog.victorchu.info/posts/121d8993/
 
 ## 1. 引言
 
@@ -94,9 +95,9 @@ Calcite包含很多构成典型数据库管理系统的部分。然而，它跳�
 
 ## 4. 查询代数
 
-**Operators**。关系代数[11]是 Calcite 的核心。除了表达常见的数据操作的算子之外，例如 `filter`，`project`，`join` 等，Calcite 还包含一些额外的操作，来满足不同的需求，例如简洁地表达复杂的操作和高效地识别优化的时机。例如，针对 OLAP，决策制定和流式应用，使用 window 定义来表达复杂分析函数，如数量在一个时间周期或数据行数上的移动平均数，是很常见的。因此，Calcite 引入了*window* 算子来封装window定义，即上下边界、分区等，以及在每个窗口内执行聚合函数。
+- **Operators**：关系代数[11]是 Calcite 的核心。除了表达常见的数据操作的算子之外，例如 `filter`，`project`，`join` 等，Calcite 还包含一些额外的操作，来满足不同的需求，例如简洁地表达复杂的操作和高效地识别优化的时机。例如，针对 OLAP，决策制定和流式应用，使用 window 定义来表达复杂分析函数，如数量在一个时间周期或数据行数上的移动平均数，是很常见的。因此，Calcite 引入了*window* 算子来封装window定义，即上下边界、分区等，以及在每个窗口内执行聚合函数。
 
-**Traits**。Calcite 没有使用不同的实体来表示逻辑和物理算子，而是通过使用 *traits* 关联一个算子，来描述它的物理属性。这些 traits 有助于优化器评估不同可选算子的成本。改变 trait 的值，并不是改变正在评估的逻辑表达式，即给定的算子输出的行还是一样的。
+- **Traits**：Calcite 没有使用不同的实体来表示逻辑和物理算子，而是通过使用 *traits* 关联一个算子，来描述它的物理属性。这些 traits 有助于优化器评估不同可选算子的成本。改变 trait 的值，并不是改变正在评估的逻辑表达式，即给定的算子输出的行还是一样的。
 
 在优化期间，Calcite会尝试在关系表达式上增强某个特定的 traits，例如特定字段的排序顺序。关系算子会实现一个 `converter` 接口来表明如何将表达式的 traits 从一个值转为另一个值。
 
@@ -111,17 +112,16 @@ Calcite 包含了一些常见的 traits，这些 traits描述了关系表达式�
 图2 查询优化过程
 </p>
 
-
 ## 5. 适配器
-
 适配器是一个**结构模式**，定义了 Calcite 如何和多种数据源交互，实现统一访问。图 3 描述了它的组件。本质上，一个适配器由一个 **model**、一个 **schema** 和一个 **schema factory** 构成。**model** 描述被访问数据源的物理属性。**schema** 是在 **model** 中可以找到的数据定义（格式和布局）。数据本身物理上是通过表访问。Calcite 接口与适配器中定义的表连接，以便在执行查询时读取数据。适配器也许会定义一系列规则，并添加到 planner 中。例如，包含一些规则<u>将各种**逻辑关系表达式**转为**适配器调用约定**的相应**关系表达式**</u>。**Schema factory** 组件从 **model** 获取元数据信息来创建 **schema**。
 
 
 
 <p align="center">
- <img src="https://changbo.tech/blog/10fa9651/adapter_design.png" />
+ <img src="https://blog.victorchu.info/posts/121d8993/fig3.png" />
 图3 适配器设计
 </p>
+
 如第 4 节所述，Calcite 使用称为 **calling convention** 的 **physical trait** 来识别对应于特定数据库后端的关系运算符。<u>这些物理运算符在每个适配器中实现了底层表的访问路径</u>。当解析查询并转换为关系代数表达式时，将为每个表创建一个运算符，表示扫描该表上的数据，它是适配器必须实现的最小接口。如果适配器实现了**表扫描运算符**，Calcite 优化器就能够使用**客户端运算符**，比如 sorting，filtering 和 joins，在这些表上执行任意的 SQL 查询。
 
 这个**表扫描运算符**包含适配器向其后端数据库发出扫描所需的必要信息。为了扩展适配器提供的功能，Calcite 定义了一个**可枚举**的 **calling convention**。带有可枚举 **calling convention** 的关系运算符只是通过**迭代器接口**对元组进行操作。这种 **calling convention** 允许 Calcite 实现每个适配器后端可能不支持的运算符。例如，`EnumerableJoin` 运算符实现 `Join` 操作，从其子节点收集数据，并在需要的属性上进行 `Join` 操作。
@@ -186,7 +186,7 @@ Calcite的providers接口可以允许数据处理系统将它们的元数据挂�
 
 这些引擎将它们的物化视图暴露给 Calcite，优化器就有机会通过使用视图来替换原表，来将接收的查询重写。尤其，**Calcite提供了两种不同的基于物化视图的重写算法**。
 
-第一个方法是基于视图替换（*view substitution*）[10,18]。这个目的是通过等价表达式（使用物化视图）来替换关系代数树中的一部分，这个算法流程是：(i) 物化视图上的 scan 算子和定义物化视图的 plan 被注册到优化器中，以及 (ii) 并触发转换规则以统一 plan 中的表达式。视图不需要与被替换的查询中的表达式完全匹配，因为 Calcite 的重写算法可以产生部分重写，包含了用于计算所需表达式的额外操作，如带有剩余谓词条件的 filters。
+第一个方法是基于视图替换（*view substitution*）[10,18]。这个目的是通过等价表达式（使用物化视图）来替换关系代数树中的一部分，这个算法流程是：(i) 物化视图上的 scan 算子和定义物化视图的 plan 被注册到优化器中，以及 (ii) 触发转换规则以统一 plan 中的表达式。视图不需要与被替换的查询中的表达式完全匹配，因为 Calcite 的重写算法可以产生部分重写，包含了用于计算所需表达式的额外操作，如带有剩余谓词条件的 filters。
 
 第二个方法是基于 lattices[22]。一旦一个数据源被声明形成一个 lattice，Calcite 会将每个物化信息表示成一个 **tile**，从而优化器可以使用它们来匹配进入的查询。一个方面，这个重写算法在用 star schema 组织的数据源上进行表达式匹配更加高效，通常用于 OLAP 应用。另一方面，它比视图替换更具限制性，因为它对底层模式施加了限制。
 
@@ -200,7 +200,7 @@ Calcite支持许多复杂字段数据类型，使得关系型和半结构化数�
 
 例如，Calcite包含一个MongoDB适配[36]，一个文档存储，这些文档由类似json文档那个的数据组成。为了将MongoDB数据抛给Calcite，每个文档都创建一个单列（名为_MAP）的表。许多场景下，希望文档具有一个共同的结构。一个表示邮政编码的文档集合，也许每个都包含字段city name, latitude和longitude。将这些数据表示成一个关系表很有用。在Calcite中，可以抽取想要的值和转为正确的类型后，创建一个视图。
 
-```
+```sql
 SELECT CAST(_MAP['city'] AS varchar(20)) AS city,
 CAST(_MAP['loc'][0] AS float) as longitude,
 CAST(_MAP['loc'][1] AS float) as latitude
@@ -213,7 +213,7 @@ FROM mongo_raw.zips;
 
 Calcite基于标准SQL进行了特定流式扩展，提供了一流的流式查询[26]，叫做*STREAM*扩展，windowing扩展，通过在join或其他操作中使用window表达式，来显式地使用流。这些扩展受到持续查询语言[2]的启发，尝试和标准SQL进行有效地集成。主要的扩展就是，通过*STREAM*声明，告诉系统用户对新入的记录感兴趣，而不是已有的记录。
 
-```
+```sql
 SELECT STREAM rowtime, productId, units
 FROM Orders
 WHERE units > 25;
@@ -238,7 +238,7 @@ FROM Orders;
 
 翻滚（Tumbling）、跳跃（Hopping）和会话（Session）窗口，通过TUMBLE，HOPPING，SESSION函数开启，相关实用函数比如TUMBLE_END和HOP_END。它们可以分别使用在GROUP BY的clauses和projections。
 
-```
+```sql
 SELECT STREAM
   TUMBLE_END(rowtime, INTERVAL '1' HOUR) as rowtime,
   productId,
@@ -252,7 +252,7 @@ GROUP BY TUMBLE(rowtime, INTERVAL '1' HOUR), productId;
 
 涉及更加复杂的流和流JOIN的流式查询，可以通过在JOIN字句中使用隐式窗口表达式来表示。
 
-```
+```sql
 SELECt STERAM 
   o.rowtime, 
   o.productId, 
@@ -270,7 +270,7 @@ AND s.rowtime BETWEEN o.rowtime AND o.rowtime + INTERVAL '1' HOUR;
 
 地理空间支持在Calcite中刚起步，但是正在使用关系代数来实现。核心就是增加一个GEOMETRY的数据类型，来封装不同的几何对象，比如点(point)、曲线(curve)和多边形(polygon)。Calcite将完全兼容OpenGIS Simple Feature Access[39]规范，该规范为访问地理空间数据的SQL接口定义了一个标准。2.下面给出一个列子，查询包含Amsterdam的国家：
 
-```
+```sql
 SELECT name FROM(
   SELECT name, 
     ST_GeomFromTet('Polygon((4.82 52.543, 4.97 52.43, 4.97 52.33, 4.82 52.33, 4.82 52.33))') AS "Amsterdam",
@@ -298,9 +298,11 @@ Caclite得到了广泛的应用，尤其是在工业界中使用的开源项目�
 - 是否使用 Calcite 的查询代数来表示在数据上的操作；
 - 是否依赖 Calcite 引擎来执行，即使用自己的原生引擎还是 Calcit 算子（enumerable）或者其他项目。
 
-[![img](https://changbo.tech/blog/10fa9651/embed_calcite_systems.png)](https://changbo.tech/blog/10fa9651/embed_calcite_systems.png)
+<p align="center">
+ <img src="https://blog.victorchu.info/posts/121d8993/fig5.png" />
+表1 内嵌 Calcite 的系统列表
+</p>
 
-表1 内嵌Calcite的系统列表
 
 Drill[13]是一个基于Dremel系统[34]的灵活数据处理引擎，内部使用无模式JSON数据模型。Drill使用它自己的SQL方言，包括半结构化数据查询表达的扩展，类似SQL++[38]。
 
@@ -315,6 +317,11 @@ Apache Phoenix{40]和Apache Kylin[28]都运行在Apache HBase[23]之上，它是
 ### 8.2 Calcite适配
 
 除了将Calcite作为库来使用，其他系统也可以通过适配器方式集成Calcite，读取他们的数据源。表2给出了Calcite中的适配器列表。实现这些适配器最主要的组件就是*converter*，负责翻译关系代数表达式，推出给系统支持的查询语言。表中还给出了每个适配器翻译的语言。
+
+<p align="center">
+ <img src="https://blog.victorchu.info/posts/121d8993/fig6.png" />
+表2 Calcite adpaters 列表
+</p>
 
 JDBC适配器支持多个SQL方言，包括主流的RDBMS，比如PostgreSQL和MySQL。另外，Cassandra[8]适配器生成自己的类SQL语言，叫CQL。而Apache Pig[41]适配器生成的查询使用Pig Latin[37]来表达。Apache Spark[47]的适配器使用JAVA RDD API。最后，Druid[14], ElasticSearch[15]和Splunk[48]通过Rest HTTP API请求查询，通过JSON或XML来表达查询。
 

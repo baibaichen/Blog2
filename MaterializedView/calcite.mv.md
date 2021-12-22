@@ -1556,7 +1556,7 @@ result = SELECT a, c FROM mv WHERE b = 4
 
 ==现在，我们已经添加了一个虚拟模式 mat 和一个虚拟星型表 star。稍后，模型将允许显式定义星型表==。
 
-- `StarTable`：**虚拟表**由两个或多个 `Join` 在一起的表组成。`StarTable` 不会出现在最终用户查询中，由优化器引入，以有助于查询和物化视图之间的匹配，并且仅在优化过程中使用。定义物化视图时，如果涉及 J`oin`，则将其转换为基于 `StarTable` 的查询。候选查询和物化视图映射到同一个 `StarTable` 上
+- `StarTable`：**虚拟表**由两个或多个 `Join` 在一起的表组成。`StarTable` 不会出现在最终用户查询中，由优化器引入，以有助于查询和物化视图之间的匹配，并且仅在优化过程中使用。定义物化视图时，如果涉及 `Join`，则将其转换为基于 `StarTable` 的查询。候选查询和物化视图映射到同一个 `StarTable` 上
 
 ###  `OptiqMaterializer`：填充 `Prepare.Materialization` 的上下文
 
@@ -1577,7 +1577,7 @@ result = SELECT a, c FROM mv WHERE b = 4
 
 编译失败
 
-## 2014-7-14 第一次实现 `Lattice` 结构 - [CALCITE-344](https://issues.apache.org/jira/browse/CALCITE-344)
+## 2014-07-14 第一次实现 `Lattice` 结构 - [CALCITE-344](https://issues.apache.org/jira/browse/CALCITE-344)
 
 添加数据结构 `lattice` ，以组织、收集统计信息并推荐物化查询。
 
@@ -1619,7 +1619,7 @@ Enabled by new connection parameter "createMaterializations".
 >
 > **Lattice** 本质上与论文中描述的 ==SPJ 视图==相同，当然，今天需要手工创建它们。我认为对于 DW 风格的工作负载，手工创建 lattice 比手工创建 MV 实用得多。这不仅是为了让优化器的工作更轻松，也是为了让 DBA 的工作更轻松。MV 并不容易操作管理。无论如何，如果人们手工创建了很多 MV，我的想法是拥有一种自动创建 lattice 的算法，从而降低检查所有这些 MV 的成本。
 >
-> 在我看来，主要的缺失部分是一种算法，该算法在给定一组 MV 的情况下，创建一组最佳的 lattice，使得每个 MV 都属于一个格子。
+> 在我看来，主要的缺失部分是一种算法，该算法在给定一组 MV 的情况下，创建一组最佳的 lattice，使得每个 MV 都属于一个 lattice。
 
 ## 2017-01-31: [CALCITE-1500: Decouple materialization and lattice substitution from VolcanoPlanner](https://issues.apache.org/jira/browse/CALCITE-1500)
 
@@ -1904,6 +1904,31 @@ private RelSubset registerImpl(RelNode rel, RelSet set)
 5. 强制重新计算当前 RelNode 对应 RelSubset 的 importance；
 6. 如果这个 RelSubset 是新建的，会再触发一次 `fireRules()` 方法（会先对 RelNode 触发一次），遍历找到所有可以 match 的 Rule，对每个 Rule 都会创建一个 VolcanoRuleMatch 对象（会记录 RelNode、RelOptRuleOperand 等信息，RelOptRuleOperand 中又会记录 Rule 的信息），并将这个 VolcanoRuleMatch 添加到对应的 RuleQueue 中（就是前面图中的那个 RuleQueue）。
 
+## 物化视图匹配
+
+### `RelOptPredicateList`
+
+Predicates that are known to hold in the output of a particular relational expression.
+
+**Pulled up predicates** field `pulledUpPredicates` are predicates that apply to every row output by the relational expression. They are inferred from the input relational expression(s) and the relational operator. For example, if you apply `Filter(x > 1)` to a relational expression that has a predicate `y < 10` then the pulled up predicates for the Filter are `[y < 10, x > 1]`.
+
+**Inferred predicates** only apply to joins. If there there is a predicate on the left input to a join, and that predicate is over columns used in the join condition, then a predicate can be inferred on the right input to the join. (And vice versa)。 For example, in the query
+
+```sql
+SELECT * FROM emp JOIN dept ON emp.deptno = dept.deptno WHERE emp.gender = 'F' AND emp.deptno < 10
+```
+
+we have
+
+1. left: `Filter(Scan(EMP), deptno < 10)`, predicates: `[deptno < 10]`
+2. right: `Scan(DEPT)`, predicates: `[]`
+3. join: `Join(left, right, emp.deptno = dept.deptno`, 
+   1. leftInferredPredicates: [], 
+   2. rightInferredPredicates: [deptno < 10], 
+   3. pulledUpPredicates: `[emp.gender = 'F', emp.deptno < 10, emp.deptno = dept.deptno, dept.deptno < 10]`
+
+Note that the predicate from the left input appears in `rightInferredPredicates`. Predicates from several sources appear in `pulledUpPredicates`.
+
 ## 数据读取相关
 
 ### `Table`
@@ -2002,6 +2027,10 @@ x.c = y.c
 关系表达式中字段父级的相关信息。
 
 # 其他有趣的 issue
+
+## 2014-08-14 [[CALCITE-360]](https://issues.apache.org/jira/browse/CALCITE-360) Introduce a Rule to infer predicates from equi join conditions
+
+引入 `RelOptPredicateList`  和  `RelMdPredicates`
 
 ## [[CALCITE-419]](https://issues.apache.org/jira/browse/CALCITE-419) Naming convention for planner rules
 
@@ -2283,4 +2312,4 @@ digraph G {
   CalciteSignature->Signature
 }'>
 
-![](http://www.plantuml.com/plantuml/png/TP31JiCm38RlVWfpHMeVO4BLE710uiHu0I-OKId9giGxeB5tfwd1IwXsI_t_ts__tMQX9AVWuKu-EJ1EdiO8OnHE7-GOtsZl6MYV9P4JV8gIll1y0USfPtmXaT7nCdqEavy5aEE1vwo4Pq0qq9pALvAkC65EqFV3TzSrM3s_Cc0M4rTdjPvZDzGxDtXWsGcbPOO3LDhzdnLkzRg2RQbNzhrfEqTHkxKf-XCVVvagHeMIyPzNKwdPSc1VPh3r0FR4lX_MjstG9IOfvI5Iu3oHus9RhZIRhcr8kC2Mu_if-1y0)
+![](http://www.plantuml.com/plantuml/png/TP31JiCm38RlVWfpHMeVO4BLE710uiHu0I-OKId9giGxeB5tfwd1IwXsI_t_ts__tMQX9AVWuKu-EJ1EdiO8OnHE7-GOtsZl6MYV9P4JV8gIll1y0USfPtmXaT7nCdqEavy5aEE1vwo4Pq0qq9pALvAkC65EqFV3TzSrM3s_Cc0M4rTdjPvZDzGxDtXWsGcbPOO3LDhzdnLkzRg2RQbNzhrfEqTHkxKf-XCVVvagHeMIyPzNKwdPSc1VPh3r0FR4lX_MjstG9IOfvI5Iu3oHus9RhZIRhcr8kC2Mu_if-1y0)                                                                                                                                                                                                                                                  

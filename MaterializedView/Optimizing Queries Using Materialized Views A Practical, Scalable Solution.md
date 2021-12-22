@@ -6,7 +6,7 @@
 
 > Materialized views can provide massive improvements in query processing time, especially for aggregation queries over large tables. To realize this potential, the query optimizer must know how and when to exploit materialized views. This paper presents a fast and scalable algorithm for determining whether part or all of a query can be computed from materialized views and describes how it can be incorporated in transformation-based optimizers. The current version handles views composed of selections, joins and a final group-by. Optimization remains fully cost based, that is, a single “best” rewrite is not selected by heuristic rules but multiple rewrites are generated and the optimizer chooses the best alternative in the normal way. Experimental results based on an implementation in Microsoft SQL Server show outstanding performance and scalability. Optimization time increases slowly with the number of views but remains low even up to a thousand
 
-物化视图可以大大地缩短查询处理时间，尤其是对于大数据表上的聚合查询。为了实现这种潜力，查询优化器必须知道如何以及何时利用物化视图。本文提出了一快速且可扩展的算法，用于确定是否可以从物化视图完成部分或全部查询，并描述如何将其合并到基于**转换**的优化器中。当前版本处理由<u>`Select`</u>、<u>`Join`</u> 和<u>最后 `group by`</u> 组成的视图。并且基于成本优化，也就是说，启发式规则不会选择单个**最佳**重写，而是生成多个重写，优化器以正常方式选择最佳执行方案。基于在 Microsoft SQL Server 中实现的实验结果表明，该算法具有良好的性能和可扩展性。优化时间随着视图数量的增加而缓慢增加，即使有 1000 个视图，优化时间仍然维持在较低的水平。
+物化视图可以大大地缩短查询处理时间，尤其是对于大数据表上的聚合查询。为了实现这种潜力，查询优化器必须知道如何以及何时利用物化视图。本文提出了一快速且可扩展的算法，用于确定是否可以从物化视图完成部分或全部查询，并描述如何将其合并到基于**转换**的优化器中。当前版本处理由 `Select`、`Join` 和最后 `group by` 组成的视图。并且基于成本优化，也就是说，启发式规则不会选择单个**最佳**重写，而是生成多个重写，优化器以正常方式选择最佳执行方案。基于在 Microsoft SQL Server 中实现的实验结果表明，该算法具有良好的性能和可扩展性。优化时间随着视图数量的增加而缓慢增加，即使有 1000 个视图，优化时间仍然维持在较低的水平。
 
 ## 1. 简介（Introduction）
 
@@ -33,13 +33,13 @@
 - **视图维护**：更新基表时，能高效地更新物化视图。
 - **视图利用**：有效利用物化视图，加快查询处理。
 
-本文讨论了如何在基于转换的优化器中利用视图。从概念上讲，优化器生成查询表达式所有可能的执行计划，估算它们的成本，并选择成本最低的那个。基于转换的优化器利用**本地转换规则**来重写查询的子表达式。规则会产生与原始表达式等价的替换表达式。视图匹配就是这样的一种转换规则，即利用**物化视图**计算<u>子表达式</u>。**视图匹配规则**调用==视图匹配算法==，该算法确定是否可以从一个或多个现有物化视图中计算出原始表达式，如果可以，则生成替代表达式。在优化期间，可以在不同的子表达式上多次调用该算法。
+本文讨论了基于转换的优化器如何利用视图。从概念上讲，优化器生成查询表达式所有可能的执行计划，估算它们的成本，并选择成本最低的那个。基于转换的优化器利用**本地转换规则**来重写查询的子表达式。规则会产生与原始表达式等价的替换表达式。视图匹配就是这样的一种转换规则，即利用**物化视图**计算<u>子表达式</u>。**视图匹配规则**调用==视图匹配算法==，该算法确定是否可以从一个或多个现有物化视图中计算出原始表达式，如果可以，则生成替代表达式。在优化期间，可以在不同的子表达式上多次调用该算法。
 
-本文的主要贡献： (a)针对由<u>选择</u>、<u>连接</u>和<u>最后的 `group by`</u> 组成的（SPJG）视图，提出了一种高效的视图匹配算法；(b) 提出了一种新颖的索引结构（基于视图定义，而不是视图数据），可以快速地将搜索范围缩小到一小组候选视图，以简化视图匹配。这里描述的算法版本仅限于 SPJG 视图，且只替换为单个视图。然而，这并不是该方法的固有局限；该算法和索引结构可以扩展到更广泛的视图和替代。我们简要讨论了可能的扩展，但详细信息超出了本文的范围。
+本文的主要贡献： (a)针对由 `Select`、`Join` 和最后 `group by` 组成的（SPJG）视图，提出了一种高效的视图匹配算法；(b) 提出了一种新颖的索引结构（基于视图定义，而不是视图数据），可以快速地将搜索范围缩小到一小组候选视图，以简化视图匹配。这里描述的算法版本仅限于 SPJG 视图，且只替换为单个视图。然而，这并不是该方法的固有局限；该算法和索引结构可以扩展到更广泛的视图和替代。我们简要讨论了可能的扩展，但详细信息超出了本文的范围。
 
-我们的视图匹配算法快速且可扩展。 速度至关重要，因为在优化复杂查询期间，可能会多次调用视图匹配算法。我们还想要一种能够有效处理数千个视图的算法。 许多数据库系统包含数百、甚至数千个表。这样的数据库可能有数百个物化视图。 类似于 [1] 中描述的工具也可以生成大量视图。智能系统还可以缓存和重用先前计算的查询结果。缓存的结果可以当作临时的物化视图，很容易产生数千个物化视图。Microsoft SQL Server 在 Cascades 框架的基础上使用基于转换的优化器[6]，我们基于此实现了该算法。实验表明，该系统具有优异的性能和可扩展性。优化时间随视图数量线性增加，即使有 1000 个视图，优化时间仍然维持在较低的水平。
+我们的视图匹配算法快速且可扩展。 速度至关重要，因为在优化复杂查询期间，可能会多次调用视图匹配算法。我们还想要一种能够有效处理数千个视图的算法。许多数据库系统包含数百、甚至数千个表。这样的数据库可能有数百个物化视图。 类似于 [1] 中描述的工具也可以生成大量视图。智能系统还可以缓存和重用先前计算的查询结果。缓存的结果可以当作临时的物化视图，很容易产生数千个物化视图。Microsoft SQL Server 在 Cascades 框架的基础上使用基于转换的优化器[6]，我们基于此实现了该算法。实验表明，该系统具有优异的性能和可扩展性。优化时间随视图数量线性增加，即使有 1000 个视图，优化时间仍然维持在较低的水平。
 
-通过优化器的正常规则机制集成视图匹配算法，有很重要的好处。可能会产生多次重写；有些利用物化视图，有些则不利用。无论是否使用物化视图，所有重写都要参与基于成本的优化。将自动考虑物化视图上的二级索引（如果有）。甚至可以缩短优化时间，如果在优化过程的早期，就发现了使用物化视图的廉价计划，则会收紧成本上限，从而导致更积极的修剪。
+通过优化器常规的规则机制集成视图匹配提供了重要的好处。可能会产生多次重写；有些利用物化视图，有些则不利用。无论是否使用物化视图，所有重写都要参与基于成本的优化。==将自动考虑物化视图上的二级索引（如果有）==。甚至可以缩短优化时间，如果在优化过程的早期，就发现了使用物化视图的廉价计划，则会收紧成本上限，从而导致更积极的修剪。
 
 本文的其余部分安排如下。第 2 节描述了所支持的物化视图，并定义了要解决的问题。第 3 节描述了我们用于确定是否可以从视图计算查询表达式的算法。第 4 节介绍了我们的索引结构。第 5 节给出了基于原型实现的实验结果。相关工作在第 6 节中讨论。第 7 节包含总结和对可能扩展的简要讨论。
 
@@ -75,7 +75,7 @@
 > The algorithm explained in this paper is limited to SPJG subexpressions and single-table substitutes. However, this is not an inherent limitation of our approach. The algorithm can be extended to a broader class of input and substitute expressions, for example, expressions containing unions, outer joins or aggregation with grouping sets.
 >
 
-SQL Server 2000 支持物化视图。它们之所以被称为索引视图，是因为物化视图可以以多种方式进行索引。通过在现有视图上创建唯一的聚集索引来物化视图。唯一性意味着视图输出必须包含唯一键。这是保证视图可以增量更新所必需的。创建聚集索引后，可以创建其他二级索引。并非所有视图都是可索引的。可索引视图必须由包含选择、`inner join` 和可选 `group-by` 的**单级 SQL 语句**定义。FROM 子句不能包含**<u>派生表</u>**，即它必须引用基表，并且不允许子查询。聚合视图的输出必须包括所有**<u>分组列</u>**作为输出列（因为它们定义了键）和一个计数列。聚合函数仅限于 `sum` 和 `count`。这就是本文所考虑的一类视图。
+SQL Server 2000 支持物化视图。它们被称为索引视图，是因为物化视图可以以多种方式进行索引。通过在现有视图上创建唯一的聚集索引来物化视图。唯一性意味着视图输出必须包含唯一键。这是保证视图可以增量更新所必需的。创建聚集索引后，可以创建其他二级索引。并非所有视图都是可索引的。可索引视图必须由包含选择、`inner join` 和可选 `group-by` 的**单层 SQL 语句**定义。`FROM` 子句不能包含**<u>派生表</u>**，即必须引用基表，并且不允许子查询。聚合视图的输出必须包括所有**<u>分组列</u>**作为输出列（因为它们定义了 **key**）和一个计数列。聚合函数仅限于 `sum` 和 `count`。这就是本文所考虑的一类视图。
 
 **例 1**：本例显示如何在 SQL Server 2000 中创建带有额外二级索引的索引视图。本文中的所有示例均使用 TPC-H/R 数据库。
 
@@ -95,7 +95,7 @@ create index v1_sidx on v1( gross_revenue, p_name)
 ```
 第一条语句创建视图 v1。索引视图需要短语 `with schemabinding`。所有的聚合视图都需要一个 `count_big` 列，以便可以增量的方式处理删除（当计数为零时，分组为空，必须删除该行）。由算术或其他表达式定义的输出列必须（使用 AS 子句）定义名称，以便可以引用它们。第二个语句物化视图并将结果存储在聚集索引中。即使该语句仅指定视图的（唯一）键，行也包含所有输出列。最后一条语句在物化视图上创建二级索引。□
 
-如简介中所述，基于转换的优化器在关系表达式上递归地应用优化规则来生成等价的执行计划。视图匹配是在 `select`-`project`-`join`-`group-by` (SPJG) 表达式上调用的转换规则。对于每个表达式，我们希望找到可以从中计算表达式的每个物化视图。 在本文中，我们要求必须从视图中计算出整个关系表达式。以下是本文考虑的视图匹配问题。
+如简介中所述，基于转换的优化器在关系表达式上递归地应用优化规则来生成等价的执行计划。视图匹配是在 `select`-`project`-`join`-`group-by` (SPJG) 表达式上调用的转换规则。对于每个表达式，我们都希望找到可以计算该表达式的每个物化视图。在本文中，我们要求表达式可以单独从视图计算。下面是本文所考虑的视图匹配问题。
 
 **使用单视图替代的视图匹配**：给定一个 SPJG 形式的关系表达式，找到所有可以计算该表达式的物化视图，并为找到的每个视图构造一个与给定表达式等价的替代表达式。
 
@@ -112,12 +112,12 @@ create index v1_sidx on v1( gross_revenue, p_name)
 
 在本节中描述如何确定可以从视图构造出**查询表达式**，以及如果可以的话，**如何构造等价的替换表达式**。第一小节讨论 **<u>join select project</u>（<u>SPJ</u>）**视图和查询，假设视图和查询引用相同的表。<u>有额外表的</u>视图和聚合视图在单独的小节中介绍。不需要考虑表的数量少于查询表达式的视图。这样的视图只能用于计算<u>查询表达式的子表达式</u>。 视图匹配规则将在每个<u>子表达式</u>上自动调用。
 
-算法利用四种约束类型：**<u>非空列约束</u>**，**<u>主键约束</u>**，**<u>唯一性约束</u>**（通过创建唯一索引显式或隐含声明）以及**<u>外键约束</u>**。我们假设视图和查询表达式的选择谓词已转换为**<u>合取范式</u>（conjunctive normal form，<u>CNF</u>）**。如果没有，我们首先将它们转换为**CNF**。 我们还假定已执行<u>**联接消除**</u>，因此查询和视图表达式不包含冗余表（SQL Server优化器会自动执行此操作）。
+算法利用四种约束类型：**<u>非空列约束</u>**，**<u>主键约束</u>**，**<u>唯一性约束</u>**（通过创建唯一索引显式或隐含声明）以及**<u>外键约束</u>**。我们假设视图和查询表达式的选择谓词已转换为**<u>合取范式</u>（conjunctive normal form，<u>CNF</u>）**。如果没有，我们首先将它们转换为**CNF**。 我们还假定已执行 `Join` **消除**，因此查询和视图表达式不包含冗余表（SQL Server优化器会自动执行此操作）。
 
 > 注：
 >
 > 1. CNF
-> 2. 关联消除：意味着SQL优化器消除了不必再关联中出现的表
+> 2. Join 消除：意味着SQL优化器消除了不必再关联中出现的表
 >
 > ==To prove that two expressions are equal, a frequently used technique is to transform both expressions to a standard form. One such standard form is called conjunctive normal form or CNF==. An expression in CNF is a ‘product of sums’. The ‘sums’ are literals (simple propositions or negated propositions, e.g., $P$, or $\neg Q$) linked by $\vee$, which are then formed into a ‘product’ using $\wedge$.
 >
@@ -156,27 +156,27 @@ create index v1_sidx on v1( gross_revenue, p_name)
 
 1. **视图包含查询表达式所需的所有行**。 因为我们仅考虑<u>单个视图</u>的替代，所以这是显而易见的要求。但是，如果我们考虑用<u>视图的并集</u>替代，则不是必需的。
 2. **可以从视图中选择所有必需的行**。 即使视图中存在所有必需的行，也可能无法正确提取它们。选择是通过谓词来完成的。如果视图中缺少谓词所需的某一列，则无法选择所需的行。
-3. **可以从视图的输出算出所有输出表达式**。
-4. **所有输出行都使用正确的复制因子**。SQL基于<u>Bag语义</u>，即（物化视图的）基础表或SQL表达式的输出可能包含重复的行。<u>因此，两个表达式产生相同的行集还不够，任何重复的行也必须出现完全相同的次数</u>。
+3. **可以从视图输出中算出所有输出表达式**。
+4. **所有输出行都使用正确的复制因子**。SQL基于<u>Bag语义</u>，即（物化视图的）基础表或SQL表达式的输出可能包含重复的行。因此，两个表达式产生相同的 **Set** 还不够，任何重复的行也必须出现完全相同的次数。
 
-列之间的等价性在我们的==测试==中起着重要作用，因此我们首先讨论该主题。然后，我们讨论如何确保满足上述要求，再用单独的小节讨论每项需求。
+列之间的等价性在我们的测试中起着重要作用，因此我们首先讨论该主题。然后，我们讨论如何确保满足上述要求，再用单独的小节讨论每项需求。
 
-> 注：[Bag 语义](http://ceur-ws.org/Vol-1087/keynote2slides.pdf)：表示有重复元素，与之对应的是Set语义，表示没有重复。也就是查询返回的结果不会去重，有重复数据，除非加上`distinct`。
+> 注：[Bag 语义](http://ceur-ws.org/Vol-1087/keynote2slides.pdf)：表示有重复元素，与之对应的是 Set 语义，表示没有重复。也就是查询返回的结果不会去重，有重复数据，除非加上`distinct`。
 >
 
 #### 3.1.1 列等价分类（column equivalence classes）
 
-> Let *W=P~1~∧ P~2~∧ … ∧P~n~* be the selection predicate (in CNF) of a `SPJ` expression. By collecting the appropriate conjuncts, we can rewrite the predicate as *W=PE∧ PNE* where *PE* contains column equality predicates of the form *(T~i~.C~p~ =T~j~.C~q~)* and *PNE* contains all remaining conjuncts. T~i~ and T~j~ are tables, not necessarily distinct, and C~p~ and C~q~ are column references.
+> Let *W=P~1~∧ P~2~∧ … ∧ P~n~* be the selection predicate (in CNF) of a `SPJ` expression. By collecting the appropriate conjuncts, we can rewrite the predicate as *W=PE∧ PNE* where *PE* contains column equality predicates of the form *(T~i~.C~p~ =T~j~.C~q~)* and *PNE* contains all remaining conjuncts. T~i~ and T~j~ are tables, not necessarily distinct, and C~p~ and C~q~ are column references.
 >
 > Suppose we evaluate the SPJ expression by computing the Cartesian product of the tables, then applying the column-equality predicates in *PE*, then applying the predicates in *PNE*, and finally computing the expressions in the output list. ==After the column equality predicates have been applied, some columns are interchangeable in both the **PNE** predicates and the output columns==. This ability to **reroute column references among equivalent columns** will be important later on.
 >
 > Knowledge about column equivalences can be captured compactly by <u>computing a set of equivalence classes</u> based on the column equality predicates in *PE*. **An equivalence class is a set of columns that are known to be equal**. Computing the equivalence classes is straightforward. Begin with each column of the tables referenced by the expression in a separate set. Then loop through the <u>column equality predicates</u> in any order. For each *(T~i~.C~p~ = T~j~.C~q~)*, find the set containing *T~i~.C~p~* and the set containing *T~j~.C~q~*. If they are in different sets merge the two sets, otherwise do nothing. The sets left at the end is the desired collection of equivalence classes, including trivial classes consisting of a single column.
 
-设 $W=P_1∧P_2∧…∧P_n$ 为 **SPJ** 表达式（按 CNF 形式组织）的==选择谓词==。适当调整 $\wedge$，谓词可改写为 $W=PE ∧ PNE$，其中，其中 **PE** 包含所有形式为  ($T_i.C_p=T_j.C_q$) 的<u>列相等</u>谓词，**PNE** 包含所有剩余的连接。T~i~ 和 T~j~ 是表，有可能相同，而C~p~ 和 C~q~ 是列引用。
+设 $W=P_1∧P_2∧…∧P_n$ 为 *SPJ* 表达式（按 CNF 形式组织）的选择谓词。适当调整 $\wedge$，谓词可改写为 $W=PE ∧ PNE$，其中，其中 $PE$ 包含所有形式为  ($T_i.C_p=T_j.C_q$) 的<u>列相等</u>谓词，$PNE$ 包含所有余下的谓词。$T_i$ 和 $T_j$ 是表，有可能相同，而 C~p~ 和 C~q~ 表示列。
 
-假设我们求解 SPJ 表达式是先计算表的笛卡尔积，再应用 **PE** 中列相等的谓词，然后再应用 **PNE** 中的谓词，最后计算输出列表中的表达式。==应用<u>列相等谓词</u>后，某些列可以在 **PNE** 谓词和输出列互换==。这种在等价列之间**<u>重新路由引用列</u>的功能**稍后将非常重要。
+假设我们求解 SPJ 表达式是先计算表的笛卡尔积，再应用 **PE** 中列相等的谓词，然后再应用 **PNE** 中的谓词，最后计算输出列表中的表达式。应用<u>列相等谓词</u>后，某些列可以在 **PNE** 谓词和输出列互换。这种在等价列之间**<u>重新路由引用列</u>的功能**稍后将非常重要。
 
-通过基于 **PE** 中列相等谓词<u>计算等价类的集合</u>，可简洁地获取**列等价性**的知识。**等价类是一组已知相等的列**。计算等价类很简单。在单独的集合中，从表达式引用的表的每一列开始，然后按任意顺序循环遍历<u>列相等谓词</u>。对每个 ($T_i.C_p=T_j.C_q$)，找到包含 **T~i~.C~p~** 的集合和包含 **T~j~.C~q~** 的集合。如果它们位于不同的集合中，则将这两个集合合并，否则不执行任何操作。最后留下的集合是所需的等价类集合，包括没有意义的<u>==单列等价类==</u>。
+通过 **PE** 中列相等谓词计算等价类集合，可简洁地获取**列等价性**的知识。**等价类是一组已知相等的列**。计算等价类很简单。在单独的集合中，从表达式引用的表的每一列开始，然后按任意顺序循环遍历<u>列相等谓词</u>。对每个 ($T_i.C_p=T_j.C_q$)，找到包含 $T_i.C_p$ 的集合和包含 $T_j.C_q$ 的集合。如果它们位于不同的集合中，则将这两个集合合并，否则不执行任何操作。最后留下的集合是所需的等价类集合，包括没有意义的**单列等价类**。
 
 #### 3.1.2 视图中是否存在所有必需的行？（Do all required rows exist in the view?）
 
@@ -214,11 +214,12 @@ create index v1_sidx on v1( gross_revenue, p_name)
 
 因此，我们需要一个算法来判断 **W~q~ ⇒ W~v~** 是否成立。重写谓词如下：*W~q~ =P~q,1~∧P~q,2~∧…∧P~q,m~*  和 *W~v~ =P~v,1~∧P~v,2~∧…∧P~v,n~*。一种简单的保守算法是检查 *W~v~* 中每个条件*P~v,i~* ，是否匹配*W~q~* 中的每个条件*P~q,i~* 。有几种方法可以确定两个条件是否匹配。<u>例如，匹配可以是纯语法的</u>，通过将每个条件转换为字符串来实现，即将条件转为 SQL，然后匹配字符串。这种方法的缺点是，细微的语法差异会导致字符串不同。比如，`(A > B)`和 `(B < A)` 这两个谓词会匹配失败。为了避免这个问题，我们必须分析谓词，并利用表达式之间的等价性。利用**交换性**是一个很好的例子，适用于许多类型的表达式：比较、加法、乘法和<u>析取</u>（OR）。可设计不同精密度和复杂度的匹配函数，这取决于匹配函数有多少等价性的知识。比如，简单函数只能理解`（A+B）=（B+A）`，更复杂的函数可能识别`（A/2 + B/5）* 10 = A*5 + B*2`。
 
-我们的决策算法利用了列等价性和列范围的知识。我们首先将谓词 *W~q~* 和 *W~v~* 分为三个部分，并将<u>**包含测试**</u>写为：
+我们的决策算法利用了列等价和列范围的知识。首先将谓词 *W~q~* 和 *W~v~* 分为三个部分，并将<u>**包含测试**</u>写为：
 
-*(PE~q~∧ PR~q~∧PU~q~ ⇒ PE~v~∧ PR~v~∧PU~v~)*
-
-*PE~q~* 包含查询中的所有<u>列相等谓词</u>，*PR~q~* 包含范围谓词，*PU~q~* 是<u>余下的谓词</u>，包含 *W~q~* 中所有剩余的条件。*W~v~* 也类似划分。==列相等谓词是 *(T~i~.C~p~ = T~j~.C~r~)* 这种形式的任何原子谓词，其中 *C~p~* 和 *C~r~* 是列引用==。范围谓词是 *(T~i~.C~p~ op c)* 这种形式的任何原子谓词，其中 *c* 是常量，*op* 是 “<”、 “≤”、 “=”、 “≥”、 “>” 这些操作符。包含测试可以分为三个独立的测试：
+$$
+(PE_q ∧ PR_q ∧ PU_q ⇒ PE_v ∧ PR_v ∧ PU_v)
+$$
+*PE~q~* 包含查询中的所有<u>列相等谓词</u>，*PR~q~* 包含范围谓词，*PU~q~* 是<u>余下的谓词</u>，包含 *W~q~* 中所有剩余的条件。$W_v$ 也类似划分。==列相等谓词是 *(T~i~.C~p~ = T~j~.C~r~)* 这种形式的任何原子谓词，其中 *C~p~* 和 *C~r~* 是列引用==。范围谓词是 *(T~i~.C~p~ op c)* 这种形式的任何原子谓词，其中 *c* 是常量，*op* 是 “<”、 “≤”、 “=”、 “≥”、 “>” 这些操作符。包含测试可以分为三个独立的测试：
 
 *(PE~q~∧ PR~q~∧PU~q~⇒ PE~v~) ∧* 
 *(PE~q~∧ PR~q~∧PU~q~⇒ PR~v~) ∧*
@@ -228,9 +229,9 @@ create index v1_sidx on v1( gross_revenue, p_name)
 
 > 注：这里的意思是A是C的子集，那么 A&&B 也是C的子集
 
-*(PE~q~ ⇒PE~v~)*                   (等值关联包含测试)
+*(PE~q~ ⇒PE~v~)*                   (等值 `Join` 包含测试)
 *(PE~q~∧ PR~q~ ⇒PR~v~)*         (范围包含测试) 
-*(PE~q~ ∧PU~q~ ⇒PU~v~)*         (Residual subsumption test) 
+*(PE~q~ ∧PU~q~ ⇒PU~v~)*         (剩余的包含测试) 
 
 第一个测试称为**等值联接包含测试**，因为实际上，大多数列相等谓词都来自**等值联接包含测试**。所有列相等谓词都包含在PE中，即使那些引用同一表中列的谓词也是如此。回想一下*PE~q~*中的谓词是用于计算查询等价类的列相等谓词。由于*PE~q~*位于后两个包含测试的<u>前导项（先行词）</u>中，因此我们可以重新路由<u>列引用</u>到查询等价类中的任何列。
 
@@ -240,7 +241,7 @@ create index v1_sidx on v1( gross_revenue, p_name)
 
 **检查约束**可以很容易地合并到测试中。这里观察到的关键点是，**可以将表上的检查约束添加到 <u>where 子句</u>中，而不会更改查询结果**。因此，可以通过将检查约束包含在 *W~q~ ⇒ W~v~* 的前导项中考虑它们。是否真正利用检查约束取决于测试算法。
 
-##### 等值关联包含测试（Equijoin subsumption test）
+##### 等值 `Join` 包含测试（Equijoin subsumption test）
 
 > **The equijoin subsumption test** amounts to requiring that all columns equal in the view must also be equal in the query (but not vice versa). We implement this test by first computing column equivalence classes, as explained in the previous section, both for the query and the view, and then checking whether every nontrivial view equivalence class is a subset of some query equivalence class. Just checking that all column equality predicates in the view also exist in the query is a much weaker test because of transitivity. Suppose the view contains *(A=B and B=C)* and the query contains *(A=C and C=B)*. Even though the actual predicates don’t match, they are logically equivalent because they both imply that *A=B=C*. The effect of transitivity is correctly captured by using equivalence classes.
 >
@@ -289,13 +290,13 @@ create index v1_sidx on v1( gross_revenue, p_name)
 
 如本节开头所讨论的，两个 **Conjunct** 是否匹配，取决于匹配算法。我们的原型实现使用一个浅匹配算法：除了列等价性之外，表达式必须相同。表达式由文本字符串和一组列引用表示。文本字符串包含表达式的文本版本，省略了列引用。列引用组包含了表达式中所有的列，并按照它们在表达式的文本版本中出现的顺序排列。为了比较两个表达式，我们首先比较字符串。如果它们相等，我们扫描两个列表，比较两个列表中相同位置的列引用。如果两个列引用都包含在一个查询的列等价分类中，则列引用匹配，否则不匹配。如果每对列都匹配，则表达式匹配。我们选择这种浅层算法来提高速度，完全意识到它可能会错过一些机会。
 
-下面概括了视图是否包含查询所需的所有行的过程步骤。
+总之，以下是测试视图是否包含查询所需的所有行的步骤。
 
 1. 计算查询和视图列的等价分类。
-2. 检查每个视图的列等价分类是否是查询的列等价分类的子集。 如果不是，拒绝该视图
+2. 检查每个视图的列等价分类是否是查询的列等价分类的子集。如果不是，拒绝该视图
 3. 计算查询和视图的范围区间。
 4. 检查视图是否包含了相应的查询范围。 如果没有，拒绝该视图。
-5. 检查视图剩余谓词中的每个**Conjunct**是否匹配查询剩余谓词中的某个 **Conjunct**。如果没有，拒绝视图。
+5. 检查视图剩余谓词中的每个 **Conjunct** 是否匹配查询剩余谓词中的某个 **Conjunct**。如果没有，拒绝视图。
 
 ##### 例2
 
@@ -304,8 +305,8 @@ create index v1_sidx on v1( gross_revenue, p_name)
 > ```sql
 > Create view V2 with schemabinding as
 > Select l_orderkey, o_custkey, l_partkey,
->     l_shipdate, o_orderdate,
->     l_quantity*l_extendedprice as gross_revenue
+>  l_shipdate, o_orderdate,
+>  l_quantity*l_extendedprice as gross_revenue
 > From dbo.lineitem, dbo.orders, dbo.part
 > Where l_orderkey = o_orderkey
 > And l_partkey = p_partkey
@@ -330,38 +331,36 @@ create index v1_sidx on v1( gross_revenue, p_name)
 > ```
 >
 > <u>Step 1</u>: Compute equivalence classes.
-> |                            |                                                              |
-> | -------------------------- | ------------------------------------------------------------ |
-> | View equivalence classes:  | {l_orderkey, o_orderkey},{l_partkey, p_partkey}, {o_orderdate}, {l_shipdate} |
-> | Query equivalence classes: | {l_orderkey, o_orderkey},{l_partkey, p_partkey}, {o_orderdate, l_shipdate} |
 >
-> Not all trivial equivalence classes are shown; {o_orderdate} and {l_shipdate} are included because they are needed later in the example.
->
-> <u>Step 2</u>: Check view equivalence class containment.
->
-> The two non-trivial view equivalence classes both have exact matches among the query equivalence classes. The (trivial) equivalence classes `{o_orderdate}` and `{l_shipdate}` map to the same query equivalence class, which means that the substitute expression must create the compensating predicate `(o_orderdate=l_shipdate)`.
->
-> <u>Step 3</u>: Compute ranges.
->
-> |               |                                                              |
-> | ------------- | ------------------------------------------------------------ |
-> | View ranges:  | {l_partkey, p_partkey} ∈ (150, +∞),<br/>{o_custkey} ∈ (50, 500) |
-> | Query ranges: | {l_partkey, p_partkey} ∈ (150, 160),<br/>{o_custkey} ∈ (123, 123) |
->
+> |                   View equivalence classes                   |                  Query equivalence classes                   |
+> | :----------------------------------------------------------: | :----------------------------------------------------------: |
+> | {l_orderkey, o_orderkey},{l_partkey, p_partkey}, {o_orderdate}, {l_shipdate} | {l_orderkey, o_orderkey},{l_partkey, p_partkey}, {o_orderdate, l_shipdate} |
+> 
+>Not all trivial equivalence classes are shown; {o_orderdate} and {l_shipdate} are included because they are needed later in the example.
+> 
+><u>Step 2</u>: Check view equivalence class containment.
+> 
+>The two non-trivial view equivalence classes both have exact matches among the query equivalence classes. The (trivial) equivalence classes `{o_orderdate}` and `{l_shipdate}` map to the same query equivalence class, which means that the substitute expression must create the compensating predicate `(o_orderdate=l_shipdate)`.
+> 
+><u>Step 3</u>: Compute ranges.
+> 
+>|                         View ranges                          |                         Query ranges                         |
+> | :----------------------------------------------------------: | :----------------------------------------------------------: |
+> | {l_partkey, p_partkey} ∈ (150, +∞),<br/>{o_custkey} ∈ (50, 500) | {l_partkey, p_partkey} ∈ (150, 160),<br/>{o_custkey} ∈ (123, 123) |
+> 
 > <u>Step 4</u>: Check query range containment.
 >
 > The range (150, 160) on {l_partkey, p_partkey} is contained in the corresponding view range. The upper bounds do not match so we have to enforce the predicate ({l_partkey, p_partkey} <= 160). The range (123, 123) on {o_custkey} is also contained in the corresponding view range. The bounds don’t mach so we must enforce the predicates (o_custkey >= 123) and (o_custkey <= 123), which can be simplified to (o_custkey = 123).
 >
 > <u>Step 5</u>: Check match of view residual predicates.
 >
-> |                            |                                                           |
-> | -------------------------- | --------------------------------------------------------- |
-> | View residual predicate:   | p_name like ‘%abc%’                                       |
-> | Query residual predicate:: | p_name like ‘%abc%’,<br/>l_quantity*l_extendedprice > 100 |
->
+> | View residual predicate | Query residual predicate                                     |
+>| ----------------------- | ------------------------------------------------------------ |
+> | `p_name like ‘%abc%’`   | `p_name like ‘%abc%’`<br/>`l_quantity*l_extendedprice > 100` |
+> 
 > The view has only one residual predicate, p_name like ‘%abc%’, which also exists in the query. The extra residual predicate, l_quantity*l_extendedprice > 100 must be enforced.
->
-> The view passes all the tests so we conclude that it contains all the required rows. The compensating predicates that must be applied to the view are (o_orderdate = l_shipdate), ({p_partkey, l_partkey} <= 160), (o_custkey = 123), and (l_quantity \* l_extendedprice > 100.00). The notation {p_partkey, l_partkey} in the second predicates means that we can choose either p_partkey or l_partkey.
+> 
+>The view passes all the tests so we conclude that it contains all the required rows. The compensating predicates that must be applied to the view are (o_orderdate = l_shipdate), ({p_partkey, l_partkey} <= 160), (o_custkey = 123), and (l_quantity \* l_extendedprice > 100.00). The notation {p_partkey, l_partkey} in the second predicates means that we can choose either p_partkey or l_partkey.
 
 视图：
 
@@ -396,23 +395,21 @@ Where l_orderkey = o_orderkey
 
 <u>第 1 步</u>：计算列等价分类
 
-|                  |                                                              |
-| ---------------- | ------------------------------------------------------------ |
-| 视图列等价分类： | `{l_orderkey, o_orderkey}`<br/>`{l_partkey, p_partkey}`<br/>`{o_orderdate}`<br/>`{l_shipdate}` |
-| 查询列等价分类： | `{l_orderkey, o_orderkey}`<br/>`{l_partkey, p_partkey}`<br/>`{o_orderdate, l_shipdate}` |
+| 视图列等价分类                                               | 查询列等价分类                                               |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| `{l_orderkey, o_orderkey}`<br/>`{l_partkey, p_partkey}`<br/>`{o_orderdate}`<br/>`{l_shipdate}` | `{l_orderkey, o_orderkey}`<br/>`{l_partkey, p_partkey}`<br/>`{o_orderdate, l_shipdate}` |
 
 没有显示所有简单的**列等价分类**，这里显示 `{o_orderdate}` 和 `{l_shipdate}`，因为本示例的后面要用它们。
 
 <u>第 2 步</u>：检查视图列等价分类是否为子集
 
-视图两个简单的列等价分类在查询的列等价类中有精确匹配。简单的等价分类 `{o_orderdate}` 和 `{l_shipdate}` 映射到同一个查询的列等价分类中，这意味着替换表达式必须创建补偿谓词 `(o_orderdate=l_shipdate)`。
+视图两个重要的列等价分类在查询的列等价类中有精确匹配。简单的等价分类 `{o_orderdate}` 和 `{l_shipdate}` 映射到同一个查询的列等价分类中，这意味着替换表达式必须创建补偿谓词 `(o_orderdate=l_shipdate)`。
 
 <u>第 3 步</u>：计算范围
 
-|              |                                                              |
-| ------------ | ------------------------------------------------------------ |
-| 视图的范围： | {l_partkey, p_partkey} ∈ (150, +∞),<br/>{o_custkey} ∈ (50, 500) |
-| 查询的范围： | {l_partkey, p_partkey} ∈ (150, 160),<br/>{o_custkey} ∈ (123, 123) |
+| 视图的范围                                                   | 查询的范围                                                   |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| {l_partkey, p_partkey} ∈ (150, +∞),<br/>{o_custkey} ∈ (50, 500) | {l_partkey, p_partkey} ∈ (150, 160),<br/>{o_custkey} ∈ (123, 123) |
 
 <u>第 4 步</u>：检查查询的范围是否为视图范围的子集
 
@@ -420,10 +417,9 @@ Where l_orderkey = o_orderkey
 
 <u>第 5 步</u>：检查视图剩余谓词是否匹配
 
-|                  |                                                           |
-| ---------------- | --------------------------------------------------------- |
-| 视图剩余的谓词： | p_name like ‘%abc%’                                       |
-| 查询剩余的谓词： | p_name like ‘%abc%’,<br/>l_quantity*l_extendedprice > 100 |
+| 视图剩余的谓词        | 查询剩余的谓词                                               |
+| --------------------- | ------------------------------------------------------------ |
+| `p_name like ‘%abc%’` | `p_name like ‘%abc%’`<br/>`l_quantity*l_extendedprice > 100` |
 
 这个视图只有一个剩余谓词，`p_name like ‘%abc%’`，该谓词也存在于查询中。必须增加查询额外的剩余谓词 `l_quantity * l_extendedprice> 100`。
 
@@ -514,24 +510,23 @@ Where l_orderkey = o_orderkey
 >
 > We obtain the following equivalence classes and ranges for the view and the query.
 >
-> |        |                                                              |
-> | ------ | ------------------------------------------------------------ |
-> | View:  | {l_orderkey, o_orderkey}, {o_custkey, c_custkey}<br/>{ l_orderkey, o_orderkey} ∈ (500, +∞) |
-> | Query: | {l_shipdate, l_commitdate}<br/>{l_orderkey} ∈ (1000, 1500)   |
->
-> The foreign-key join graph for the view consists of three nodes (lineitem, orders, customer) with an edge from lineitem to orders and an edge from orders to customer. The customer node can be deleted because it has no outgoing edges and one incoming edge. This also deletes the edge from orders to customer. Now orders has no outgoing edges and can be removed.
->
-> We then conceptually add orders and customer to the query. The join predicate for the <u>lineitem-to-orders</u> edge is `l_orderkey = o_orderkey`, which generates the equivalence class *{l_orderkey, o_orderkey}*. The join predicate for the <u>orders-to-customer</u> edge is `o_custkey = c_custkey`, which generates the equivalence class *{o_custkey, c_custkey}*. The updated query equivalence classes and ranges for the query are
->
-> ```bash
+> | View                                                         | Query                                                      |
+> | ------------------------------------------------------------ | ---------------------------------------------------------- |
+> | {l_orderkey, o_orderkey}, {o_custkey, c_custkey}<br/>{ l_orderkey, o_orderkey} ∈ (500, +∞) | {l_shipdate, l_commitdate}<br/>{l_orderkey} ∈ (1000, 1500) |
+> 
+>The foreign-key join graph for the view consists of three nodes (lineitem, orders, customer) with an edge from lineitem to orders and an edge from orders to customer. The customer node can be deleted because it has no outgoing edges and one incoming edge. This also deletes the edge from orders to customer. Now orders has no outgoing edges and can be removed.
+> 
+>We then conceptually add orders and customer to the query. The join predicate for the <u>lineitem-to-orders</u> edge is `l_orderkey = o_orderkey`, which generates the equivalence class *{l_orderkey, o_orderkey}*. The join predicate for the <u>orders-to-customer</u> edge is `o_custkey = c_custkey`, which generates the equivalence class *{o_custkey, c_custkey}*. The updated query equivalence classes and ranges for the query are
+> 
+>```bash
 > Query: {l_shipdate, l_commitdate}, {l_orderkey, o_orderkey},
->        {o_custkey, c_custkey};
+>     {o_custkey, c_custkey};
 >        {l_orderkey, o_orderkey} ∈ (1000, 1500)
-> ```
->
-> We then apply the subsumption tests. The view passes the equijoin subsumption test because every view equivalence class is a subset of a query equivalence class. It also passes the range subsumption test because the view range *{ l_orderkey, o_orderkey}∈ (500, +∞)* contains the corresponding query range *{ l_orderkey, o_orderkey} ∈ (1000, 1500)*. The compensating predicates are `l_orderkey >= 1000 and l_orderkey <= 1500`, which can be enforced because *l_orderkey* is available in the view output. Finally, every output column of the ~~view~~(query) can be computed from the view output.
->
-> The procedure above **ensures** that we can “prejoin”, directly or indirectly, each extra table in the view to some input table *T* of the query and the resulting, wider table will contain exactly the same rows as *T.* This is safe but somewhat restrictive because we only need to guarantee it for <u>the rows actually consumed by the query</u>, not all rows. Here is an example of such a case. Suppose we have a view consisting of tables *T* and *S* joined on T.F=S.C where *F* is declared as a foreign key referencing *C* and *C* is the primary key of *S*. Now consider a selection query on table *T* with the predicate *T.F > 50*. If *T.F* is not declared with “**not null**”, the view will be rejected by our procedure. The join of *T* and *S* does not preserve the cardinality of *T* because rows with a **null** in column *T.F* are not present in the view. However, for the subset of rows with a non-null *T.F* value, it does preserve cardinality, which is all that matters because of the null-rejecting predicate *T.F > 50* in the query. On other words, any row in *T* containing a null value in *T.F* will be discarded the query predicate in any case. The algorithm can be modified to handle this case (not yet implemented). All that is required is an additional check when considering whether to add an edge to the foreign-key join graph. A foreign key column allowing nulls is still acceptable if the query contains a null-rejecting predicate on the column (other than the equijoin predicate).
+>    ```
+> 
+>We then apply the subsumption tests. The view passes the equijoin subsumption test because every view equivalence class is a subset of a query equivalence class. It also passes the range subsumption test because the view range *{ l_orderkey, o_orderkey}∈ (500, +∞)* contains the corresponding query range *{ l_orderkey, o_orderkey} ∈ (1000, 1500)*. The compensating predicates are `l_orderkey >= 1000 and l_orderkey <= 1500`, which can be enforced because *l_orderkey* is available in the view output. Finally, every output column of the ~~view~~(query) can be computed from the view output.
+> 
+>The procedure above **ensures** that we can “prejoin”, directly or indirectly, each extra table in the view to some input table *T* of the query and the resulting, wider table will contain exactly the same rows as *T.* This is safe but somewhat restrictive because we only need to guarantee it for <u>the rows actually consumed by the query</u>, not all rows. Here is an example of such a case. Suppose we have a view consisting of tables *T* and *S* joined on T.F=S.C where *F* is declared as a foreign key referencing *C* and *C* is the primary key of *S*. Now consider a selection query on table *T* with the predicate *T.F > 50*. If *T.F* is not declared with “**not null**”, the view will be rejected by our procedure. The join of *T* and *S* does not preserve the cardinality of *T* because rows with a **null** in column *T.F* are not present in the view. However, for the subset of rows with a non-null *T.F* value, it does preserve cardinality, which is all that matters because of the null-rejecting predicate *T.F > 50* in the query. On other words, any row in *T* containing a null value in *T.F* will be discarded the query predicate in any case. The algorithm can be modified to handle this case (not yet implemented). All that is required is an additional check when considering whether to add an edge to the foreign-key join graph. A foreign key column allowing nulls is still acceptable if the query contains a null-rejecting predicate on the column (other than the equijoin predicate).
 
 假设我们有一个SPJ查询引用表 *T~1~，T~2~，…，T~n~*，有一个视图额外多引用了一张表，即表 *T~1~，T~2~，…，T~n~，S*。==在什么情况下仍然可以从视图计算查询？==我们的方法<u>基于识别保留基数的 Join</u>（有时称为表扩展 Join）。如果 *T* 中的每一行恰好与 *S* 中的一行关联，则表 *T* 和 *S* 之间的 Join 保留基数。如果这样，我们可以简单地把 *S* 看作是用 *S* 中的列扩展 *T*。<u>*T* 中非空外键中的所有列与 *S* 中的唯一键之间的等值Join具有此属性</u>。外键约束保证，对于 *T* 中的每一行  *t*，*S* 中至少存在一行 *s*，<u>对于 *t* 中所有非空外键列</u>，都有匹配的列值。验证外键约束时，将忽略 *t* 中所有包含空值的列。可以证明，所有要求（<u>等值 Join，有外键，外键的所有列，非空，唯一键</u>）都是必需的。
 
@@ -564,10 +559,9 @@ Where l_orderkey between 1000 and 1500
 
 视图和查询的列等价分类和范围如下：
 
-|        |                                                              |
-| ------ | ------------------------------------------------------------ |
-| 视图： | {l_orderkey, o_orderkey}, {o_custkey, c_custkey}<br/>{ l_orderkey, o_orderkey} ∈ (500, +∞) |
-| 查询： | {l_shipdate, l_commitdate}<br/>{l_orderkey} ∈ (1000, 1500)   |
+| 视图                                                         | 查询                                                       |
+| ------------------------------------------------------------ | ---------------------------------------------------------- |
+| {l_orderkey, o_orderkey}, {o_custkey, c_custkey}<br/>{ l_orderkey, o_orderkey} ∈ (500, +∞) | {l_shipdate, l_commitdate}<br/>{l_orderkey} ∈ (1000, 1500) |
 
 视图的外键关联图由三个节点（lineitem、orders、customer）组成，其中分别从 `lineitem` 到 `orders`、从 `orders` 到 `customer` 有一条边。因为 `customer`节点没有输出边且只有一个输入边，可以删除它，这也删除了从 `orders` 到 `customer` 的边。现在 `orders` 没有输出边了，也可以删除。
 
@@ -725,7 +719,7 @@ Group by c_nationkey
 
 为了加快视图匹配，在内存中保留了每个物化视图的描述，包含了上一节视图匹配算法所需的所有信息。即使如此，每次调用匹配规则时，如果视图的数量非常大，匹配所有视图会很慢。本节描述了一个称为**过滤树**的内存索引，可快速丢弃查询不匹配的视图。
 
-**过滤树**是一种多路搜索树，其中所有叶子都处于同一级别。 树中的节点包含 `<key、指针>` 对的集合。 key  由一组值而不仅仅是一个值组成。 内部节点的指针指向下一级的节点，叶节点的指针指向视图描述列表。过滤树在树的每一级将视图集细分为越来越小的**分区**。
+**过滤树**是一种多路搜索树，其中所有叶子都处于同一级别。 树中的节点包含 `<key、指针>` 对的集合。 key  由一组值而不仅仅是一个值组成。 内部节点的指针指向下一级的节点，叶节点的指针指向一组视图描述。过滤树在树的每一级将视图集细分为越来越小的**分区**。
 
 **过滤树**中的搜索可遍历多个路径。 搜索到达某个节点时，它将沿着该节点的某些传出指针继续。 在<u>与指针关联的 Key</u> 应用搜索条件，决定是否沿着指针继续。条件总是属于同一类型：==<u>键限定</u>它是给定搜索键的子集（超集）还是等于给定搜索键==。搜索 key 也是一个集合。我们**可以总是**执行线性扫描并检查每个 key，但如果节点包含多个键，可能会很慢。为了避免线性扫描，我们将 <u>key</u> 组织在一个称为 **lattice** 的结构中，这样我们就可以轻松地找到给定 <u>key</u> 的所有子集（超集）。我们称这种内部结构为 **lattice 索引**。
 

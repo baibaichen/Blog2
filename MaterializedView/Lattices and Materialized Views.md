@@ -346,7 +346,7 @@ For details, see the [lattices documentation](https://calcite.apache.org/docs/la
 
 第一种方法基于视图替换。
 
-`SubstitutionVisitor` 及其扩展 `MaterializedViewSubstitutionVisitor` 旨在用使用物化视图的等效表达式替换部分关系代数树。物化视图的定义以及如何扫描物化视图被注册进优化器中。==之后，将触发尝试在优化器中统一表达式的转换规则==。表达式不需要等价才能被替换：如果需要，访问者可以在表达式的顶部添加一个剩余的谓词。
+`SubstitutionVisitor` 及其扩展 `MaterializedViewSubstitutionVisitor` 旨在用使用物化视图的等价表达式替换部分关系代数树。物化视图的定义以及如何扫描物化视图被注册进优化器中。==之后，将触发尝试在优化器中统一表达式的转换规则==。表达式不需要等价才能被替换：如果需要，访问者可以在表达式的顶部添加一个剩余的谓词。
 
 以下示例取自 `SubstitutionVisitor` 的文档：
 
@@ -524,7 +524,7 @@ GROUP BY deptno
 
 - Query:
 
-```
+```SQL
 SELECT deptname, state, SUM(salary) AS s
 FROM emps
 JOIN depts ON emps.deptno = depts.deptno
@@ -534,7 +534,7 @@ GROUP BY deptname, state
 
 - Materialized view definition:
 
-```
+```SQL
 SELECT empid, deptno, state, SUM(salary) AS s
 FROM emps
 JOIN locations ON emps.locationid = locations.locationid
@@ -606,7 +606,7 @@ GROUP BY empid, deptname
 
 - Rewriting:
 
-```
+```sql
 SELECT empid, deptname, SUM(s)
 FROM (
   SELECT empid, deptname, s
@@ -619,6 +619,18 @@ FROM (
   GROUP BY empid, deptname) AS subq
 GROUP BY empid, deptname
 ```
+
+##### 重写
+|                                               | 查询                                                         | 物化视图                                                     | 重写                                                         |
+| --------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| Join rewriting                                | SELECT empid<br/>FROM depts<br/>JOIN (<br/>  SELECT empid, deptno<br/>  FROM emps<br/>  WHERE empid = 1) AS subq<br/>ON depts.deptno = subq.deptno | SELECT empid<br/>FROM emps<br/>JOIN depts USING (deptno)     | SELECT empid<br/>FROM mv<br/>WHERE empid = 1                 |
+| Aggregate rewriting                           | SELECT deptno<br/>FROM emps<br/>WHERE deptno > 10<br/>GROUP BY deptno | SELECT empid, deptno<br/>FROM emps<br/>WHERE deptno > 5<br/>GROUP BY empid, deptno | SELECT deptno<br/>FROM mv<br/>WHERE deptno > 10<br/>GROUP BY deptno |
+| Aggregate rewriting (with aggregation rollup) | SELECT deptno, COUNT(*) AS c, SUM(salary) AS s<br/>FROM emps<br/>GROUP BY deptno | SELECT empid, deptno, COUNT(*) AS c, SUM(salary) AS s<br/>FROM emps<br/>GROUP BY empid, deptno | SELECT deptno, SUM(c), SUM(s)<br/>FROM mv<br/>GROUP BY deptno |
+| Query partial rewriting                       | SELECT deptno, COUNT(*)<br/>FROM emps<br/>GROUP BY deptno    | SELECT empid, depts.deptno, COUNT(*) AS c, SUM(salary) AS s<br/>FROM emps<br/>JOIN depts USING (deptno)<br/>GROUP BY empid, depts.deptno | SELECT deptno, SUM(c)<br/>FROM mv<br/>GROUP BY deptno        |
+| View partial rewriting                        | SELECT deptname, state, SUM(salary) AS s<br/>FROM emps<br/>JOIN depts ON emps.deptno = depts.deptno<br/>JOIN locations ON emps.locationid = locations.locationid<br/>GROUP BY deptname, state | SELECT empid, deptno, state, SUM(salary) AS s<br/>FROM emps<br/>JOIN locations ON emps.locationid = locations.locationid<br/>GROUP BY empid, deptno, state | SELECT deptname, state, SUM(s)<br/>FROM mv<br/>JOIN depts ON mv.deptno = depts.deptno<br/>GROUP BY deptname, state |
+| Union rewriting                               | SELECT empid, deptname<br/>FROM emps<br/>JOIN depts ON emps.deptno = depts.deptno<br/>WHERE salary > 10000 | SELECT empid, deptname<br/>FROM emps<br/>JOIN depts ON emps.deptno = depts.deptno<br/>WHERE salary > 12000 | SELECT empid, deptname<br/>FROM mv<br/>**UNION ALL**<br/>SELECT empid, deptname<br/>FROM emps<br/>JOIN depts ON emps.deptno = depts.deptno<br/>WHERE salary > 10000 AND salary <= 12000 |
+| Union rewriting with aggregate                | SELECT empid, deptname, SUM(salary) AS s<br/>FROM emps<br/>JOIN depts ON emps.deptno = depts.deptno<br/>WHERE salary > 10000<br/>GROUP BY empid, deptname | SELECT empid, deptname, SUM(salary) AS s<br/>FROM emps<br/>JOIN depts ON emps.deptno = depts.deptno<br/>WHERE salary > 12000<br/>GROUP BY empid, deptname | SELECT empid, deptname, SUM(s)<br/>FROM (<br/>  SELECT empid, deptname, s<br/>  FROM mv<br/>  UNION ALL<br/>  SELECT empid, deptname, SUM(salary) AS s<br/>  FROM emps<br/>  JOIN depts ON emps.deptno = depts.deptno<br/>  WHERE salary > 10000 AND salary <= 12000<br/>  GROUP BY empid, deptname) AS subq<br/>GROUP BY empid, deptname |
+
 
 ##### Limitations
 
@@ -1267,11 +1279,9 @@ Valid values are:
 
 Unlike lattice dimensions, measures can not be specified in qualified format, {@code [“table”, “column”]}. When you define a lattice, make sure that each column you intend to use as a measure has a unique label within the lattice (using “{@code AS label}” if necessary), and use that label when you want to pass the column as a measure argument.
 
-# 其他
+# 重写算法
 
-重写逻辑基于 Goldstein 和 Larson 的**使用物化视图优化查询：一个实用的、可扩展的解决方案**。
-
-在查询端，规则匹配 `Project` 节点链或 `Aggregate` 和 `Join` 节点。这些节点的子计划必须由以下一个或多个算子组成：`TableScan`、`Project`、`Filter` 和 `Join`。
+重写逻辑基于 Goldstein 和 Larson 的**使用物化视图优化查询：一个实用的、可扩展的解决方案**。在查询端，规则匹配 `Project` 节点链或 `Aggregate` 和 `Join` 节点。该节点的子计划必须由以下一个或多个算子组成：`TableScan`、`Project`、`Filter` 和 `Join`。
 
 对于每个 **Join MV**（Table Index），我们需要检查以下内容：
 
@@ -1280,7 +1290,7 @@ Unlike lattice dimensions, measures can not be specified in qualified format, {@
 3. 所有**输出表达式**都可以从视图的输出中计算出来。
 4. 所有输出行都以正确的重复因子出现。我们可能依赖现有的**唯一键 - 外键**关系来提取该信息。
 
-反过来，对于每个**聚合 MV**（Layout，Aggregate Index），我们需要检查以下内容：
+对于每个**聚合 MV**（Layout，Aggregate Index），我们需要检查以下内容：
 
 1. 以<u>视图中的聚合运算符为根的计划</u>**生成**以<u>查询中的聚合运算符为根的计划</u>所需的**所有行**。
 2. 补偿谓词所需的所有列，即需要在视图上强制执行的谓词，在视图输出中可用。
@@ -1290,15 +1300,15 @@ Unlike lattice dimensions, measures can not be specified in qualified format, {@
 
 与原始论文相比，该规则包含多个扩展。其中之一是可以使用 `Union` 重写执行计划，比如物化视图只包含了部分查询结果。
 
-工作步骤：
+## 工作步骤
 
 1. 检查查询计划是否满足视图重写的前提条件
 
-2. 初始化所有查询相关的辅助数据结构，我们将在整个查询重写过程中使用它们
+2. 初始化查询相关的所有辅助数据结构，将在整个查询重写过程中使用它们
    1. 提取查询的表引用
    2. 提取查询谓词
 
-3. 遍历所有适用的物化，尝试重写给定的查询
+3. 遍历所有适用的物化视图，尝试重写查询
    1. 提取物化视图的表引用
    
    2. 过滤不能用的物化视图。
@@ -1316,18 +1326,80 @@ Unlike lattice dimensions, measures can not be specified in qualified format, {@
    
 4. We map every table in the query to a table with the same qualified name (all query tables are contained in the view, thus this is equivalent to mapping every table in the query to a view table).
    
+   If a table is used multiple times, we will create multiple mappings, and we will try to rewrite the query using each of the mappings.  Then, we will try to map every source table (query) to a target table (view), and if we are successful, we will try to create compensation predicates to filter the view results further (if needed).
+   
    >  我们将查询中的每个表映射到具有相同限定名称的表(所有查询表都包含在视图中，因此这相当于将查询中的每个表映射到一个视图表)。
+   >
+   >  如果一个表被多次使用，我们将创建多个映射，我们将尝试使用每个映射重写查询。 然后，我们将尝试将每个源表（查询）映射到目标表（视图），如果成功，我们将尝试创建补偿谓词以进一步过滤视图结果（如果需要）。
    
-   1. Compute compensation predicates, i.e., predicates that need to be enforced over the view to retain query semantics. The resulting  predicates are expressed using {@link RexTableInputRef} over the query. First, to establish relationship, we swap column references of the view predicates to point to query tables and compute equivalence classes.
+   1. **4.0**. `TableMapping : mapping query tables -> view tables`  If compensation equivalence classes exist, we need to add the mapping to the query mapping
    
-      > 计算补偿谓词，即<u>要在视图上强制执行</u>以<u>保留查询语义</u>的谓词。在查询上使用 `RexTableInputRef}` 表示 **结果谓词**。 首先，为了建立关系，我们交换<u>视图上谓词的列引用</u>以指向查询表并计算等价类。
+   2. **4.1**. **Compute compensation predicates**, i.e., predicates that need to be enforced over the view to retain query semantics. The resulting  predicates are expressed using `RexTableInputRef` over the query. First, to establish relationship, we swap column references of the view predicates to point to query tables and compute equivalence classes.
    
-5. If a table is used multiple times, we will create multiple mappings, and we will try to rewrite the query using each of the mappings.  Then, we will try to map every source table (query) to a target table (view), and if we are successful, we will try to create compensation predicates to filter the view results further (if needed).
+      > **计算补偿谓词**，即<u>要在视图上强制执行</u>以<u>保留查询语义</u>的谓词。在查询上使用 `RexTableInputRef` 表示 **结果谓词**。 首先，为了建立关系，我们交换<u>视图上谓词的列引用</u>以指向查询表并计算等价类。
+   
+      1. 补偿谓词为空：Attempt partial rewriting using union operator. This rewriting will read some data from the view and the rest of the data from the query computation. The resulting predicates are expressed using  `RexTableInputRef` over the view.
+      2. 补偿谓词不为空：
+         1. Compute final compensation predicate.
+         2. Generate final rewriting if possible. **First**, we add the compensation predicate (if any) on top of the view. Then, we trigger the unifying method. This method will either create a Project or an Aggregate operator on top of the view. It will also compute the output expressions for the query.
 
-## 定义
+## 参考
 
-# 其他2
+- `compensateViewPartial`：It checks whether the query can be rewritten using the view even though the query uses additional tables. Rules implementing the method should follow different approaches depending on the operators they rewrite. return ViewPartialRewriting, or null if the rewrite can't be done.
 
+- `rewriteQuery`：If the view will be used in a union rewriting, this method is responsible for rewriting the query branch of the union using the given compensation predicate. If a rewriting can be produced, we return that rewriting. If it cannot be produced, we will return null.
+
+- `createUnion`：If the view will be used in a union rewriting, this method is responsible for generating the union and any other operator needed on top of it, e.g., a Project operator.
+
+- `rewriteView`：使用给定的物化视图重写查询。 `input` 节点是视图表上的 `Scan`，顶层可能是补偿的过滤器。 如果可以产生重写，我们返回重写的计划。 如果无法生成，我们将返回 null。
+
+- `pushFilterToOriginalViewPlan` ：Once we create a compensation predicate, this method is responsible for pushing the resulting filter through the view nodes. This might be useful for rewritings containing Aggregate operators, as some of the grouping columns might be removed, which results in additional matching possibilities. The method will return a pair of nodes: the new top `project` on the left and the new node on the right.
+
+- `extractReferences`：If the node is an `Aggregate`, it returns a list of references to the grouping columns. Otherwise, it returns a list of references to all columns in the node. The returned list is immutable.
+
+- `generateTableMappings`：It will flatten a multimap containing table references to table references, producing all possible combinations of mappings. Each of the mappings will be bi-directional.
+
+- `splitPredicates`：Classifies each of the predicates in the list into one of these two categories: 1-l) **column equality predicates**, or 2-r) **residual predicates**, all the rest. For each category, it creates the conjunction of the predicates. The result is an pair of `RexNode` objects corresponding to each category.
+
+- `compensatePartial`：It checks whether the target can be rewritten using the source even though the source uses additional tables. In order to do that, we need to double-check that every join that exists in the source and is not in the target is **a cardinality-preserving join**, i.e., it only appends columns to the row without changing its multiplicity. Thus, the join needs to be:
+
+  1. Equi-join 
+  2. Between all columns in the keys
+  3. Foreign-key columns do not allow NULL values 
+  4. Foreign-key 
+  5. Unique-key
+
+  If it can be rewritten, it returns true. Further, it inserts the missing equi-join predicates in the input {@code compensationEquiColumns} multimap if it is provided.If it cannot be rewritten, it returns false.
+
+- `computeCompensationPredicates`：We check whether the predicates in the source are contained in the predicates in the target. The method treats separately the equi-column predicates, the range predicates, and the rest of predicates. If the containment is confirmed, we produce compensation predicates that need to be added to the target to produce the results in the source. Thus, if source and target expressions are equivalent, those predicates will be the true constant. In turn, if containment cannot be confirmed, the method returns null.
+
+- `generateEquivalenceClasses`：Given the equi-column predicates of the source and the target and the computed equivalence classes, it extracts possible mappings between the equivalence classes. If there is no mapping, it returns null. If there is a exact match, it will return a compensation predicate that evaluates to true. Finally, if a compensation predicate needs to be enforced on top of the target to make the equivalences classes match, it returns that compensation predicate.
+
+- `extractPossibleMapping`：Given the source and target equivalence classes, it extracts the possible mappings from each source equivalence class to each target equivalence class. If any of the source equivalence classes cannot be mapped to a target equivalence class, it returns null.
+
+- `rewriteExpression`：**First**, the method takes the node expressions `nodeExprs` and swaps the table and column references using the table mapping and the equivalence classes. If `swapTableColumn` is true, it swaps the table reference and then the column reference, otherwise it swaps the column reference and then the table reference. **Then**, the method will rewrite the input expression `exprToRewrite`, replacing the `RexTableInputRef` by references to the positions in `nodeExprs`. The method will return the rewritten expression. If any of the expressions in the input expression cannot be mapped, it will return null.
+
+- `rewriteExpressions`：
+
+- `generateSwapTableColumnReferencesLineage`：It swaps the table references and then the column references of the input expressions using the table mapping and the equivalence classes.
+
+- `generateSwapColumnTableReferencesLineage`：It swaps the column references and then the table references of the input expressions using the equivalence classes and the table mapping.
+
+- `replaceWithOriginalReferences`：Given the input expression, it will replace (sub)expressions when possible using the content of the mapping. In particular, the mapping contains the digest of the expression and the index that the replacement input ref should point to.
+
+- `shuttleReferences`：Replaces all the input references by the position in the input column set. If a reference index cannot be found in the input set, then we return null. 用输入列集中的位置替换所有输入引用。 如果在输入集中找不到引用索引，则返回 null。
+
+### `MaterializedViewAggregateRule.rewriteView`
+
+**==聚合物化视图重写==**
+
+使用给定的物化视图重写查询。 `input` 参数是视图表上的 `Scan`，顶层可能是补偿的过滤器。 如果可以产生重写，我们返回重写的计划。 如果无法生成，我们将返回 null。
+
+1. Get group by references and aggregate call input references needed
+   1. 有 `Project`
+   2. 无 `Project`
+2. `generateMapping`：从（查询）节点表达式到目标（物化视图）表达式的映射。如果任一表达式无法映射，返回 null。
+3. 创建聚合 Mapping
 
 
 ## 元数据信息
