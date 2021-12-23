@@ -1597,7 +1597,7 @@ JOIN CustomerDim AS c USING (customerId)
 - **推荐**：==代理==可以根据星型模式（例如表和列基数）的静态分析以及过去使用的统计信息推荐要创建的**物化视图**。
 - **视图匹配**：优化器使用 **lattice** 来识别可以满足查询的物化查询。没有 latttice，这样的空间会大得多，因为优化器必须考虑许多连接排列。
 
-## 2014-09-03 [CALCITE-402: Lattice should create materializations on demand](https://issues.apache.org/jira/browse/CALCITE-402)
+## 2014-09-03 [CALCITE-402：Lattice should create materializations on demand](https://issues.apache.org/jira/browse/CALCITE-402)
 
 Lattice should create materializations (in memory) the first time it is asked for them, and use the same materialization for subsequent queries.
 
@@ -1607,11 +1607,11 @@ Enabled by new connection parameter "createMaterializations".
 
 在 `StarTable.StarTableScan` 之上匹配 `AggregateRelBase` 的优化器规则。此模式表明可能存在聚合表。 该规则要求**星表**提供所需聚合级别的聚合表。
 
-## 2014-09-13 [CALCITE-406: Add tile and measure elements to lattice model element](https://issues.apache.org/jira/browse/CALCITE-406)
+## 2014-09-13 [CALCITE-406：Add tile and measure elements to lattice model element](https://issues.apache.org/jira/browse/CALCITE-406)
 
 将 `Tile` 和 `Measure` 元素添加到 lattice 模型元素，加载模型（在连接初始化）时加载 lattice 的预定义 `Tile`。
 
-## [CALCITE-1389: Add rule to perform rewriting of queries using materialized views with joins](https://issues.apache.org/jira/browse/CALCITE-1389)
+## [CALCITE-1389：Add rule to perform rewriting of queries using materialized views with joins](https://issues.apache.org/jira/browse/CALCITE-1389)
 
 第一次按 [Optimizing Queries Using Materialized Views: A Practical, Scalable Solution]() 这篇 paper 来实现
 
@@ -1621,11 +1621,11 @@ Enabled by new connection parameter "createMaterializations".
 >
 > 在我看来，主要的缺失部分是一种算法，该算法在给定一组 MV 的情况下，创建一组最佳的 lattice，使得每个 MV 都属于一个 lattice。
 
-## 2017-01-31: [CALCITE-1500: Decouple materialization and lattice substitution from VolcanoPlanner](https://issues.apache.org/jira/browse/CALCITE-1500)
+## 2017-01-31 [ALCITE-1500：Decouple materialization and lattice substitution from VolcanoPlanner](https://issues.apache.org/jira/browse/CALCITE-1500)
 
 
 
-## [CALCITE-1682: New metadata providers for expression column origin and all predicates in plan](https://issues.apache.org/jira/browse/CALCITE-1682)
+## [CALCITE-1682：New metadata providers for expression column origin and all predicates in plan](https://issues.apache.org/jira/browse/CALCITE-1682)
 
 我正在研究 Hive 中物化视图重写的集成。
 
@@ -1648,11 +1648,11 @@ Enabled by new connection parameter "createMaterializations".
 
 我已经开始研究这个，很快就会提供一个补丁；非常感谢反馈
 
-## [CALCITE-1731: Rewriting of queries using materialized views with joins and aggregates](https://issues.apache.org/jira/browse/CALCITE-1731)
+## [CALCITE-1731：Rewriting of queries using materialized views with joins and aggregates](https://issues.apache.org/jira/browse/CALCITE-1731)
 
 还是类似 [[1]](#Optimizing Queries Using Materialized Views: A Practical, Scalable Solution) 来重写**计划**
 
-我试图在 [CALCITE-1389](https://issues.apache.org/jira/browse/CALCITE-1389) 的基础上工作。然而，最后我还是创建了一个新的替代规则。主要原因是我想更密切地 <u>==follow==</u> 论文，而不是依赖于 物化视图重写中触发的规则来查找表达式是否等价。相反，我们使用 [CALCITE-1682](https://issues.apache.org/jira/browse/CALCITE-1682) 中提出的新 **metadata provider** 从<u>查询计划</u>和<u>物化视图计划</u>中提取信息，然后我们使用该信息来验证和执行重写。
+我试图在 [CALCITE-1389](https://issues.apache.org/jira/browse/CALCITE-1389) 的基础上工作。然而，最后我还是创建了一个新的替代规则。主要原因是我想更密切地 <u>==follow==</u> 论文，而不是依赖于物化视图重写中触发的规则来查找表达式是否等价。相反，我们使用 [CALCITE-1682](https://issues.apache.org/jira/browse/CALCITE-1682) 中提出的新 **metadata provider** 从<u>查询计划</u>和<u>物化视图计划</u>中提取信息，然后我们使用该信息来验证和执行重写。
 
 我还在规则中实现了新的统一/重写逻辑，因为现有的聚合统一规则假设查询中的聚合输入和物化视图需要等价（相同的 Volcano 节点）。该条件可以放宽，因为我们在规则中通过使用如上所述的新 **metadata provider**  验证查询结果是否包含在 物化视图 中。
 
@@ -1661,15 +1661,56 @@ Enabled by new connection parameter "createMaterializations".
 将遵循此问题的一些扩展：
 
 - 扩展逻辑以过滤给定查询节点的相关 MV，因此该方法可随着 MV 数量的增长而扩展。
-- 使用联合运算符生成重写，例如，可以从 MV (year = 2014) 和查询 (not(year = 2014)) 部分回答给定的查询。如果存储了 MV，例如在 Driud 中，这种重写可能是有益的。与其他重写一样，是否最终使用重写的决定应该基于成本。
+- 使用 Union 运算符生成重写，例如，可以从 MV (year = 2014) 和查询 (not(year = 2014)) 部分回答给定的查询。如果存储了 MV，例如在 Driud 中，这种重写可能是有益的。与其他重写一样，是否最终使用重写的决定应该基于成本。
 
 ## [CALCITE-1870：Suggest lattices based on queries and data profiles](https://issues.apache.org/jira/browse/CALCITE-1870)
 
+## [CALCITE-3334：Refinement for Substitution-Based MV Matching](https://issues.apache.org/jira/browse/CALCITE-3334)
 
+基于替换的物化视图匹配方法因其简单性和可扩展性而成为一种有效的方法。本 JIRA 建议通过以下几点改进现有的实现：
+
+1. 在MV匹配之前规范化——通过这种规范化，我们可以显著简化**关系代数树**，并降低物化匹配的难度。
+2. 将匹配规则分为两类，说清楚规则需要覆盖的常见匹配模式。
+
+参见[设计文档](https://docs.google.com/document/d/1JpwGNFE3hw3yXb7W3-95-jXKClZC5UFPKbuhgYDuEu4/edit#heading=h.bmvjxz1h5evc)
 
 ## [CALCITE-3409：Add a method in RelOptMaterializations to allow registering UnifyRule](https://issues.apache.org/jira/browse/CALCITE-3409)
 
 since 1.28
+
+## [CALCITE-3478：Restructure tests for materialized views](https://issues.apache.org/jira/browse/CALCITE-3478)
+
+Currently there are two strategies for materialized view matching:
+
+**strategy-1**. Substitution based (SubstitutionVisitor.java) [1]
+**strategy-2**. Plan structural information based (AbstractMaterializedViewRule.java) [2]
+The two strategies are controlled by a single connection config of "materializationsEnabled". Calcite will apply strategy-1 firstly and then strategy-2.
+
+The two strategies are tested in a single integration test called MaterializationTest.java, as a result we cannot run tests separately for a single strategy, which leads to:
+
+1. When some new matching patterns are supported by strategy-1, we might need to update the old result plan, which was previously matched and generated by stragegy-2, e.g. [3], and corresponding testing pattern for stragegy-2 will be lost.
+2. Some test failures are even hidden, e.g. MaterializationTest#testJoinMaterialization2 should but failed to be supported by stragegy-2. However strategy-1 lets the test passed.
+3. Hard to test internals for SubstutionVisitor.java, e.g. [4] has to struggle and create a unit test
+
+Of course we can add more system config or connection config just for testing and circle around some of the dilemmas I mentioned above. But it will make the code messy. Materialized view matching strategies are so important and worth a through unit test and to be kept clean.
+
+Additionally, this JIRA targets to clean the code of MaterializationTest.java. As more and more fixes get applied, this Java file tends to be messy:
+
+1. Helping methods and testing methods are mixed without good order.
+2. Lots of methods called checkMaterialize. We need to sort it out if there's need to add more params, e.g. [5]
+3. Some tests are not concise enough, e.g. testJoinMaterialization9 
+
+### Approach
+
+1. Create unit test MaterializedViewSubstitutionVisitorTest to test strategy-1
+2. Create unit test MaterializedViewRelOptRulesTest to test strategy-2
+3. Move tests from MaterializationTest to unit tests correspondingly, and keep MaterializationTest for integration tests.
+
+[1] https://calcite.apache.org/docs/materialized_views.html#substitution-via-rules-transformation
+[2] https://calcite.apache.org/docs/materialized_views.html#rewriting-using-plan-structural-information
+[3] https://github.com/apache/calcite/pull/1451/files#diff-d7e9e44fcb5fb1b98198415a3f78f167R1831
+[4] https://github.com/apache/calcite/pull/1555
+[5] https://github.com/apache/calcite/pull/1504
 
 # 基本概念
 
