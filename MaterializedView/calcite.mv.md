@@ -550,7 +550,7 @@ public abstract class CsvRules {
 
 Calcite 不需要这样的妥协。这使得组合各种规则集变得简单。如果，假设您想将识别物化视图的规则与从 CSV 和 JDBC 源系统读取的规则结合起来，您只需将所有规则的集合提供给 Calcite，并告诉它进行操作。
 
-Calcite 确实使用成本模型。成本模型决定最终使用哪个计划，有时裁剪搜索树以防止搜索空间爆炸，但它从不强迫您在规则 A 和规则 B 之间进行选择。这很重要，因为它避免<u>陷入局部最小值，但在实际上不是最优的搜索空间</u>。
+Calcite 确实使用成本模型。成本模型决定最终使用哪个计划，有时裁剪搜索树以防止搜索空间爆炸，但它从不强迫您在规则 A 和规则 B 之间进行选择。这很重要，因为它避免<u>陷入局部最优，但在实际上不是最优的搜索空间</u>。
 
 此外（您已经猜到了）成本模型是可插入的，它所基于的表和查询运算符统计也是如此，但这可以以后再谈。
 
@@ -1290,7 +1290,7 @@ Calcite 的核心模块（calcite-core）支持 SQL 查询（`SELECT`）和 DML 
 
 [SQL 参考](https://calcite.apache.org/docs/reference.html#ddl-extensions)中描述了命令
 
-类路径中包含 calcite-server.jar，并将 `parserFactory=org.apache.calcite.sql.parser.ddl.SqlDdlParserImpl#FACTORY`  添加到 JDBC 连接字符串（请参阅连接字符串属性 `parserFactory`），即可启用。下面使用 sqlline shell 的示例：
+类路径中包含 calcite-server.jar，并将 `SqlDdlParserImpl#FACTORY`  添加到 JDBC 连接字符串（请参阅连接字符串属性 `parserFactory`），即可启用。下面使用 sqlline shell 的示例：
 
 ```shell
 $ ./sqlline
@@ -1480,13 +1480,13 @@ SELECT * FROM TABLE(Ramp(3, 4))
 
 ### 关系运算符
 
-所有关系运算符都实现 [RelNode](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/RelNode.html) 接口，大多数扩展至类 [AbstractRelNode](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/AbstractRelNode.html)。核心运算符（由 [SqlToRelConverter](https://calcite.apache.org/javadocAggregate/org/apache/calcite/sql2rel/SqlToRelConverter.html) 使用并涵盖常规关系代数）是 [`TableScan`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/TableScan.html)、[`TableModify`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/TableModify.html)、[`Values`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Values.html)、[`Project`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Project.html)、[`Filter`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Filter.html)、[`Aggregate`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Aggregate.html)、[`Join`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Join.html)、[`Sort`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Sort.html)、[`Union`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Union.html)、[`Intersect`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Intersect.html)、[`Minus`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Minus.html)、[`Window`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Window.html) 和 [`Match`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Match.html)。
+所有关系运算符都实现 [RelNode](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/RelNode.html) 接口，大多数扩展至类 [AbstractRelNode](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/AbstractRelNode.html)。（由 [SqlToRelConverter](https://calcite.apache.org/javadocAggregate/org/apache/calcite/sql2rel/SqlToRelConverter.html) 使用并涵盖的常规关系代数，即）核心运算符是 [`TableScan`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/TableScan.html)、[`TableModify`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/TableModify.html)、[`Values`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Values.html)、[`Project`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Project.html)、[`Filter`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Filter.html)、[`Aggregate`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Aggregate.html)、[`Join`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Join.html)、[`Sort`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Sort.html)、[`Union`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Union.html)、[`Intersect`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Intersect.html)、[`Minus`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Minus.html)、[`Window`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Window.html) 和 [`Match`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/core/Match.html)。
 
 其中每一个都有一个**纯**的逻辑子类，比如 [`LogicalProject`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/rel/logical/LogicalProject.html) 等等。任何给定的适配器都有对应的引擎可以有效实现的操作，例如，Cassandra 适配器有 [`CassandraProject`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/adapter/cassandra/CassandraProject.html) 但没有 `CassandraJoin`。
 
 您可以定义自己的 `RelNode` 子类来添加新的运算符，或在特定引擎中实现现有运算符。
 
-为了使运算符有用且强大，您需要[优化器规则](https://calcite.apache.org/docs/adapter.html#planner-rule)将其与现有运算符相结合。并提供元数据，见[下文](https://calcite.apache.org/docs/adapter.html#statistics-and-cost)。**这是代数，效果是组合的：您编写一些规则，但它们组合起来处理指数数量的查询模式**。
+为了使运算符有用且强大，您需要[优化器规则](#优化器规则)将其与现有运算符相结合。并提供元数据，见[下文](https://calcite.apache.org/docs/adapter.html#statistics-and-cost)。**这是代数，效果是组合的：您编写一些规则，但它们组合起来处理指数数量的查询模式**。
 
 如果可能，让你的运算符成为现有运算符的子类；那么您就可以重新使用或调整其规则。更好的是，如果您的运算符是一个可以根据现有运算符实现的逻辑运算（仍通过优化器规则），那么就应该这样做。您将无需额外工作即可重复使用这些运算符的规则、元数据和实现。
 
@@ -1764,7 +1764,7 @@ select * from sales.emps
 
 Calcite 中使用接口 `RelTrait` 表示一个**关系表达式节点的物理属性**，使用 `RelTraitDef` 来表示 `RelTrait` 的 class。`RelTrait `与 `RelTraitDef` 的关系就像 Java 中对象与 Class 的关系一样，每个对象都有 Class。对于**物理关系表达式算子**，会有一些物理属性，这些物理属性都会用 `RelTrait` 来表示。比如每个算子都有 Calling Convention 这一 `Reltrait`。比如上图中 `Sort` 算子还会有一个物理属性 `RelCollation`，因为 `Sort` 算子会对表的一些字段进行排序，`RelCollation` 这一物理属性就会记录这个 Sort 算子要排序的<u>字段索引</u>、<u>排序方向</u>，怎么排序 `null` 值等信息。
 
-## Calcite 的 Calling Convention
+### Calcite 的 Calling Convention
 
 Calling Convention 在 Calcite 中使用接口 `Convention` 表示，`Convention` 接口是 `RelTrait` 的子接口，**所以是一个算子的属性**。可以把 Calling Convention 理解为**==一个特定数据引擎协议==**，拥有相同 `Convention` 的算子可以认为都是一个统一数据引擎的算子，<u>可以相互连接起来</u>。比如 JDBC 的算子 `JDBCXXX ` 都有 `JdbcConvention`，Calcite 内建的 `Enumerable` 算子 `EnumerableXXX` 都有 `EnumerableConvention`。
 
@@ -1775,6 +1775,31 @@ Calling Convention 在 Calcite 中使用接口 `Convention` 表示，`Convention
 ![](https://pic2.zhimg.com/80/v2-7ce0b21af232a9c29af18b56b4a08741_1440w.jpg)
 
 比如上面的执行计划，要将 `Enumerable` 的算子与 `Jdbc` 的算子连接起来，中间就要使用 `JdbcToEnumerableConverter` 作为桥梁。
+
+### `Converter`
+
+如果关系表达式实现了接口 `Converter` ，则表示它将关系表达式的物理属性或特征从一个值转换为另一个值。有时这种转换是昂贵的； 例如，要将 non-distinct 的对象流转换为 distinct  的对象流，我们必须克隆输入中的每个对象。
+
+`Converter` 不会改变正在求值的逻辑表达式；**转换后，行数和这些行的值仍然相同**。通过将自己声明为 `Converter`，关系表达式将这种等价性告诉优化器，优化器将逻辑上等价但具有不同物理特征的表达式分组，保存在称为 `RelSet` 的组中。
+
+原则上，可以设计出同时改变多个特征的转换器（比如改变关系表达式的排序顺序和物理位置）。 在这种情况下，方法 `getInputTraits(`) 将返回一个 `RelTraitSet`。 但是为了简单起见，这个类一次只允许转换一个特征； 所有其他特征被认为保留了下来。
+
+### `RelTrait`
+
+`RelTrait` 表示 **trait 定义**中关系表达式 trait 的表现形式。 例如， `CallingConvention.JAVA` 是 `ConventionTraitDef` 定义的 trait。
+
+关于 `equals()` 和 `hashCode()` 的注意事项：
+
+如果特定 `RelTraitDef` 的所有 `RelTrait` 实例都在枚举中定义，并且运行时不能引入新的 `RelTrait`，则不需要覆盖 `hashCode()` 和 `equals(Object)`。但是，如果在运行时生成新的 `RelTrait` 实例（例如，基于优化器外部的状态），则必须实现 `hashCode()` 和 `equals(Object)` 以正确规范化 `RelTrait` 对象。
+
+### `RelTraitDef`
+
+`RelTraitDef` 表示一类 `RelTrait`。 在以下条件下，`RelTraitDef` 的实现可能是单例：
+
+1. 如果所有可能关联的 `RelTrait`s 的集合是有限且固定的（例如，该 `RelTraitDef` 的所有 `RelTrait`s 在编译时都是已知的）。 例如，trait `CallingConvention` 满足这个要求，因为它实际上是一个枚举。
+2. `canConvert(RelOptPlanner, RelTrait, RelTrait)` 和 `convert(RelOptPlanner, RelNode, RelTrait, boolean)` 不需要特定于优化器实例的信息，或者 `RelTraitDef` 在内部管理单独的转换数据集。 有关此示例，请参见 `ConventionTraitDef`。
+
+否则，必须构造一个新的 `RelTraitDef` 实例，并注册到每个新的优化器实例中。
 
 ## `Relset`
 
