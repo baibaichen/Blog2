@@ -1523,15 +1523,15 @@ Calcite 有一个元数据系统，允许您定义有关关系运算符的成本
 然后，您可以提供一个**元数据 provider**，为 `RelNode` 的特定子类计算这种类型的元数据。**元数据 provider** 可以处理内置和扩展的元数据类型，以及内置和扩展的 `RelNode` 类型。在准备查询时，Calcite 将所有适用的 **元数据 provider** 组合在一起，并维护一个缓存，以便只计算一次给定的元数据（例如特定 `Filter` 运算符中条件 `x > 10` 的选择性）。
 
 
-# 历史 
-
-## 第一次支持[视图匹配](https://github.com/apache/calcite/commit/13136f9e4b7f4341d5cdce5b9ca8d498f353bb30) 
+# 考古
+## 视图
+### 第一次支持[视图匹配](https://github.com/apache/calcite/commit/13136f9e4b7f4341d5cdce5b9ca8d498f353bb30) 
 
 具体算法不知道。随后的 Commit，[Before planning a query, prune the materialized tables used to those that might help](https://github.com/apache/calcite/commit/0eb66bbb462bfb9bfd3bdfc9f2fb2d602958bcbd) 在 `VocanoPlanner` 里增加了一个 `originalRoot`。
 
 > 优化查询之前，找到那些可能有帮助的物化表。
 
-## 第一次实现视图 [`SubstitutionVisitor`](https://github.com/apache/calcite/commit/026ff5186edb1c1735b7caa8e2b569e22a1b998c) 算法
+### 第一次实现视图 [`SubstitutionVisitor`](https://github.com/apache/calcite/commit/026ff5186edb1c1735b7caa8e2b569e22a1b998c) 算法
 
 用一个**关系表达式树**替换**另一个关系表达式树的一部分**。
 
@@ -1546,11 +1546,11 @@ result = SELECT a, c FROM mv WHERE b = 4
 
 请注意，结果使用了物化视图表 mv 和简化条件 b = 4。使用**自下而上**的匹配算法。节点不需要完全相同。 每层都返回残差。输入必须只包含核心**关系运算符**：`TableAccessRel`, `FilterRel`, `ProjectRel`, `JoinRel`, `UnionRel`, `AggregateRel`.
 
-## 🔴 [支持视图 Filter](https://github.com/apache/calcite/commit/60e4da419027885e772abe209b2bfb04371c67ae)
+### 🔴 [支持视图 Filter](https://github.com/apache/calcite/commit/60e4da419027885e772abe209b2bfb04371c67ae)
 
 识别包含过滤器的物化视图。为此，添加了将谓词（例如“x = 1 和 y = 2”）拆分为由底层谓词“y = 2”处理和未处理的部分的算法。
 
-## 2013-11-15 [增加 `StarTable`](https://github.com/apache/calcite/commit/ef0acca555e6d78d08ea1aa5ecc6d7b42f689544)
+### 2013-11-15 [增加 `StarTable`](https://github.com/apache/calcite/commit/ef0acca555e6d78d08ea1aa5ecc6d7b42f689544)
 
 这是**识别复杂物化**的第一步，**星型表**是通过多对一关系连接在一起的真实表组成的虚拟表。定义物化视图的查询和最终用户的查询按照星型表规范化。匹配(尚未完成)将是寻找 `sort`、`groupBy`、`Project` 的问题。
 
@@ -1558,26 +1558,26 @@ result = SELECT a, c FROM mv WHERE b = 4
 
 - `StarTable`：**虚拟表**由两个或多个 `Join` 在一起的表组成。`StarTable` 不会出现在最终用户查询中，由优化器引入，以有助于查询和物化视图之间的匹配，并且仅在优化过程中使用。定义物化视图时，如果涉及 `Join`，则将其转换为基于 `StarTable` 的查询。候选查询和物化视图映射到同一个 `StarTable` 上
 
-###  `OptiqMaterializer`：填充 `Prepare.Materialization` 的上下文
+####  `OptiqMaterializer`：填充 `Prepare.Materialization` 的上下文
 
 识别并替换 `queryRel` 中的 `StarTable`。
 
 - 可能没有 `StarTable` 匹配。没关系，但是识别的物化模式不会那么丰富。
 - 可能有多个 StarTable 匹配。**TBD**：我们应该选择最好的（不管这意味着什么），还是全部？
 
-###   `RelOptMaterialization`：记录由特定表物化的特定查询
+####   `RelOptMaterialization`：记录由特定表物化的特定查询
 
 - `tryUseStar(...)`：将关系表达式转换为使用 `StarTable` 的关系表达式。 根据 `toLeafJoinForm(RelNode)`，关系表达式已经是**==叶连接形式==**。
 
-## 🔴Support filter query on project materialization, where project contains expressions.
+### 🔴Support filter query on project materialization, where project contains expressions.
 
 编译失败
 
-## 🔴Support Group By
+### 🔴Support Group By
 
 编译失败
 
-## 2014-07-14 第一次实现 `Lattice` 结构 - [CALCITE-344](https://issues.apache.org/jira/browse/CALCITE-344)
+### 2014-07-14 第一次实现 `Lattice` 结构 - [CALCITE-344](https://issues.apache.org/jira/browse/CALCITE-344)
 
 添加数据结构 `lattice` ，以组织、收集统计信息并推荐物化查询。
 
@@ -1597,21 +1597,21 @@ JOIN CustomerDim AS c USING (customerId)
 - **推荐**：==代理==可以根据星型模式（例如表和列基数）的静态分析以及过去使用的统计信息推荐要创建的**物化视图**。
 - **视图匹配**：优化器使用 **lattice** 来识别可以满足查询的物化查询。没有 latttice，这样的空间会大得多，因为优化器必须考虑许多连接排列。
 
-## 2014-09-03 [CALCITE-402：Lattice should create materializations on demand](https://issues.apache.org/jira/browse/CALCITE-402)
+### 2014-09-03 [CALCITE-402：Lattice should create materializations on demand](https://issues.apache.org/jira/browse/CALCITE-402)
 
 Lattice should create materializations (in memory) the first time it is asked for them, and use the same materialization for subsequent queries.
 
 Enabled by new connection parameter "createMaterializations".
 
-### `AggregateStarTableRule`
+#### `AggregateStarTableRule`
 
 在 `StarTable.StarTableScan` 之上匹配 `AggregateRelBase` 的优化器规则。此模式表明可能存在聚合表。 该规则要求**星表**提供所需聚合级别的聚合表。
 
-## 2014-09-13 [CALCITE-406：Add tile and measure elements to lattice model element](https://issues.apache.org/jira/browse/CALCITE-406)
+### 2014-09-13 [CALCITE-406：Add tile and measure elements to lattice model element](https://issues.apache.org/jira/browse/CALCITE-406)
 
 将 `Tile` 和 `Measure` 元素添加到 lattice 模型元素，加载模型（在连接初始化）时加载 lattice 的预定义 `Tile`。
 
-## [CALCITE-1389：Add rule to perform rewriting of queries using materialized views with joins](https://issues.apache.org/jira/browse/CALCITE-1389)
+### [CALCITE-1389：Add rule to perform rewriting of queries using materialized views with joins](https://issues.apache.org/jira/browse/CALCITE-1389)
 
 第一次按 [Optimizing Queries Using Materialized Views: A Practical, Scalable Solution]() 这篇 paper 来实现
 
@@ -1621,11 +1621,11 @@ Enabled by new connection parameter "createMaterializations".
 >
 > 在我看来，主要的缺失部分是一种算法，该算法在给定一组 MV 的情况下，创建一组最佳的 lattice，使得每个 MV 都属于一个 lattice。
 
-## 2017-01-31 [ALCITE-1500：Decouple materialization and lattice substitution from VolcanoPlanner](https://issues.apache.org/jira/browse/CALCITE-1500)
+### 2017-01-31 [ALCITE-1500：Decouple materialization and lattice substitution from VolcanoPlanner](https://issues.apache.org/jira/browse/CALCITE-1500)
 
+TODO
 
-
-## [CALCITE-1682：New metadata providers for expression column origin and all predicates in plan](https://issues.apache.org/jira/browse/CALCITE-1682)
+### [CALCITE-1682：New metadata providers for expression column origin and all predicates in plan](https://issues.apache.org/jira/browse/CALCITE-1682)
 
 我正在研究 Hive 中物化视图重写的集成。
 
@@ -1648,7 +1648,7 @@ Enabled by new connection parameter "createMaterializations".
 
 我已经开始研究这个，很快就会提供一个补丁；非常感谢反馈
 
-## [CALCITE-1731：Rewriting of queries using materialized views with joins and aggregates](https://issues.apache.org/jira/browse/CALCITE-1731)
+### [CALCITE-1731：Rewriting of queries using materialized views with joins and aggregates](https://issues.apache.org/jira/browse/CALCITE-1731)
 
 还是类似 [[1]](#Optimizing Queries Using Materialized Views: A Practical, Scalable Solution) 来重写**计划**
 
@@ -1663,9 +1663,9 @@ Enabled by new connection parameter "createMaterializations".
 - 扩展逻辑以过滤给定查询节点的相关 MV，因此该方法可随着 MV 数量的增长而扩展。
 - 使用 Union 运算符生成重写，例如，可以从 MV (year = 2014) 和查询 (not(year = 2014)) 部分回答给定的查询。如果存储了 MV，例如在 Driud 中，这种重写可能是有益的。与其他重写一样，是否最终使用重写的决定应该基于成本。
 
-## [CALCITE-1870：Suggest lattices based on queries and data profiles](https://issues.apache.org/jira/browse/CALCITE-1870)
+### [CALCITE-1870：Suggest lattices based on queries and data profiles](https://issues.apache.org/jira/browse/CALCITE-1870)
 
-## [CALCITE-3334：Refinement for Substitution-Based MV Matching](https://issues.apache.org/jira/browse/CALCITE-3334)
+### [CALCITE-3334：Refinement for Substitution-Based MV Matching](https://issues.apache.org/jira/browse/CALCITE-3334)
 
 基于替换的物化视图匹配方法因其简单性和可扩展性而成为一种有效的方法。本 JIRA 建议通过以下几点改进现有的实现：
 
@@ -1674,11 +1674,11 @@ Enabled by new connection parameter "createMaterializations".
 
 参见[设计文档](https://docs.google.com/document/d/1JpwGNFE3hw3yXb7W3-95-jXKClZC5UFPKbuhgYDuEu4/edit#heading=h.bmvjxz1h5evc)
 
-## [CALCITE-3409：Add a method in RelOptMaterializations to allow registering UnifyRule](https://issues.apache.org/jira/browse/CALCITE-3409)
+### [CALCITE-3409：Add a method in RelOptMaterializations to allow registering UnifyRule](https://issues.apache.org/jira/browse/CALCITE-3409)
 
 since 1.28
 
-## [CALCITE-3478：Restructure tests for materialized views](https://issues.apache.org/jira/browse/CALCITE-3478)
+### [CALCITE-3478：Restructure tests for materialized views](https://issues.apache.org/jira/browse/CALCITE-3478)
 
 Currently there are two strategies for materialized view matching:
 
@@ -1700,7 +1700,7 @@ Additionally, this JIRA targets to clean the code of MaterializationTest.java. A
 2. Lots of methods called checkMaterialize. We need to sort it out if there's need to add more params, e.g. [5]
 3. Some tests are not concise enough, e.g. testJoinMaterialization9 
 
-### Approach
+#### Approach
 
 1. Create unit test MaterializedViewSubstitutionVisitorTest to test strategy-1
 2. Create unit test MaterializedViewRelOptRulesTest to test strategy-2
@@ -1711,6 +1711,17 @@ Additionally, this JIRA targets to clean the code of MaterializationTest.java. A
 [3] https://github.com/apache/calcite/pull/1451/files#diff-d7e9e44fcb5fb1b98198415a3f78f167R1831
 [4] https://github.com/apache/calcite/pull/1555
 [5] https://github.com/apache/calcite/pull/1504
+
+## Join
+
+
+
+1. [Performance issue when enabling abstract converter for EnumerableConvention](https://issues.apache.org/jira/browse/CALCITE-2970)
+2. [TPCH queries take forever for planning](https://issues.apache.org/jira/browse/CALCITE-3968)
+3. [Problem with MERGE JOIN: java.lang.AssertionError: cannot merge join: left input is not sorted on left keys](https://issues.apache.org/jira/browse/CALCITE-3997)
+4. [Pass through parent trait requests to child operators](https://issues.apache.org/jira/browse/CALCITE-3896)
+   1. [[DISCUSS] On-demand traitset request](http://mail-archives.apache.org/mod_mbox/calcite-dev/201910.mbox/%3c393e0ff5-f105-4795-be4f-09deb2a6a491.h.yuan@alibaba-inc.com%3e)
+
 
 # 基本概念
 
@@ -1926,6 +1937,8 @@ public class RelSubset extends AbstractRelNode {
 ![](https://pic1.zhimg.com/80/v2-ba6cd69392ab326dc9fd43ae1884ae0c_1440w.jpg)
 
 ## VolcanoPlanner 处理流程
+
+1. [Calcite 处理一条SQL - II (Rels Into Planner)](https://zhuanlan.zhihu.com/p/58801070)
 
 在应用 VolcanoPlanner 时，整体分为以下四步：
 
