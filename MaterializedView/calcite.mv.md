@@ -672,7 +672,7 @@ Calcite 通过将规划器规则重复应用于关系表达式来优化查询。
 ### `TableScan`
 
 ```java
-final FrameworkConfig config;
+final FrameworkConfig config; 
 final RelBuilder builder = RelBuilder.create(config);
 final RelNode node = builder
   .scan("EMP")
@@ -1712,17 +1712,207 @@ Additionally, this JIRA targets to clean the code of MaterializationTest.java. A
 [4] https://github.com/apache/calcite/pull/1555
 [5] https://github.com/apache/calcite/pull/1504
 
-## Join
+## Join or 物理属性传递？
 
 
 
 1. [Performance issue when enabling abstract converter for EnumerableConvention](https://issues.apache.org/jira/browse/CALCITE-2970)
 2. [TPCH queries take forever for planning](https://issues.apache.org/jira/browse/CALCITE-3968)
-3. [Problem with MERGE JOIN: java.lang.AssertionError: cannot merge join: left input is not sorted on left keys](https://issues.apache.org/jira/browse/CALCITE-3997)
-4. [Pass through parent trait requests to child operators](https://issues.apache.org/jira/browse/CALCITE-3896)
+   1. https://lists.apache.org/thread/yf15gy9w7gz2sbso9vsjqqrcd92b038j
+   2. https://github.com/apache/calcite/pull/1976
+   3. [Problem with MERGE JOIN: java.lang.AssertionError: cannot merge join: left input is not sorted on left keys](https://issues.apache.org/jira/browse/CALCITE-3997)
+
+3. [Pass through parent trait requests to child operators](https://issues.apache.org/jira/browse/CALCITE-3896)
    1. [[DISCUSS] On-demand traitset request](http://mail-archives.apache.org/mod_mbox/calcite-dev/201910.mbox/%3c393e0ff5-f105-4795-be4f-09deb2a6a491.h.yuan@alibaba-inc.com%3e)
 
+## `AbstractConverter`
 
+There are 3 issues:
+
+1. too many abstract converters  => https://github.com/apache/calcite/pull/1860
+2. logical operator is created for abstract converter => https://github.com/apache/calcite/pull/1884
+3. rule apply on physical operator
+
+I opened a PR to resolve the first issue. The other 2 still need separate PRs.
+
+### [[CALCITE-1148] Trait conversion broken for RelTraits other than Convention](https://issues.apache.org/jira/browse/CALCITE-1148)
+
+[PR](https://github.com/apache/calcite/pull/210)
+
+`RelTraits`（例如 `RelCollationTrait` 和 `RelDistributionTrait`）无法在 Calcite core 中转换。根节点专门处理 `Convention`（使用 `VolcanoPlanner.ensureRootConverters()`），<u>==但这假设在根下不需要约定转换==</u>，假设不一定成立。为了让 `RelTrait` 转换工作，需要有转换器，通过 `AbstractConverter` 使用 `RelTraitDef.convert()`。
+
+在之前的提交 ([b312031](https://github.com/apache/calcite/commit/b312031f3ead3adb272b79d02d7fcfc095ec4deb)) 中，`AbstractConverter` 的添加过于激进，即使 `RelTraitDef.canConvert()` 返回 false，也添加了多余的 `AbstractConverter`s。因此，许多计划需要更长的优化时间，如 [3b55c35](https://github.com/apache/calcite/commit/3b55c35a58b45d2a8538f9bc77f11e51a2d45e6b) 所指出。 但是删除 `AbstractConverter` 意味着在 Calcite 中没有正确处理 `RelTrait` 转换。
+
+#### Fix
+
+> In the current calcite, trait conversion is not handled properly, e.g. collation/distribution traits are not converted (shown by the tests).  This patch fixes this issue.
+>
+> For each RelCollationTrait, introduce a new API, canConvert() which should return true if the conversion from a trait to the other is possible.
+>
+> For each `Convention`, introduce two new APIs, `canConvertConvention()` returns true if the convernsion is possible, and `useAbstractConverters()` returns true if the trait conversion should be handle via AbstractConverters.  By default, both functions return false.
+>
+> In RelSet, when adding a new RelSubset, if the convention returns false for useAbstractConverters(), we do not add AbstractConverters.  Even if convention.useAbstractConverters() return true, we only add AbstractConverters if the AbstractConverters can convert (i.e. if RelCollationTrait.canConvert() returns true) and the conversion is needed (i.e. if RelTrait.satisfies() returns false).
+
+在当前的 Calcite 中，没有正确处理 trait 转换，例如：不会转换<u>排序和分布特征</u>（由测试显示）。此补丁修复了这个问题。
+
+对于每个 `RelCollationTrait`，引入一个新的 API `canConvert()`， 如果从一个特征到另一个特征的转换是可能的，它应该返回 true。
+
+对于每个`Convention`，引入两个新的 API，如果转换是可能的，则 `canConvertConvention()` 返回 true，如果应该通过 `AbstractConverter`s 处理特征转换，则 `useAbstractConverters()` 返回 true。 默认情况下，这两个函数都返回 false。
+
+在 `RelSet` 中，添加新的 `RelSubset` 时，如果`Convention` 的 `useAbstractConverters()` 返回false，不添加`AbstractConverter`s。 即使 `convention.useAbstractConverters()` 返回true，如果`AbstractConverter`s 可以转换（即如果 `RelCollationTrait.canConvert()` 返回true）并且需要转换（即如果 `RelTrait.satisfies()` 返回false），我们只会添加 `AbstractConverter`s。
+
+
+
+1. 在 `RelSet.getOrCreateSubset()` 中，只有在 `RelTraitDef` 可以转换的情况下才添加 `AbstractConverter`s。这意味着差异的大小应该是 1（即只有一个特征不同，因为 `RelTraitDef` 仅在一个 `RelTrait` 上定义了 `canConvert()` 和 `convert()`），并且 `RelTraitDef.canConvert()` 应该返回 true。如果 `RelTraitDef.canConvert()` 编写正确，这会显着减少添加的 `AbstractConverter` 的数量。
+2. 在 `RelCollationTraitDef` 中，如果需要转换，`canConvert()` 应该只返回 true。如果 `fromTrait` 已经满足 `toTrait`，则无需更改。也许“canConvert()”应该被命名为“shouldConvert()”，但我保留了这个名字。如果没有此更改，许多 JdbcTest（连接）将花费更长的时间来计划或进入无限计划状态。
+3. 其余的更改是测试更改。
+
+### 2592  加了一个TestCase 展示 CALCITE-1148 引入的 Bug
+
+https://github.com/apache/calcite/pull/1434
+
+If we enable the use of abstract converter for `EnumerableConvention`, by making `useAbstractConvertersForConversion` return true, `JDBCTest.testJoinManyWay` will not complete.
+
+Say we generate a sort merge join, if the child relation is not sorted on the join key and abstract converter is not enabled, we won't get a sort operator on the child relation, the consequence is: throwing an exception that we can't plan it.
+
+### 2970 Fix
+
+> Before this patch, the VolcanoPlanner couldn't distinguish traitset derived from child operators and traitset required by parent operators. AbstractConverters are added between all of these traitsets no matter it is derived or required, which causes the explosion of search space. e.g.
+>
+> ```
+> SELECT a,b,c,max(d) FROM foo GROUP BY a,b,c;
+> Aggregate
+> +-- TableScan
+> ```
+>
+> For distributed system, suppose the Aggregate operator may require the following traitsets from TableScan with exact match: 
+>
+> 1. Singleton distribution
+> 2. Hash distribution on a
+> 3. Hash distribution on b
+> 4. Hash distribution on c
+> 5. Hash distribution on a,b
+> 6. Hash distribution on b,c
+> 7. Hash distribution on a,c
+> 8. Hash distribution on a,b,c
+>
+> VolcanoPlanner would add 7*7+8 = 57 abstract converters into the RelSet, e.g. abstractConverter between [a] and [b,c], ==even if the satisfying match is allowed,== e.g. distribution on [a] statisfy distribution on [a,b,c], there are still lots of abstract converters. But we only need #8.
+>
+> This patch fixes above issue by adding state to RelSubset indicating whether the added traitset is required or derived. The traitset can be both required and derived. Only abstract converter from derived traitset to required traitset is added.
+>
+> By default, when adding a new RelNode to RelSet, we treat its traitset as derived, when calling changeTraits, the traitset will be treated as required. Unfortunately, almost all the RelNodes except AbstractConverter are added through rule transformation, when the AbstractConverter is transformed to a enforcing operator, e.g. PhysicalSort, the planner will still treat its traitset as derived, which will trigger the creation of AbstractConverter between this RelSubset and remaining RelSubsets in the RelSet. To avoid this issue, though not clean but work, enforcing operator and AbstactConverter should override `isEnforcer()` method indicating the RelNode is added due to the desired traitset is not satisfied. The user needs to judge by his/her own whether to mark enforcing operator.
+>
+
+在此补丁之前，VolcanoPlanner 无法区分**源自子运算符的特征集**和**父运算符所需的特征集**。无论是派生的还是需要的，所有这些特征集之间都添加了 AbstractConverter，这导致了搜索空间的爆炸式增长。 例如：
+
+```
+SELECT a,b,c,max(d) FROM foo GROUP BY a,b,c;
+Aggregate
++-- TableScan
+```
+对于分布式系统，假设 Aggregate 运算符可能需要 TableScan 中的以下特征集，并具有精确匹配：
+
+1. Singleton distribution
+2. Hash distribution on a
+3. Hash distribution on b
+4. Hash distribution on c
+5. Hash distribution on a,b
+6. Hash distribution on b,c
+7. Hash distribution on a,c
+8. Hash distribution on a,b,c
+
+VolcanoPlanner 会在 RelSet 中添加 `7*7+8 = 57` 个抽象转换器，例如 [a] 和 [b,c] 之间的抽象传换器，即使满足匹配是允许的，例如：==[a] 上的 Range 分布满足 [a,b,c] 上的 Range 分布==，仍然有很多抽象转换器。 但我们只需要#8。
+
+此补丁通过向 `RelSubset` 添加状态来解决上述问题，指示添加的特征集是必需的还是派生的。**特征集既可以是必需的，也可以是派生的**。==只添加从<u>派生特征集</u>到<u>必需特征集</u>的抽象转换器==。
+
+默认情况下：
+
+1. 当向 `RelSet` 添加新的 `RelNode` 时，我们将其特征集视为**派生**的，
+2. 当调用 `changeTraits` 时，特征集将被视为**必需**的。
+
+不幸的是除了 `AbstractConverter` 之外，几乎所有 `RelNodes` 都是通过规则转换添加的，当转换 `AbstractConverter` 为**强制运算符**时，例如 PhysicalSort，优化器仍将其<u>特征集视为**派生**</u>，这将触发在此 `RelSubset` 和 `RelSet` 中剩余的 `RelSubset` 之间创建 `AbstractConverter`。为了避免这个问题，虽然不干净但有效，**强制执行运算符**和 `AbstactConverter` 应该覆盖 `isEnforcer()` 方法，指示由于不满足所需的特征集而添加了 `RelNode`。是否标记强制运算符需要用户自行判断。
+
+![addAbstractConverters](./addAbstractConverters.png)
+
+<details> 
+<summary></summary>
+digraph G {
+  node [style="rounded, filled",color=black, shape=box, fillcolor=white]
+  subgraph cluster0 {
+    label ="Relset"
+    style=filled;
+   	color=darkseagreen1;
+    getOrCreateSubset_default[label ="getOrCreateSubset(RelTraitSet, false)"]
+    getOrCreateSubset[label ="getOrCreateSubset(RelTraitSet, required)"]
+    add[label="add(RelNode)"]
+    addAbstractConverters[label="addAbstractConverters(RelSubset, required)"]
+    mergeWith[label="mergeWith(VolcanoPlanner, Relset otherSet)"]
+    getOrCreateSubset -> addAbstractConverters
+    add->getOrCreateSubset
+    getOrCreateSubset_default -> getOrCreateSubset
+    mergeWith-> getOrCreateSubset
+  }
+  subgraph cluster1 {
+      label ="VolcanoPlanner"
+      merge[label="merge(RelSet, RelSet)"]
+      canonize[label="canonize(RelSubset)"]
+      changeTraits [color=blue]
+      reregister -> addRelToSet
+      setRoot -> registerImpl -> addRelToSet
+      register -> registerImpl
+  }
+  subgraph cluster2 {
+      label ="RelSubset"
+      copy[label="copy(RelTraitSet)"]
+  }
+  addRelToSet->add
+  merge->mergeWith
+  changeTraits->getOrCreateSubset[label="required=true"]
+  merge->getOrCreateSubset_default[style=dashed]
+  copy->getOrCreateSubset_default
+  canonize->getOrCreateSubset_default
+}
+</details>
+
+
+``` Java
+/*伪码*/ 
+RelSubset getOrCreateSubset(
+      RelOptCluster cluster, RelTraitSet traits, boolean required) {
+   RelSubset subset = getSubset(traits)；
+   boolean needsConverter = false;  
+   
+   if (subset == null) {
+     needsConverter = true;
+     create subset
+   } else {
+     // 只添加从派生特征集到必需特征集的抽象转换器
+     if (required && !subset.isRequired()) needsConverter = true;
+     if (!required && !subset.isDerived()) needsConverter = true;       
+   }
+   
+   if (subset.getConvention() == Convention.NONE) {
+     // 逻辑运算符不需要加抽象转换器
+      needsConverter = false;
+   } else if (required) {
+      subset.setRequired();
+   } else {
+      subset.setDerived();
+   }
+
+   if (needsConverter) {
+     addAbstractConverters(cluster, subset, required);
+   }
+   return subset;
+ }
+```
+> 对于 `Relset#addAbstractConverters(cluster, subset, required)`：
+>
+> 1. 如果 `required` 为 true，表示此 `RelSubset` 是**必需的**，需要转换此 `Relset` 中**派生的** `RelSubset` 到该 `RelSubset`
+> 2. 否则，将此 `RelSubset` 转换为此 `Relset` 中**必需的** `RelSubset`
+>  
+> 注意： `RelSubset` **既可以是必需的，也可以是派生的**。
+> 
 # 基本概念
 
 ## `Schema`
@@ -1932,7 +2122,7 @@ public class RelSubset extends AbstractRelNode {
 }
 ```
 
-每个 `RelSubset` 都将会记录其最佳计划（`best`）和最佳 计划的成本（`bestCost`）信息。
+每个 `RelSubset` 都将会记录其最佳计划（`best`）和最佳计划的成本（`bestCost`）信息。
 
 ![](https://pic1.zhimg.com/80/v2-ba6cd69392ab326dc9fd43ae1884ae0c_1440w.jpg)
 
@@ -1955,7 +2145,12 @@ public class RelSubset extends AbstractRelNode {
 
 对于 `setRoot()` 方法来说，核心的处理流程是在 `registerImpl()` 方法中，在这个方法会进行相应的初始化操作（包括 `RelNode` 到 `RelSubset` 的转换、计算 `RelSubset` 的 importance 等），其他的方法在上面有相应的备注，这里我们看下 `registerImpl()` 具体做了哪些事情：
 
-#### VolcanoPlanner#registerImpl
+### `VolcanoPlanner#reregister(RelSet set, RelNode rel)`
+
+在新的 RelSet 中注册一个已经注册的 RelNode。
+
+
+### VolcanoPlanner#registerImpl
 
 ```java
 private RelSubset registerImpl(RelNode rel, RelSet set)
@@ -1982,6 +2177,340 @@ private RelSubset registerImpl(RelNode rel, RelSet set)
 4. 将这个 RelNode 的 inputs 设置为其对应 RelSubset 的 children 节点（实际的操作时，是在 RelSet 的 `parents` 中记录其父节点）；
 5. 强制重新计算当前 RelNode 对应 RelSubset 的 importance；
 6. 如果这个 RelSubset 是新建的，会再触发一次 `fireRules()` 方法（会先对 RelNode 触发一次），遍历找到所有可以 match 的 Rule，对每个 Rule 都会创建一个 VolcanoRuleMatch 对象（会记录 RelNode、RelOptRuleOperand 等信息，RelOptRuleOperand 中又会记录 Rule 的信息），并将这个 VolcanoRuleMatch 添加到对应的 RuleQueue 中（就是前面图中的那个 RuleQueue）。
+
+### 获得最佳的执行计划
+
+
+
+## Volcano 优化器优先队列的实现
+
+> https://ericfu.me/understand-importance-in-calcite/
+
+Apache Calcite 中的 `VolcanoPlanner` 是对 Volcano/Cascades 优化器的实现。我们知道，Volcano 优化器是在搜索空间中用动态规划（DP）的方式寻找最优解，即使在用了 DP 的情况下，也不大可能把搜索空间遍历完。Volcano 的解决方案是定义一个优先队列，**优先采用看起来更有希望的 Rule**。
+
+于是问题来了，怎样定义一个 Rule 的优先级？论文中并没有给出答案。Calcite 代码中为此定义了 `Importance` 的概念。然而相关的资料非常少，本文总结一下我自己的猜测和理解，如果你有不同的观点，欢迎留言讨论。
+
+### 术语
+
+本文假设读者已经充分理解 Volcano 优化器。对以下概念有疑问的，请参考 Valcano/Cascades 原论文。
+
+- **RelSet** 描述一组逻辑上相等的 Relation Expression
+- **RelSubset** 描述一组物理上相等的 Relation Expression，即具有相同的 Physical Properties
+- **RuleMatch** 描述一次成功的匹配，包含 Rule 和被匹配的节点
+- **Importance** 描述 RuleMatch 的重要程度，**越大越应该优先处理**
+
+### 基本原则
+
+为了能在短时间内得到一个较优解，我们的基本原则是：**尽量对成本大的做优化**，从而尽可能在有限的优化次数内获得更大的收益。这又可以分成三个方面来说：
+
+1. 优先应用 Transformation Rules 生成各式各样的关系表达式（即优先进行 explore 过程）；
+2. 一般来说，父节点比子节点数据量更大，所以优先处理父节点；
+3. 同级的节点中，收益大的一边应该得到更多的优化。
+
+为了达成 1，我们只要把逻辑算子的代价设为无穷大即可。为了达成 2、3，我们将 importance 和 cost 关联起来 —— 简单来说就是 cost 越大、importance 也越大。
+
+### 实现分析
+
+原理上说，`RuleQueue` 是一个优先队列，包含当前所有可行的 `RuleMatch`，`findBestExpr()` 时每次循环中我们从中取出优先级最高的并 apply，再根据 apply 的结果更新队列，如此往复，直到满足终止条件。
+
+但<u>==因为性能原因==</u>，实际上 `RuleQueue` 没有使用最大堆之类的数据结构，而是每次选出 importance 最大的那个。这是因为经常需要对 `RelSubset` 的 importance 做大量调整，用最大堆处理得不偿失。
+
+`RuleMatch` 的 importance 定义为以下两个中比较大的一个：
+
+1. 输入的 `RelSubset` 的 importance
+2. 输出的 `RelSubset` 的 importance
+
+> 以上参考 `VolcanoRuleMatch:computeImportance`
+
+那 `RelSubset` 的 importance 如何决定？这边的实现比较 tricky：`RuleQueue` 的成员变量 `subsetImportances` 中保存了各个 `RelSubset` 的 importance，但这并不是 `getImportance()` 返回的结果。为了区分清楚，我们把 `getImportance()` 返回的结果称为调整后的 importance，把 `subsetImportances` 里存的值称为真实 importance。
+
+**调整后的 importance** 定义为以下两个中比较大的一个：
+
+- 该 `RelSubset` 本身的真实 importance
+- 逻辑上相等的（即位于同一个 RelSet 中）任意一个 RelSubset 的真实 importance 除以 2
+
+之所以要这么做，注释中的解释是让 Conversion 尽快发生。
+
+> 以上参考 `RuleQueue:getImportance(RelSubset)`
+
+下一个问题，**真实 importance** 怎么计算呢？
+
+- 根节点的 importance 始终是 1.0
+- 否则，假设它父节点的代价是 c~parent~，这个节点本身的代价是 c~child~，则定义节点本身的 $I_{child}=\frac{c_{child}}{c_{parent}} I_{parent}$
+
+<p align="center">
+ <img src="https://ericfu.me/images/2018/11/calcite-importance-parent-child.png" />
+</p>
+
+这里说的 cost 是 `RelSubset` 的 cost，也就是当前这个 `RelSubset` 的中最佳物理计划的 cost。DP 算法会保留每个 `RelSubset` 的最佳 plan 以及对应 cost。
+
+> 以上参考 `RuleQueue:computeImportance(RelSubset)`
+
+这个定义又引出了下面两个问题：
+
+**1. 如果一个 RelSubset 里还没有 Physical Plan，那它的 cost 是无穷大，怎么处理？**
+
+- 初始设置为 0.9^n^，其中 $n$ 是 `RelSet` 所在的层数（参考 `VolcanoPlanner:setInitialImportance`）
+- 其他时候，比例 $\frac{c_{child}}{c_{parent}}$ 限制最大不超过 0.99（参考 `RuleQueue:computeImportanceOfChild`）
+
+PS. 理论上只要是一个小于 1 的系数都可以，不知道为什么这里两个系数不一样。
+
+**2. 如果某个 RelSubset 的 cost 降低了（例如找到了一种物理计划），那么 importance 也应该相应的被更新。**
+
+- 要更新的不仅是该 Plan 本身所在的一个或多个 `RelSubset`，还有可能是这些 `RelSubset` 的父节点、父节点的父节点，<u>所以这是一个向上递归的过程</u>（参考 `RelSubset:propagateCostImprovements`）。
+
+### References
+
+1. [The Volcano Optimizer Generator: Extensibility and Efficient Search - Goetz Graefe](https://pdfs.semanticscholar.org/a817/a3e74d1663d9eb35b4baf3161ab16f57df85.pdf)
+2. The Cascades Framework for Query Optimization - Goetz Graefe
+3. [Apache Calcite Source Code](https://github.com/apache/calcite)
+
+## 新增的 Top-down 优化器
+
+众所周知，Apache Calcite 是为数不多的开源 Volcano/Cascades 查询优化器实现之一，最早脱胎于 Hive 的优化器，后来也被 Flink 等一众项目采用。但事实上 Calcite 中的 `VolcanoPlanner` 并非像论文中描述的那样是一个 top-down 优化器。去年阿里云 MaxCompute 团队向 Calcite 提交了 PR，引入了新的 top-down 优化选项，同时也弥补了之前缺失的剪枝、pass-through 等特性。
+
+本文假设读者已经对 Apache Calcite 以及 Volcano/Cascades 优化器的原理比较熟悉。
+
+### 背景
+
+Calcite 中原来的 `VolcanoPlanner` 并非对论文的标准实现。具体来说，论文中给出的实现是一个自顶向下（top-down）的递归算法，**在每个递归节点上**，可以通过某些规则决定 apply 规则的先后顺序。而 Calcite 的实现则是一个**全局的优先队列**，即 apply 规则的顺序由全局唯一的优先队列控制。（优先队列的实现可参见我之前的文章 [Calcite 对 Volcano 优化器优先队列的实现](https://ericfu.me/understand-importance-in-calcite/)）
+
+这样做的好处是，如果不希望遍历整个搜索空间，该策略能够在给定的有限步数内给出较优解（从我个人经历来看，似乎很少有人这么用）。但代价则是代码逻辑变得十分难懂，也无法进行进行剪枝优化。从使用者的角度看，原本 top-down 优化中 apply rule 一定是先父节点、后子节点，而 Calcite 中的优化则是**随机**发生在 plan tree 的各个节点上，这也给编写 rule 带来了一些麻烦。
+
+2020 年 4 月阿里云 MaxCompute（ODPS）团队提出了 [CALCITE-3916: Support cascades style top-down driven rule apply](https://issues.apache.org/jira/browse/CALCITE-3916)，即新增一个真正意义上的 top-down 优化器。这过程中还经历了一些插曲，首次提交的 PR [#1950](https://github.com/apache/calcite/pull/1950) 直接新增了一个 `CascadesPlanner` 可能因为修改过大并没有被接受，之后又重构了一版 [#1991](https://github.com/apache/calcite/pull/1991)，将同样的功能实现在了 `VolcanoPlanner` 内部并提供了 [`TOPDOWN_OPT`](https://calcite.apache.org/javadocAggregate/org/apache/calcite/config/CalciteConnectionProperty.html#TOPDOWN_OPT) 选项用于启用或关闭。该功能最终在 2020 年 7 月完成进入主分支。
+
+### 核心逻辑：TopDownRuleDriver
+
+为了将新旧两种优化器合并在 `VolcanoPlanner` 中，#1991 抽象出了 `RuleDriver` 和 `RuleQueue` 两个类。当 top-down 优化器开启时，`VolcanoPlanner` 中的以下逻辑会被替换：
+
+- `RuleDriver`：从 `IterativeRuleDriver` 替换成 `TopDownRuleDriver`
+- `RuleQueue`：从 `IterativeRuleQueue` 替换成 `TopDownRuleQueue`
+
+其中 `TopDownRuleQueue` 逻辑很简单：由于 Calcite 是在新 `RelNode` 生成的时候对其进行匹配的，这里用一个 `RelNode -> Deque<VolcanoRuleMatch>` 的映射按照匹配的节点存放 rule match 的队列，供以后递归到相应节点的时候再进行 apply。
+
+```java
+/**
+ * A rule queue that manages rule matches for cascades planner.
+ */
+class TopDownRuleQueue extends RuleQueue {
+
+  private final Map<RelNode, Deque<VolcanoRuleMatch>> matches = new HashMap<>();
+```
+
+我们重点看 `TopDownRuleDriver`。它的设计参考了 Columbia 优化器，其内部并非是一个简单的递归函数，而是用栈 `tasks` 模拟了整个 top-down 的过程。
+
+```java
+/**
+ * A rule driver that applies rules in a Top-Down manner.
+ * By ensuring rule applying orders, there could be ways for
+ * space pruning and rule mutual exclusivity check.
+ *
+ * <p>This implementation uses tasks to manage rule matches.
+ * A Task is a piece of work to be executed, it may apply some rules
+ * or schedule other tasks.</p>
+ */
+class TopDownRuleDriver implements RuleDriver {
+
+  /**
+   * The rule queue designed for top-down rule applying.
+   */
+  private final TopDownRuleQueue ruleQueue;
+
+  /**
+   * All tasks waiting for execution.
+   */
+  private final Stack<Task> tasks = new Stack<>();
+```
+
+整个优化过程由下面的循环驱动：不断从栈顶取出 Task 执行，Task 执行中又会产生新的 Task，重复这一过程直到栈为空。本质上这和递归没什么区别。
+
+```java
+/**
+ * Applies rules.
+ */
+@Override public void drive() {
+    tasks.push(
+        new OptimizeGroup(
+            requireNonNull(planner.root, "planner.root"),
+            planner.infCost));
+
+    // Iterates until the root is fully optimized.
+    while (!tasks.isEmpty()) {
+        Task task = tasks.pop();
+        task.perform();
+    }
+}
+```
+
+可以看到，一切优化都是从一个名为 `OptimizeGroup(root)` 的 task 开始的。下面我们依次看看有哪些 Task 以及它们分别在干什么。在开始之前先解释一些术语：
+
+| Calcite 的命名     | Columbia 的命名     | 解释                                                         |
+| :----------------- | :------------------ | :----------------------------------------------------------- |
+| RelNode            | expression          | 一个 plan（或 subplan，下文中不区分 plan 和 subplan）        |
+| -                  | multi-expression    | 在 `VolcanoPlanner` 内部时，`RelNode` 的子节点会被替换成 `RelSubset`（而非具体的 plan），这时该 `RelNode` 也就是所谓的 multi-expression |
+| RelSet             | Group               | relational expression 等价的 plan 集合                       |
+| RelSubset          | -                   | relational expression 和 physical properties 相同的 plan 集合 |
+| TransformationRule | transformation rule | 从 logical plan 到 logical plan 的等价转换规则               |
+| ConverterRule      | implementation rule | 将 logical plan 转化为 physical plan 的转换规则              |
+| RelTrait           | physical properties | 物理属性，典型的就是排序（collation）和分布（distribution）  |
+
+#### `OptimizeGroup`
+
+`OptimizeGroup` 用于优化一个 `RelSubset`，类似于 Columbia 中的 `O_GROUP`。
+
+1. 递归优化当前 `RelSubset` 中的每个 physical plan（生成 `OptimizeInputs`）
+2. 递归优化当前 `RelSubset` 中的每个 logical plan（生成 `OptimizeMExpr`）
+
+注意，这里故意先探索 physical plan 再探索 logical plan（即 explore），这是因为搜索 physical plan 的过程中可能生成可行 plan 从而能帮助剪枝。
+
+#### `OptimizeInputs` 以及 `OptimizeInput1`
+
+`OptimizeInputs` 依次为调用每个子节点的 `OptimizeGroup`，对应 Columbia 中的 `O_INPUTS`。
+
+`OptimizeInput1` 是 `OptimizeInputs` 在只有一个子节点情况下的简化版本。
+
+#### `OptimizeMExpr`
+
+`OptimizeMExpr` 用于优化一个 logical plan，类似于 Columbia 中的 `E_GROUP`。这里 `MExpr` 的命名是借鉴自 Columbia 中的 `M_EXPR`（multi-expression）
+
+1. 依次 explore 每个子节点 `RelSubset`（生成 `ExploreInput`）
+2. 在当前节点匹配所有可能的规则（生成 `ApplyRules`）
+
+#### `ExploreInput`
+
+`ExploreInput` 为当前 `RelSubset` 中的每个 logical plan 生成 `OptimizeMExpr`。不难看出，它们俩来回调用构成了整个 explore 过程。
+
+#### `ApplyRules` 以及 `ApplyRule`
+
+故名思义 `ApplyRules` 为当前节点找到所有的 rule match 并生成相应的 `ApplyRule`，后者 apply rule 生成新的 plan。新 plan 产生后必然会进入某个 `RelSubset`，进而又会进一步触发后续的优化任务（这部分位于 `onProduce`）：
+
+- 如果产生的是 logical plan 则生成 `OptimizeMExpr`
+- 如果产生的是 physical plan 则生成 `OptimizeInputs`
+
+和上面 `OptimizeGroup` 做的事情如出一辙。
+
+到此为止，上述这些 task 共同构成了 top-down 优化的递归过程。下图是各个 task 之间的调用关系，蓝色回边意味着递归进入下一层节点。
+
+![img](https://ericfu.me/images/2021/11/calcite-top-down-tasks.png)
+
+### 剪枝的实现
+
+Volcano/Cascades 优化器的论文中提到，top-down 相比 bottom-up 的一大优势是可以进行剪枝（pruning 或 branch-and-bound）。在 Calcite 原本的 `VolcanoPlanner` 中这也是做不到的。
+
+新引入的 top-down 优化器同时也带来了剪枝特性。剪枝的原理可以参见 Columbia 论文 4.3.1 章节，一图以概之：
+
+![img](https://ericfu.me/images/2021/11/Lower-Bound-Pruning.jpg)
+
+上图中的 context 在 Calcite 的实现中即是 `OptimizeInputs` 这个 task。其中，`upperBound` 在 `OptimizeGroup` 时传入 `RelSubset` 最后又传到这里。一旦优化中发现 `lowerBound > upperBound`，则可以不再优化其他子节点、放弃当前 `RelSubset`。
+
+```java
+/**
+ * Optimizes a physical node's inputs.
+ * This task calculates a proper upper bound for the input and invokes
+ * the OptimizeGroup task. Group pruning mainly happens here when
+ * the upper bound for an input is less than the input's lower bound
+ */
+private class OptimizeInputs implements Task {
+
+  private final RelNode mExpr;
+  private final RelSubset group;
+  
+  private RelOptCost upperBound;
+  private RelOptCost upperForInput;
+  private @Nullable List<RelOptCost> lowerBounds;
+  private @Nullable RelOptCost lowerBoundSum;
+```
+
+Pruning 发生在 `OptimizeInputs` 的过程中：
+
+1. 初始化：对每个（尚未优化的）子节点通过 `RelMetadataQuery` 中的 `LowerBoundCost` 接口获取最低 cost。（`LowerBoundCost` 这个接口需要额外实现，如果没有实现就是 0）
+2. 每当 `OptimizeGroup` 优化完一个子节点，另一个任务 `CheckInput` 会用实际的 cost 替代（抬升）之前的 lower bound
+3. 直到完成所有的子节点的 `OptimizeGroup`
+
+上述 1～3 每个步骤之后都有能出现 `lowerBound > upperBound`，进而中止当前的 `OptimizeInputs` 过程，达到剪枝的效果。
+
+### Pass-through 和 derive
+
+回忆一下 Volcano/Cascades 优化器中，递归调用的输入参数不仅包括 logical plan，还包括上层所需的 physical properties。二者共同组成了动态规划的最优子结构。
+
+但是 Calcite 原本的 `VolcanoPlanner` 中并没有向下传递所需的 physical properties，而是通过临时放置一个 `AbstractConvertor` 作为所需 `RelSubset` 的 placeholder，在之后 apply rule 的过程中如果能“恰好”产生同一 `RelSubset` 的 plan，则可能会作为 best 被选出。这一过程中，apply rule 或是算子并不知道上层需要怎样的 physical properties，因此比较低效。
+
+新增的 top-down 优化器引入了一个新特性，允许算子主动处理上层要求的 physical properties，该特性称为 pass-through。
+
+由于 pass-through 处理的是 physical properties，显然只有物理算子才需要实现 pass-through，相应的接口如下：
+
+```java
+/**
+ * Physical node in a planner that is capable of doing
+ * physical trait propagation and derivation.
+ */
+public interface PhysicalNode extends RelNode {
+
+  /**
+   * Pass required traitset from parent node to child nodes,
+   * returns a pair of traits after traits is passed down.
+   *
+   * <p>Pair.left: the new traitset
+   * <p>Pair.right: the list of required traitsets for child nodes
+   */
+  Pair<RelTraitSet, List<RelTraitSet>> passThroughTraits(RelTraitSet required);
+      
+  /**
+   * Derive traitset from child node, returns a pair of traits after
+   * traits derivation.
+   *
+   * <p>Pair.left: the new traitset
+   * <p>Pair.right: the list of required traitsets for child nodes
+   */
+  Pair<RelTraitSet, List<RelTraitSet>> deriveTraits(RelTraitSet childTraits, int childId);
+}
+```
+
+对于 Project、Filter 这样的简单算子，几乎只要直接穿透就可以了。举个稍复杂的例子： `EnumerableHashJoin` 算子依次对 probe side 的每一行进行 join，因此不会改变 probe side 的顺序（collation）；如果所需的排序键恰好位于 `EnumerableHashJoin` 的 probe side，那么可以将其直接向下穿透到 probe side 的子节点上。
+
+有了 pass-through 之后，`AbstractConvertor` 也就用不着了。相对的，在 top-down 过程中，一旦有新的 physical properties 产生，就会调用下层各个物理算子的 pass-through 接口以及 converter rule，从中挑选出 best plan。
+
+```java
+/**
+ * Tries to convert the physical node to another trait sets, either by converter rule
+ * or traits pass through.
+ */
+private RelNode convert(RelNode rel, RelSubset group) {
+  if (!passThroughCache.contains(rel)) {
+    RelNode passThrough = group.passThrough(rel);
+    if (passThrough != null) {
+      passThroughCache.add(passThrough);
+      return passThrough;
+    }
+  }
+  VolcanoRuleMatch match = /* find matched converter rule */;
+  if (match != null) {
+    tasks.add(new ApplyRule(match, group, false));
+  }
+  return null;
+}
+```
+
+为了配合 pass-through，`OptimizeGroup` 中优化某个 `RelSubset` 时不仅会检查当前 `RelSubset` 包含的 plan，实际上它检查的是所属的 `RelSet` 中所有的 plan。对于其中 physical properties 不同的 plan，它会调用上面的 `convert` 方法触发 pass-through 以及 converter rule。
+
+最后再说说 **derive**。我们说过，pass-through 用于**自上而下**传递所需的 physical properties。但是在某些情况下这还不够。例如考虑 broadcast join 的生成过程，其中 Join 算子的 distribution 需要和其中一个输入节点（例如 TableScan）保持一致，另一边则通过 Exchange(broadcast) 将数据重分布到所有 Join 上。注意这里 Join 算子的 distribution 来自于它的子节点 TableScan，这一**自下而上**的传递过程就依赖 derive。
+
+`DeriveTrait` 任务总是在一个 physical plan 生成后被调用，用于调用 derive 接口。如果 derive 产生了新的 trait 则为之生成相应的 `RelSubset`。
+
+### 总结
+
+新引入的 top-down 优化器实现了真正的自顶向下搜索。相比 Calcite 原来的 `VolcanoPlanner` 实现，它具有以下优势：
+
+1. 实现更接近论文中的描述，更加简单易懂
+2. 支持 lower-bound pruning，节约优化时间
+3. 支持 pass-through，改进 physical properties 相关的优化性能
+
+### References
+
+1. [Apache Calcite](https://calcite.apache.org/) - [Source Code](https://github.com/apache/calcite/)
+2. [CALCITE-3916: Support cascades style top-down driven rule apply](https://issues.apache.org/jira/browse/CALCITE-3916)
+3. [CALCITE-3916: Support top-down rule apply and upper bound space pruning #1991](https://github.com/apache/calcite/pull/1991)
+4. [Efficiency in the Columbia Database Query Optimizer - YONGWEN XU](https://15721.courses.cs.cmu.edu/spring2018/papers/15-optimizer1/xu-columbia-thesis1998.pdf)
 
 ## 物化视图匹配
 
