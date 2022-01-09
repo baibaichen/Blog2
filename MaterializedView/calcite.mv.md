@@ -1714,16 +1714,15 @@ Additionally, this JIRA targets to clean the code of MaterializationTest.java. A
 
 ## Join or 物理属性传递？
 
-
-
 1. [Performance issue when enabling abstract converter for EnumerableConvention](https://issues.apache.org/jira/browse/CALCITE-2970)
 2. [TPCH queries take forever for planning](https://issues.apache.org/jira/browse/CALCITE-3968)
    1. https://lists.apache.org/thread/yf15gy9w7gz2sbso9vsjqqrcd92b038j
    2. https://github.com/apache/calcite/pull/1976
    3. [Problem with MERGE JOIN: java.lang.AssertionError: cannot merge join: left input is not sorted on left keys](https://issues.apache.org/jira/browse/CALCITE-3997)
-
 3. [Pass through parent trait requests to child operators](https://issues.apache.org/jira/browse/CALCITE-3896)
    1. [[DISCUSS] On-demand traitset request](http://mail-archives.apache.org/mod_mbox/calcite-dev/201910.mbox/%3c393e0ff5-f105-4795-be4f-09deb2a6a491.h.yuan@alibaba-inc.com%3e)
+4. [Volcano's problem with trait propagation: current state and future](https://lists.apache.org/thread/olcxw65cwd3z6hfwqyt2n3t2y798thlq)
+5. [[DISCUSS] Towards Cascades Optimizer](https://lists.apache.org/thread/fn1wwkb62byk2vlpqqsgmsllj6xjgprq)
 
 ## `AbstractConverter`
 
