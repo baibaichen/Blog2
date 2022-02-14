@@ -1304,7 +1304,7 @@ Unlike lattice dimensions, measures can not be specified in qualified format, {@
 
 1. 检查查询计划是否满足视图重写的前提条件
 
-2. 初始化查询相关的所有辅助数据结构，将在整个查询重写过程中使用它们
+2. 初始化所有查询相关的辅助数据结构，将在整个查询重写过程中使用 :
    1. 提取查询的表引用
    2. 提取查询谓词
 
@@ -1325,7 +1325,7 @@ Unlike lattice dimensions, measures can not be specified in qualified format, {@
    > 我们尝试补偿，例如，对于连接查询，可能可以将缺失的表与视图连接起来以计算结果。 支持的两种情况：查询表是视图表的子集（我们需要检查它们是否是基数保留连接），或者视图表是查询表的子集（如果可能，通过连接添加额外的表）
    
 4. We map every table in the query to a table with the same qualified name (all query tables are contained in the view, thus this is equivalent to mapping every table in the query to a view table).
-   
+  
    If a table is used multiple times, we will create multiple mappings, and we will try to rewrite the query using each of the mappings.  Then, we will try to map every source table (query) to a target table (view), and if we are successful, we will try to create compensation predicates to filter the view results further (if needed).
    
    >  我们将查询中的每个表映射到具有相同限定名称的表(所有查询表都包含在视图中，因此这相当于将查询中的每个表映射到一个视图表)。
@@ -1345,23 +1345,21 @@ Unlike lattice dimensions, measures can not be specified in qualified format, {@
 
 ## 参考
 
-- `compensateViewPartial`：It checks whether the query can be rewritten using the view even though the query uses additional tables. Rules implementing the method should follow different approaches depending on the operators they rewrite. return ViewPartialRewriting, or null if the rewrite can't be done.
+### ✅
 
-- `rewriteQuery`：If the view will be used in a union rewriting, this method is responsible for rewriting the query branch of the union using the given compensation predicate. If a rewriting can be produced, we return that rewriting. If it cannot be produced, we will return null.
+- `compensateViewPartial`：即使查询使用了额外的表，也会检查是否可以使用视图重写查询。实现该方法的规则应遵循不同的方法，具体取决于它们重写的运算符。如果无法完成重写，返回 null，否则返回 `ViewPartialRewriting`，。
 
-- `createUnion`：If the view will be used in a union rewriting, this method is responsible for generating the union and any other operator needed on top of it, e.g., a Project operator.
+- `rewriteView`：使用给定的物化视图重写查询。 `input` 节点是视图表上的 `Scan`，==顶层可能是补偿的过滤器==。 如果可以产生重写，返回重写的计划。否则返回 null。
 
-- `rewriteView`：使用给定的物化视图重写查询。 `input` 节点是视图表上的 `Scan`，顶层可能是补偿的过滤器。 如果可以产生重写，我们返回重写的计划。 如果无法生成，我们将返回 null。
+- `pushFilterToOriginalViewPlan` ：一旦我们创建了一个补偿谓词，这个方法就负责将结果 Filter 推送到==视图节点==。运算符的重写可能很有用，<u>因为可能会删除一些分组列，从而产生额外的匹配可能性</u>。该方法将返回一对节点：左边是顶层新的 `project`，右边是新的逻辑计划。
 
-- `pushFilterToOriginalViewPlan` ：Once we create a compensation predicate, this method is responsible for pushing the resulting filter through the view nodes. This might be useful for rewritings containing Aggregate operators, as some of the grouping columns might be removed, which results in additional matching possibilities. The method will return a pair of nodes: the new top `project` on the left and the new node on the right.
+- `extractReferences`：如果是 `Aggregate` 节点，返回分组列的**引用**（`RexInputRef`）。 否则，返回节点中所有的列引用。返回的列表是不可变的。
 
-- `extractReferences`：If the node is an `Aggregate`, it returns a list of references to the grouping columns. Otherwise, it returns a list of references to all columns in the node. The returned list is immutable.
+- `generateTableMappings`：它将一个包含表引用的 multimap 扁平化，生成所有可能的映射组合。每个映射都是双向的。
 
-- `generateTableMappings`：It will flatten a multimap containing table references to table references, producing all possible combinations of mappings. Each of the mappings will be bi-directional.
+- `splitPredicates`：将谓词分为两类：1) **列相等谓词**，或2) **剩余谓词**，即余下的所有谓词。对于每个类别，它都会建谓词用 `And` 运算符连接起来。返回值是 `Pair<RexNode, RexNode>` 对象，`RexNode` 与每个类别分别对应。
 
-- `splitPredicates`：Classifies each of the predicates in the list into one of these two categories: 1-l) **column equality predicates**, or 2-r) **residual predicates**, all the rest. For each category, it creates the conjunction of the predicates. The result is an pair of `RexNode` objects corresponding to each category.
-
-- `compensatePartial`：It checks whether the target can be rewritten using the source even though the source uses additional tables. In order to do that, we need to double-check that every join that exists in the source and is not in the target is **a cardinality-preserving join**, i.e., it only appends columns to the row without changing its multiplicity. Thus, the join needs to be:
+- `compensatePartial`：即使物化视图使用了额外的表，也会检查是否可以使用物化视图重写查询。为了做到这一点，我们需要仔细检查每个存在于物化视图但不在查询中的连接是**一个保留基数的连接**，即它只加列，而不加行。因此，需要如下性质的 `Join`：
 
   1. Equi-join 
   2. Between all columns in the keys
@@ -1369,25 +1367,23 @@ Unlike lattice dimensions, measures can not be specified in qualified format, {@
   4. Foreign-key 
   5. Unique-key
 
-  If it can be rewritten, it returns true. Further, it inserts the missing equi-join predicates in the input {@code compensationEquiColumns} multimap if it is provided.If it cannot be rewritten, it returns false.
+  如果可以重写，则返回 `true`。此外，如果输入提供了 `compensationEquiColumns`，它会插入缺少的 `equal-join` 谓词。如果不能重写，返回false。
 
-- `computeCompensationPredicates`：We check whether the predicates in the source are contained in the predicates in the target. The method treats separately the equi-column predicates, the range predicates, and the rest of predicates. If the containment is confirmed, we produce compensation predicates that need to be added to the target to produce the results in the source. Thus, if source and target expressions are equivalent, those predicates will be the true constant. In turn, if containment cannot be confirmed, the method returns null.
+- `computeCompensationPredicates`：我们检查源（查询）中的谓词是否包含在目标（物化视图）的谓词中。该方法分别处理**相等谓词**、**范围谓词**和**其余谓词**。如果确认包含，我们会生成需要**添加到重写计划中的**补偿谓词，以基于目标（物化视图）生成结果。因此，如果目标（物化视图）和源（查询）的谓词表达式等价，那么将生成常量 `true` 谓词。反之，如果无法确认包含，则该方法返回 null。
 
-- `generateEquivalenceClasses`：Given the equi-column predicates of the source and the target and the computed equivalence classes, it extracts possible mappings between the equivalence classes. If there is no mapping, it returns null. If there is a exact match, it will return a compensation predicate that evaluates to true. Finally, if a compensation predicate needs to be enforced on top of the target to make the equivalences classes match, it returns that compensation predicate.
+  - `generateEquivalenceClasses`：给定源和目标的等列谓词以及计算的等价类，它提取等价类之间可能的映射。如果没有映射，则返回null。如果有精确匹配，它将返回一个值为 `true` 的补偿谓词。最后，如果需要在目标顶部强制补偿谓词以使等价类匹配，则返回该补偿谓词。
+    - `extractPossibleMapping`：==Given the source and target equivalence classes, it extracts the possible mappings from each source equivalence class to each target equivalence class. If any of the source equivalence classes cannot be mapped to a target equivalence class, it returns null.==
 
-- `extractPossibleMapping`：Given the source and target equivalence classes, it extracts the possible mappings from each source equivalence class to each target equivalence class. If any of the source equivalence classes cannot be mapped to a target equivalence class, it returns null.
+### ❎
 
-- `rewriteExpression`：**First**, the method takes the node expressions `nodeExprs` and swaps the table and column references using the table mapping and the equivalence classes. If `swapTableColumn` is true, it swaps the table reference and then the column reference, otherwise it swaps the column reference and then the table reference. **Then**, the method will rewrite the input expression `exprToRewrite`, replacing the `RexTableInputRef` by references to the positions in `nodeExprs`. The method will return the rewritten expression. If any of the expressions in the input expression cannot be mapped, it will return null.
-
-- `rewriteExpressions`：
-
-- `generateSwapTableColumnReferencesLineage`：It swaps the table references and then the column references of the input expressions using the table mapping and the equivalence classes.
-
-- `generateSwapColumnTableReferencesLineage`：It swaps the column references and then the table references of the input expressions using the equivalence classes and the table mapping.
-
-- `replaceWithOriginalReferences`：Given the input expression, it will replace (sub)expressions when possible using the content of the mapping. In particular, the mapping contains the digest of the expression and the index that the replacement input ref should point to.
+- `rewriteExpression` & `rewriteExpressions`：**First**, the method takes the node expressions `nodeExprs` and swaps the table and column references using the table mapping and the equivalence classes. If `swapTableColumn` is true, it swaps the table reference and then the column reference, otherwise it swaps the column reference and then the table reference. **Then**, the method will rewrite the input expression `exprToRewrite`, replacing the `RexTableInputRef` by references to the positions in `nodeExprs`. The method will return the rewritten expression. If any of the expressions in the input expression cannot be mapped, it will return null.
+  - `generateSwapTableColumnReferencesLineage`：It swaps the table references and then the column references of the input expressions using the table mapping and the equivalence classes.
+  - `generateSwapColumnTableReferencesLineage`：It swaps the column references and then the table references of the input expressions using the equivalence classes and the table mapping.
+  - `replaceWithOriginalReferences`：Given the input expression, it will replace (sub)expressions when possible using the content of the mapping. In particular, the mapping contains the digest of the expression and the index that the replacement input ref should point to.
 
 - `shuttleReferences`：Replaces all the input references by the position in the input column set. If a reference index cannot be found in the input set, then we return null. 用输入列集中的位置替换所有输入引用。 如果在输入集中找不到引用索引，则返回 null。
+- `rewriteQuery`：If the view will be used in a union rewriting, this method is responsible for rewriting the query branch of the union using the given compensation predicate. If a rewriting can be produced, we return that rewriting. If it cannot be produced, we will return null.
+- `createUnion`：If the view will be used in a union rewriting, this method is responsible for generating the union and any other operator needed on top of it, e.g., a Project operator.
 
 ### `MaterializedViewAggregateRule.rewriteView`
 
