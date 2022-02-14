@@ -1285,7 +1285,7 @@ Unlike lattice dimensions, measures can not be specified in qualified format, {@
 
 对于每个 **Join MV**（Table Index），我们需要检查以下内容：
 
-1. 以<u>视图中的 Join 运算符为根的计划</u>**生成**以<u>查询中的 Join 运算符为根的计划</u>所需的**所有行**。=> 数据是否满足？
+1. 以物化视图中 `Join` 运算符为根的计划**是否能生成**查询中以 `Join` 运算符为根的计划所需的**所有行**。=> 数据是否满足？
 2. <u>补偿谓词</u>所需的所有列（即需要在视图上强制执行的谓词）在视图输出中可用。
 3. 所有**输出表达式**都可以从视图的输出中计算出来。
 4. 所有输出行都以正确的重复因子出现。我们可能依赖现有的**唯一键 - 外键**关系来提取该信息。
@@ -1336,7 +1336,7 @@ Unlike lattice dimensions, measures can not be specified in qualified format, {@
    
    2. **4.1**. **Compute compensation predicates**, i.e., predicates that need to be enforced over the view to retain query semantics. The resulting  predicates are expressed using `RexTableInputRef` over the query. First, to establish relationship, we swap column references of the view predicates to point to query tables and compute equivalence classes.
    
-      > **计算补偿谓词**，即要在物化视图上用以<u>保留查询语义</u>的谓词。在查询上使用 `RexTableInputRef` 表示 **结果谓词**。 **首先**，为了建立关系，我们将视图上谓词的列引用指向查询表，并计算等价类。
+      > **计算补偿谓词**，即要在物化视图上用以<u>保留查询语义</u>的谓词。生成的**结果谓词**是基于查询（非物化视图）的列来表示的。 **首先**，为了建立关系，我们将视图上谓词的列引用指向查询表，并计算等价类。
    
       1. 补偿谓词为空：Attempt partial rewriting using union operator. This rewriting will read some data from the view and the rest of the data from the query computation. The resulting predicates are expressed using  `RexTableInputRef` over the view.
       2. 补偿谓词不为空：
