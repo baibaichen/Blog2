@@ -1328,7 +1328,7 @@ Unlike lattice dimensions, measures can not be specified in qualified format, {@
   
    If a table is used multiple times, we will create multiple mappings, and we will try to rewrite the query using each of the mappings.  Then, we will try to map every source table (query) to a target table (view), and if we are successful, we will try to create compensation predicates to filter the view results further (if needed).
    
-   >  我们将查询中的每个表映射到具有相同限定名称的表(所有查询表都包含在视图中，因此这相当于将查询中的每个表映射到一个视图表)。
+   >  我们将查询中的每个表映射到具有相同限定名称的表（所有查询表都包含在视图中，因此这相当于将查询中的每个表映射到一个视图表）。
    >
    >  如果一个表被多次使用，我们将创建多个映射，我们将尝试使用每个映射重写查询。 然后，我们将尝试将每个源表（查询）映射到目标表（视图），如果成功，我们将尝试创建补偿谓词以进一步过滤视图结果（如果需要）。
    
@@ -1336,7 +1336,7 @@ Unlike lattice dimensions, measures can not be specified in qualified format, {@
    
    2. **4.1**. **Compute compensation predicates**, i.e., predicates that need to be enforced over the view to retain query semantics. The resulting  predicates are expressed using `RexTableInputRef` over the query. First, to establish relationship, we swap column references of the view predicates to point to query tables and compute equivalence classes.
    
-      > **计算补偿谓词**，即<u>要在视图上强制执行</u>以<u>保留查询语义</u>的谓词。在查询上使用 `RexTableInputRef` 表示 **结果谓词**。 首先，为了建立关系，我们交换<u>视图上谓词的列引用</u>以指向查询表并计算等价类。
+      > **计算补偿谓词**，即要在物化视图上用以<u>保留查询语义</u>的谓词。在查询上使用 `RexTableInputRef` 表示 **结果谓词**。 **首先**，为了建立关系，我们将视图上谓词的列引用指向查询表，并计算等价类。
    
       1. 补偿谓词为空：Attempt partial rewriting using union operator. This rewriting will read some data from the view and the rest of the data from the query computation. The resulting predicates are expressed using  `RexTableInputRef` over the view.
       2. 补偿谓词不为空：
@@ -1371,8 +1371,8 @@ Unlike lattice dimensions, measures can not be specified in qualified format, {@
 
 - `computeCompensationPredicates`：我们检查源（查询）中的谓词是否包含在目标（物化视图）的谓词中。该方法分别处理**相等谓词**、**范围谓词**和**其余谓词**。如果确认包含，我们会生成需要**添加到重写计划中的**补偿谓词，以基于目标（物化视图）生成结果。因此，如果目标（物化视图）和源（查询）的谓词表达式等价，那么将生成常量 `true` 谓词。反之，如果无法确认包含，则该方法返回 null。
 
-  - `generateEquivalenceClasses`：给定源和目标的等列谓词以及计算的等价类，它提取等价类之间可能的映射。如果没有映射，则返回null。如果有精确匹配，它将返回一个值为 `true` 的补偿谓词。最后，如果需要在目标顶部强制补偿谓词以使等价类匹配，则返回该补偿谓词。
-    - `extractPossibleMapping`：==Given the source and target equivalence classes, it extracts the possible mappings from each source equivalence class to each target equivalence class. If any of the source equivalence classes cannot be mapped to a target equivalence class, it returns null.==
+  - `generateEquivalenceClasses`：给定源和目标的列相等谓词以及等价列分类，提取等价类之间可能的映射。如果没有映射，则返回 null。如果有精确匹配，它将返回一个值为 `true` 的补偿谓词。最后，如果需要在目标（物化视图）顶部强制补偿谓词以使等价类匹配，则返回该补偿谓词。
+    - `extractPossibleMapping`：在给定源和目标等价列的分类，创建从**每个源（查询）的等价列类**到**每个目标（物化视图）等价列类**的映射。如果任何源的等价类类无法映射到目标的等价列类，则返回 null。
 
 ### ❎
 
@@ -1384,6 +1384,10 @@ Unlike lattice dimensions, measures can not be specified in qualified format, {@
 - `shuttleReferences`：Replaces all the input references by the position in the input column set. If a reference index cannot be found in the input set, then we return null. 用输入列集中的位置替换所有输入引用。 如果在输入集中找不到引用索引，则返回 null。
 - `rewriteQuery`：If the view will be used in a union rewriting, this method is responsible for rewriting the query branch of the union using the given compensation predicate. If a rewriting can be produced, we return that rewriting. If it cannot be produced, we will return null.
 - `createUnion`：If the view will be used in a union rewriting, this method is responsible for generating the union and any other operator needed on top of it, e.g., a Project operator.
+
+### `MaterializedViewRule.computeCompensationPredicates`
+1. Establish relationship between source and target equivalence classes.  If every target equivalence class is not a subset of a source equivalence class, we bail out.
+1. We check that that residual predicates of the source are satisfied within the target. Compute compensating predicates.
 
 ### `MaterializedViewAggregateRule.rewriteView`
 
