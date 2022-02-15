@@ -1524,7 +1524,7 @@ Calcite 有一个元数据系统，允许您定义有关关系运算符的成本
 
 
 # 考古
-## 视图
+## 物化视图
 ### 第一次支持[视图匹配](https://github.com/apache/calcite/commit/13136f9e4b7f4341d5cdce5b9ca8d498f353bb30) 
 
 具体算法不知道。随后的 Commit，[Before planning a query, prune the materialized tables used to those that might help](https://github.com/apache/calcite/commit/0eb66bbb462bfb9bfd3bdfc9f2fb2d602958bcbd) 在 `VocanoPlanner` 里增加了一个 `originalRoot`。
@@ -1621,7 +1621,7 @@ Enabled by new connection parameter "createMaterializations".
 >
 > 在我看来，主要的缺失部分是一种算法，该算法在给定一组 MV 的情况下，创建一组最佳的 lattice，使得每个 MV 都属于一个 lattice。
 
-### 2017-01-31 [ALCITE-1500：Decouple materialization and lattice substitution from VolcanoPlanner](https://issues.apache.org/jira/browse/CALCITE-1500)
+### 2017-01-31 [CALCITE-1500：Decouple materialization and lattice substitution from VolcanoPlanner](https://issues.apache.org/jira/browse/CALCITE-1500)
 
 TODO
 
