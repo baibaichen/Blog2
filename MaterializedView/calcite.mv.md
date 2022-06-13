@@ -1716,7 +1716,7 @@ Additionally, this JIRA targets to clean the code of MaterializationTest.java. A
 
 1. [Performance issue when enabling abstract converter for EnumerableConvention](https://issues.apache.org/jira/browse/CALCITE-2970)
 2. [TPCH queries take forever for planning](https://issues.apache.org/jira/browse/CALCITE-3968)
-   1. https://lists.apache.org/thread/yf15gy9w7gz2sbso9vsjqqrcd92b038j
+   1. ​	https://lists.apache.org/thread/yf15gy9w7gz2sbso9vsjqqrcd92b038j
    2. https://github.com/apache/calcite/pull/1976
    3. [Problem with MERGE JOIN: java.lang.AssertionError: cannot merge join: left input is not sorted on left keys](https://issues.apache.org/jira/browse/CALCITE-3997)
 3. [Pass through parent trait requests to child operators](https://issues.apache.org/jira/browse/CALCITE-3896)
@@ -1820,7 +1820,7 @@ Aggregate
 7. Hash distribution on a,c
 8. Hash distribution on a,b,c
 
-VolcanoPlanner 会在 RelSet 中添加 `7*7+8 = 57` 个抽象转换器，例如 [a] 和 [b,c] 之间的抽象传换器，即使满足匹配是允许的，例如：==[a] 上的 Range 分布满足 [a,b,c] 上的 Range 分布==，仍然有很多抽象转换器。 但我们只需要#8。
+VolcanoPlanner 会在 RelSet 中添加 `7*7+8 = 57` 个抽象转换器，例如 [a] 和 [b,c] 之间的抽象传换器，即使满足匹配是允许的，例如：==[a] 上的 Range 分布满足 [a,b,c] 上的 Range 分布==，仍然有很多抽象转换器。 但我们只需要 #8。
 
 此补丁通过向 `RelSubset` 添加状态来解决上述问题，指示添加的特征集是必需的还是派生的。**特征集既可以是必需的，也可以是派生的**。==只添加从<u>派生特征集</u>到<u>必需特征集</u>的抽象转换器==。
 
@@ -1912,6 +1912,79 @@ RelSubset getOrCreateSubset(
 >  
 > 注意： `RelSubset` **既可以是必需的，也可以是派生的**。
 > 
+### Top Down
+
+#### Why
+
+> As I mentioned before, we are building a distributed SQL engine that uses Apache Calcite for query optimization. The key problem we faced is the inability to pull the physical traits of child relations efficiently. I'd like to outline my understanding of the problem (I guess it was already discussed multiple times) and ask the community to prove or disprove the existence of that problem and its severity for the products which uses Apache Calcite and ask for ideas on how it could be improved in the future. 
+>
+> I'll start with the simplified problem description and mentioned more complex use cases then. Consider that we have a logical tree and a set of implementation rules. Our goal is to find the optimal physical tree by applying these rules. The classical Cascades-based approach directs the optimization process from the top to the bottom (hence "top-down"). However, the actual implementation of tree nodes still happens bottom-up. For the tree L1 <- L2, we enter "optimize(L1)", which recursively delegates to "optimize(L2)". We then implement children nodes L1 <- [P2', P2''], and return back to the parent, which is now able to pick promising implementations of the children nodes and reject bad ones with the branch-and-bound approach. AFAIK Pivotal's Orca works this way. 
+>
+> The Apache Calcite is very different because it doesn't allow the recursion so that we lose the context on which node requested the child transformation. This loss of context leads to the following problems: 
+>
+> 1) The parent node cannot deduce it's physical properties during the execution of the implementation rule, because Calcite expects the transformation to be applied before children nodes are implemented. That is if we are optimizing LogicalProject <- LogicalScan, we cannot set proper distribution and collation for the to be created PhysicalProject, because it depends on the distribution and collation of the children which is yet to be resolved. 
+>
+> 2) The branch-and-bound cannot be used because it requires at least one fully-built physical subtree. 
+>
+> As a result of this limitation, products which rely on Apache Calcite for query optimization, use one or several workarounds: 
+>
+> 1. **Guess the physical properties of parent nodes before logical children are implemented** *Apache Flink* uses this strategy. The strategy is bad because of the number of combinations of traits growth exponentially with the number of attributes in the given RelNode, so you either explode the search space or give up optimization opportunities. Consider the following tree: LogicalSort[a ASC] <- LogicalFilter <- LogicalScan The optimal implementation of the LogicalFilter is PhysicalFilter[collation=a ASC] because it may eliminate the parent sort. But such optimization should happen only if we know that there is a physical implementation of scan allowing for this sort order, e.g. PhysicalIndexScan[collation=a ASC]. I.e. we need to know the child physical properties first. Otherwise we fallback to speculative approaches. With the *optimistic* approach, we emit all possible combinations of physical properties, with the hope that the child will satisfy some of them, thus expanding the search space exponentially. With the *pessimistic* approach, we just miss this optimization opportunity even if the index exists. Apache Flink uses the pessimistic approach. 
+>
+> 2. **Use AbstractConverters** *Apache Drill* uses this strategy. The idea is to "glue" logical and physical operators, so that implementation of a physical child re-triggers implementation rule of a logical parent. The flow is as follows:
+>
+>    - Invoke parent implementation rule.
+>
+>    - it either doesn't produce new physical nodes or produce not optimized physical nodes (like in the Apache Flink case).
+>
+>    - Invoke children implementation rules and create physical children.
+>
+>    - Then converters kick-in and re-trigger parent implementation rule through the creation of an abstract converter.
+>
+>    - Finally, the parent implementation rule is fired again and now it produces optimized node(s) since at least some of the physical distributions of children nodes are implemented. 
+>
+>    Note that this is essentially a hack to simulate the Cascades flow! The problem is that `AbstractConverter`s increase the complexity of planning because they do not have any context, so parent rules are just re-triggered blindly. Consider the optimization of the following tree: LogicalJoin <- [LogicalScan1, LogicalScan2] With the converter approach, the join implementation rule will be fired at least 3 times, while in reality, one call should be sufficient. In our experiments with TPC-H queries, the join rule implemented that way is typically called 6-9 times more often than expected. 
+>
+> 3. **Transformations (i.e. logical optimization) are decoupled from implementation (i.e. physical optimization)**. Normally, you would like to mix both logical and physical rules in a single optimization program, because it is required for proper planning. That is, you should consider both (Ax(BxC)) and ((AxB)xC) join ordering during physical optimization, because you do not know which one will produce the better plan in advance. 
+>
+>    But in some practical implementations of Calcite-based optimizers, this is not the case, and join planning is performed as a separate HEP stage. Examples are Apache Drill and Apache Flink. I believe that lack of Cascades-style flow and branch-and-bound are among the main reasons for this. At the very least for Apache Drill, since it uses converters, so additional logical permutations will exponentially multiply the number of fired rules, which is already very big. 
+>
+> Given all these problems I'd like to ask the community to share current thoughts and ideas on the future improvement of the Calcite optimizer. One of the ideas being discussed in the community is "Pull-up Traits", which should allow the parent node to get physical properties of the children nodes. But in order to do this, you effectively need to implement children, which IMO makes this process indistinguishable from the classical recursive Cascades algorithm. 
+>
+> Have you considered recursive transformations as an alternative solution to that problem? I.e. instead of trying to guess or pull the physical properties of non-existent physical nodes, go ahead and actually implement them directly from within the parent rule? This may resolve the problem with trait pull-up, as well as allow for branch-and-bound optimization. I would appreciate your feedback or any hints for future research.
+
+正如我之前提到的，我们正在构建一个使用 Apache Calcite 进行查询优化的分布式 SQL 引擎。我们面临的关键问题是无法有效地读取子关系的物理特征。我想概述一下我对这个问题的理解（我想它已经讨论过多次了），让社区证明或反驳该问题的存在，及其对使用 Apache Calcite 的产品的严重性，并问问未来如何改进。
+
+我将从简化的问题描述开始，然后提到更复杂的场景。考虑我们有一个逻辑树和一组实现规则。我们的目标是通过应用这些规则找到最优的物理树。经典的基于 Cascades 的方法从上到下实施优化过程（因此是**自上而下**）。然而，树节点的==实际实现==仍然是自下而上发生。对于树 L1 <- L2，我们输入 `optimize(L1)`，它递归地调用 `optimize(L2)`。 然后我们实现子节点 L1 <- [P2', P2'']，并返回到父节点，它现在能够选择有前途的子节点来实现，并使用[分支定界](https://zh.wikipedia.org/wiki/%E5%88%86%E6%94%AF%E5%AE%9A%E7%95%8C)的方法来拒绝坏的实现。
+
+> 这个上下文的==实现==，特指从**逻辑算子**转换为**物理算子**。
+
+Apache Calcite（这里是指 vanilla 实现） 的不同之处在于，**它不允许递归**，因此我们丢失了哪个节点请求子转换的上下文。这种上下文的丢失会导致以下问题：
+
+1. 父节点在应用==实现规则==执行期间无法推断其物理属性，因为 Calcite 期望在实现子节点之前应用转换。也就是说，如果我们正在优化 `LogicalProject <- LogicalScan`，我们无法为要创建的物理 `Project` 设置适当的分布和排序，因为它取决于尚未解决的子节点的分布和排序。
+2. 不能使用分支定界，因为它至少需要一个完全构建的物理子树。
+
+由于此限制，依赖 Apache Calcite 进行查询优化的产品使用一种或多种解决方法：
+
+1. **在实现逻辑子节点之前猜测父节点的物理属性**：*Apache Flink* 使用这种策略。这个策略很糟糕，因为在给定的 RelNode 中，特征组合的数量与属性的数量呈指数增长，所以要么爆炸搜索空间，要么放弃优化机会。考虑下面的树：LogicalSort[a ASC] <- LogicalFilter <- LogicalScan，LogicalFilter的最佳实现是 PhysicalFilter[collation=a ASC]，因为它可能会消除父节点的排序。但只有在我们知道有一个 Scan 的物理实现允许这种排序顺序时，这种优化才应该发生，例如 PhysicalIndexScan[collation=a ASC]。也就是说，我们需要先知道子节点的物理属性。否则我们就退回到推测的方法。使用乐观方法，我们释放出所有可能的物理属性组合，希望子节点能够满足其中的一些，从而以指数方式扩展搜索空间。使用悲观方法，即使索引存在，我们也会错过这个优化机会。Apache Flink 使用悲观方法。
+
+2. **使用 AbstractConverters**：*Apache Drill*  使用此策略。这个想法是**粘合**逻辑和物理运算符，以便物理子节点的实现重新触发逻辑父节点的实现规则。流程如下：
+
+   - 调用父==实现==规则
+   - 它要么不产生新的物理节点，要么产生未优化的物理节点，如 Apache Flink 
+   - 调用子==实现==规则并创建物理子节点
+   - 然后转换器启动并通过创建**抽象转换器**重新触发父节点==实现==规则
+   - 最后，再次触发父实现规则，现在它产生优化的节点，因为至少实现了一些子节点的物理分布。
+
+   请注意，这本质上是一种模拟 Cascades 流的 hack！问题是 `AbstractConverter`s 增加了优划的复杂性，因为它们没有任何上下文，所以父规则只是盲目地重新触发。考虑以下树的优化： LogicalJoin <- [LogicalScan1, LogicalScan2] 使用转换器方法，连接实现规则将被触发至少 3 次，而实际上，一次调用就足够了。在我们对 TPC-H 查询的实验中，以这种方式实现的连接规则的调用频率通常比预期的高 6-9 倍。
+   
+3. **转换（即逻辑优化）与实现（即物理优化）解耦**。通常，希望在单个优化程序中混合逻辑和物理规则，因为它是正确优划所必需的。 也就是说，你应该在物理优化期间同时考虑 (Ax(BxC)) 和 ((AxB)xC) 连接排序，因为你不知道哪个会提前产生更好的计划。
+
+   但在一些基于 Calcite 的优化器的实际实现中，情况并非如此，Join 规划是作为单独的 HEP 阶段执行的。 例如 Apache Drill 和 Apache Flink。 我认为缺少 Cascades 式的流程和分支定界是造成这种情况的主要原因。至少对于 Apache Drill，因为它使用转换器，所以额外的逻辑排列将成倍增加触发规则的数量，这已经非常大了。
+
+考虑到所有这些问题，我想请社区分享当前的想法，和未来对 Calcite 优化器的改进思路。社区中正在讨论的想法之一是“Pull-up Traits”，它应该允许父节点获取子节点的物理属性。但为了做到这一点，您实际上需要==实现==子节点，依我所见，这个过程与经典的 Cascades 递归算法没有区别。
+
+是否考虑过将**递归转换**作为该问题的替代解决方案？也就是说，不要试图猜测或提取不存在的物理节点的物理属性，而是直接从父规则中==实现==它们。这可以解决特征上拉的问题，并允许**分支定界**的优化。感谢您的反馈或对未来研究的任何提示。
+
 # 基本概念
 
 ## `Schema`

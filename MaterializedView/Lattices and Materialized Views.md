@@ -1347,19 +1347,28 @@ Unlike lattice dimensions, measures can not be specified in qualified format, {@
 
 ### ✅
 
-- `compensateViewPartial`：即使查询使用了额外的表，也会检查是否可以使用视图重写查询。实现该方法的规则应遵循不同的方法，具体取决于它们重写的运算符。如果无法完成重写，返回 null，否则返回 `ViewPartialRewriting`，。
+#### `compensateViewPartial`
 
-- `rewriteView`：使用给定的物化视图重写查询。 `input` 节点是视图表上的 `Scan`，==顶层可能是补偿的过滤器==。 如果可以产生重写，返回重写的计划。否则返回 null。
+即使查询使用了额外的表，也会检查是否可以使用视图重写查询。实现该方法的规则应遵循不同的方法，具体取决于它们重写的运算符。如果无法完成重写，返回 null，否则返回 `ViewPartialRewriting`。
 
-- `pushFilterToOriginalViewPlan` ：一旦我们创建了一个补偿谓词，这个方法就负责将结果 Filter 推送到==视图节点==。运算符的重写可能很有用，<u>因为可能会删除一些分组列，从而产生额外的匹配可能性</u>。该方法将返回一对节点：左边是顶层新的 `project`，右边是新的逻辑计划。
+####  `rewriteView`
+使用给定的物化视图重写查询。 `input` 节点是视图表上的 `Scan`，==顶层可能是补偿的过滤器==。 如果可以产生重写，返回重写的计划。否则返回 null。
 
-- `extractReferences`：如果是 `Aggregate` 节点，返回分组列的**引用**（`RexInputRef`）。 否则，返回节点中所有的列引用。返回的列表是不可变的。
+#### `pushFilterToOriginalViewPlan` 
+一旦我们创建了一个补偿谓词，这个方法就负责将结果 Filter 推送到==视图节点==。运算符的重写可能很有用，<u>因为可能会删除一些分组列，从而产生额外的匹配可能性</u>。该方法将返回一对节点：左边是顶层新的 `project`，右边是新的逻辑计划。
 
-- `generateTableMappings`：它将一个包含表引用的 multimap 扁平化，生成所有可能的映射组合。每个映射都是双向的。
+#### `extractReferences`
+如果是 `Aggregate` 节点，返回分组列的**引用**（`RexInputRef`）。 否则，返回节点中所有的列引用。返回的列表是不可变的。
 
-- `splitPredicates`：将谓词分为两类：1) **列相等谓词**，或2) **剩余谓词**，即余下的所有谓词。对于每个类别，它都会建谓词用 `And` 运算符连接起来。返回值是 `Pair<RexNode, RexNode>` 对象，`RexNode` 与每个类别分别对应。
+#### `generateTableMappings`
+它将一个包含表引用的 multimap 扁平化，生成所有可能的映射组合。每个映射都是双向的。
 
-- `compensatePartial`：即使物化视图使用了额外的表，也会检查是否可以使用物化视图重写查询。为了做到这一点，我们需要仔细检查每个存在于物化视图但不在查询中的连接是**一个保留基数的连接**，即它只加列，而不加行。因此，需要如下性质的 `Join`：
+####`splitPredicates`
+将谓词分为两类：1) **列相等谓词**，或2) **剩余谓词**，即余下的所有谓词。对于每个类别，它都会建谓词用 `And` 运算符连接起来。返回值是 `Pair<RexNode, RexNode>` 对象，`RexNode` 与每个类别分别对应。
+
+####`compensatePartial`
+
+即使物化视图使用了额外的表，也会检查是否可以使用物化视图重写查询。为了做到这一点，我们需要仔细检查每个存在于物化视图但不在查询中的连接是**一个保留基数的连接**，即它只加列，而不加行。因此，需要如下性质的 `Join`：
 
   1. Equi-join 
   2. Between all columns in the keys
@@ -1367,19 +1376,25 @@ Unlike lattice dimensions, measures can not be specified in qualified format, {@
   4. Foreign-key 
   5. Unique-key
 
-  如果可以重写，则返回 `true`。此外，如果输入提供了 `compensationEquiColumns`，它会插入缺少的 `equal-join` 谓词。如果不能重写，返回false。
+如果可以重写，则返回 `true`。此外，如果输入提供了 `compensationEquiColumns`，它会插入缺少的 `equal-join` 谓词。
 
-- `computeCompensationPredicates`：我们检查源（查询）中的谓词是否包含在目标（物化视图）的谓词中。该方法分别处理**相等谓词**、**范围谓词**和**其余谓词**。如果确认包含，我们会生成需要**添加到重写计划中的**补偿谓词，以基于目标（物化视图）生成结果。因此，如果目标（物化视图）和源（查询）的谓词表达式等价，那么将生成常量 `true` 谓词。反之，如果无法确认包含，则该方法返回 null。
+如果不能重写，返回 `false`。
 
-  - `generateEquivalenceClasses`：给定源和目标的列相等谓词以及等价列分类，提取等价类之间可能的映射。如果没有映射，则返回 null。如果有精确匹配，它将返回一个值为 `true` 的补偿谓词。最后，如果需要在目标（物化视图）顶部强制补偿谓词以使等价类匹配，则返回该补偿谓词。
-    - `extractPossibleMapping`：在给定源和目标等价列的分类，创建从**每个源（查询）的等价列类**到**每个目标（物化视图）等价列类**的映射。如果任何源的等价类类无法映射到目标的等价列类，则返回 null。
+####`computeCompensationPredicates`
+我们检查源（查询）中的谓词是否包含在目标（物化视图）的谓词中。该方法分别处理**相等谓词**、**范围谓词**和**其余谓词**。如果确认包含，我们会生成需要**添加到重写计划中的**补偿谓词，以基于目标（物化视图）生成结果。因此，如果目标（物化视图）和源（查询）的谓词表达式等价，那么将生成常量 `true` 谓词。反之，如果无法确认包含，则该方法返回 null。
+
+#### `generateEquivalenceClasses`
+给定源和目标的列相等谓词以及等价列分类，提取等价类之间可能的映射。如果没有映射，则返回 null。如果有精确匹配，它将返回一个值为 `true` 的补偿谓词。最后，如果需要在目标（物化视图）顶部强制补偿谓词以使等价类匹配，则返回该补偿谓词。
+
+####`extractPossibleMapping`
+在给定源和目标等价列的分类，创建从**每个源（查询）的等价列类**到**每个目标（物化视图）等价列类**的映射。如果任何源的等价类类无法映射到目标的等价列类，则返回 null。
 
 ### ❎
 
 - `rewriteExpression` & `rewriteExpressions`：**First**, the method takes the node expressions `nodeExprs` and swaps the table and column references using the table mapping and the equivalence classes. If `swapTableColumn` is true, it swaps the table reference and then the column reference, otherwise it swaps the column reference and then the table reference. **Then**, the method will rewrite the input expression `exprToRewrite`, replacing the `RexTableInputRef` by references to the positions in `nodeExprs`. The method will return the rewritten expression. If any of the expressions in the input expression cannot be mapped, it will return null.
-  - `generateSwapTableColumnReferencesLineage`：It swaps the table references and then the column references of the input expressions using the table mapping and the equivalence classes.
-  - `generateSwapColumnTableReferencesLineage`：It swaps the column references and then the table references of the input expressions using the equivalence classes and the table mapping.
-  - `replaceWithOriginalReferences`：Given the input expression, it will replace (sub)expressions when possible using the content of the mapping. In particular, the mapping contains the digest of the expression and the index that the replacement input ref should point to.
+  - `generateSwapTableColumnReferencesLineage`：它使用表映射和等价类交换输入表达式的**表引用和列引用**。
+  - `generateSwapColumnTableReferencesLineage`：它使用等价类和表映射交换输入表达式的**列引用和表引用**。
+  - `replaceWithOriginalReferences`：Given the input expression, it will replace (sub)expressions when possible using the content of the mapping. In particular, the mapping contains the digest of the expression and the index that the replacement input ref should point to.给定输入表达式，它将尽可能使用 mapping 的内容替换（子）表达式。特别是，mapping 包含表达式的摘要和==<u>替换输入的 ref 应该指向的索引</u>==。
 
 - `shuttleReferences`：Replaces all the input references by the position in the input column set. If a reference index cannot be found in the input set, then we return null. 用输入列集中的位置替换所有输入引用。 如果在输入集中找不到引用索引，则返回 null。
 - `rewriteQuery`：If the view will be used in a union rewriting, this method is responsible for rewriting the query branch of the union using the given compensation predicate. If a rewriting can be produced, we return that rewriting. If it cannot be produced, we will return null.
