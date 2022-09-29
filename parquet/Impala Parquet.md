@@ -202,13 +202,13 @@ InitialReservations(ObjectPool* obj_pool, ReservationTracker* query_reservation,
 >
 > The buffer pool can be used for allocating any large buffers (above a onfigurable minimum length), whether or not the buffers will be spilled. Smaller allocations are not serviced directly by the buffer pool: clients of the buffer pool must **subdivide** buffers if they wish to use smaller allocations.
 >
-> All buffer pool operations are in the context of a registered buffer pool client. A buffer pool client should be created for every allocator of buffers at the level of granularity required for reporting and enforcement of reservations, e.g. an operator. The client tracks buffer reservations via its ReservationTracker and also includes info that is helpful for debugging (e.g. the operator that is associated with the buffer). Unless otherwise noted, it is not safe to invoke concurrent buffer pool operations for the same client.
+> All buffer pool operations are in the context of a registered buffer pool client. A buffer pool client should be created for every allocator of buffers at the level of granularity required for reporting and enforcement of reservations, e.g. an operator. The client tracks buffer reservations via its ReservationTracker and also includes info that is helpful for debugging (e.g. the operator that is associated with the buffer). **Unless otherwise noted, it is not safe to invoke concurrent buffer pool operations for the same client**.
 
 **缓冲池**管理 Impala 守护程序中所有查询的内存缓冲区。**缓冲池**强制执行==缓冲区预留==、==限制==，并实现溢出策略，即将溢出的内存从<u>内存缓冲区</u>移动到<u>磁盘</u>。它还支持在查询之间重用缓冲区，以避免频繁分配。
 
 **缓冲池可用于分配任意大小的缓冲区**（==超过可配置的最小长度==），无论缓冲区是否会溢出。较小的分配不直接由缓冲池提供服务：缓冲池的客户端如果希望使用较小的分配，则必须细分缓冲区。
 
-缓冲池的所有操作都在**已注册的缓冲池客户端上下文中**。应该为**每个缓冲区分配器**创建**一个缓冲池客户端**，其粒度级别为<u>报告</u>和<u>强制执行预留</u>所需的粒度，例如一个运营商。客户端通过其 ReservationTracker 跟踪缓冲区预留，还包括有助于调试的信息（例如，与缓冲区关联的算子）。除非另有说明，否则为同一个客户端并发调用缓冲池操作不安全。
+缓冲池的所有操作都在**已注册的缓冲池客户端上下文中**。应该为**每个缓冲区分配器**创建**一个缓冲池客户端**，其粒度级别为<u>报告</u>和<u>强制执行预留</u>所需的粒度，例如一个算子。客户端通过其 `ReservationTracker` 跟踪缓冲区预留，还包括有助于调试的信息（例如，与缓冲区关联的算子）。除非另有说明，否则为同一个客户并发调用缓冲池操作不安全。
 
 ### Pages, Buffers and Pinning
 
@@ -309,11 +309,11 @@ The data structures in the buffer pool itself are thread-safe. Client-owned data
 
 > A request context is used to group together I/O requests belonging to a client of the I/O manager for management and scheduling.
 
-`RequestContext` 用于将属于 **I/O 管理器**某个客户端的 I/O 请求组合在一起以进行管理和调度。
+`RequestContext` 用于将属于 **I/O 管理器**某个客户的 I/O 请求组合在一起以进行管理和调度。
 
 ### 实现细节
 
-这个对象维护了很多经过仔细同步的**状态**。它维护所有磁盘以及每个磁盘状态（`RequestContext::PerDiskState`）。IO 的请求单位是`RequestRange`，可以是`ScanRange` 或 `WriteRange`。**Reader** 的 `ScanRange` 是以下六种状态之一:
+这个对象维护了很多经过仔细同步的**状态**。它维护所有磁盘以及每个磁盘状态（`RequestContext::PerDiskState`）。IO 的请求单位是 `RequestRange`，可以是`ScanRange` 或 `WriteRange`。**Reader** 的 `ScanRange` 是以下六种状态之一:
 
 ---
 
@@ -383,40 +383,70 @@ There are several key methods for scanning data with the IoMgr.
 
 The disk threads do not synchronize with each other. The readers and writers don't synchronize with each other. There is a lock and condition variable for each request context queue and each disk queue. IMPORTANT: whenever both locks are needed, the lock order is to grab the context lock before the disk lock.
 
-### Scheduling
+### [调度] Scheduling
 
-If there are multiple request contexts with work for a single disk, the request contexts are scheduled in round-robin order. Multiple disk threads can operate on the same request context. Exactly one request range is processed by a disk thread at a time. If there are multiple scan ranges scheduled for a single context, these are processed in round-robin order. If there are multiple scan and write ranges for a disk, a read is always followed by a write, and a write is followed by a read, i.e. reads and writes alternate. If multiple write ranges are enqueued for a single disk, they will be processed by the disk threads in order, but may complete in any order. No guarantees are made on ordering of writes across disks. The strategy of scheduling is the same for file operation ranges, but the file operation ranges are in a sperate queue compared to read(scan) or write ranges.
+> If there are multiple request contexts with work for a single disk, the request contexts are scheduled in round-robin order. Multiple disk threads can operate on the same request context. Exactly one request range is processed by a disk thread at a time. If there are multiple scan ranges scheduled for a single context, these are processed in round-robin order. If there are multiple scan and write ranges for a disk, a read is always followed by a write, and a write is followed by a read, i.e. reads and writes alternate. If multiple write ranges are enqueued for a single disk, they will be processed by the disk threads in order, but may complete in any order. No guarantees are made on ordering of writes across disks. The strategy of scheduling is the same for file operation ranges, but the file operation ranges are in a sperate queue compared to read(scan) or write ranges.
 
-### Resource Management
+如果有多个 `RequestContext` 用于单个磁盘，则按顺序循环调度 `RequestContext`。 多个磁盘线程可以在同一个 `RequestContext` 上运行。 一个磁盘线程一次只处理一个 `ScanRange`。 如果为单个 `RequestContext` 安排了多个 `ScanRange`，则会按顺序循环处理。如果一个磁盘有多个扫描和写入，则写入之后总是读取，读取之后总是写入，**即读取和写入交替**。**如果单个磁盘的多个写入排队，它们将由磁盘线程按顺序处理，但可以按任何顺序完成。 不保证跨磁盘的写入顺序**。文件操作的调度策略相同，但与读取或写入相比，文件操作位于单独的一个队列。
 
-The IoMgr is designed to share the available disk I/O capacity between many clients and to help use the available I/O capacity efficiently. The IoMgr interfaces are designed to let clients manage their own CPU and memory usage while the IoMgr manages the allocation of the I/O capacity of different I/O devices to scan ranges of different clients.
+### 资源管理 [ Resource Management ]
 
-IoMgr clients may want to work on multiple scan ranges at a time to maximize CPU and I/O utilization. Clients can call RequestContext::GetNextUnstartedRange() to start as many concurrent scan ranges as required, e.g. from each parallel scanner thread. Once a scan range has been returned via GetNextUnstartedRange(), the caller must allocate any memory needed for buffering reads, after which the IoMgr wil start to fill the buffers with data while the caller concurrently consumes and processes the data. For example, the logic in a scanner thread might look like:
+> The `IoMgr` is designed to share the available disk I/O capacity between many clients and to help use the available I/O capacity efficiently. The `IoMgr` interfaces are designed to let clients manage their own CPU and memory usage while the IoMgr manages the allocation of the I/O capacity of different I/O devices to scan ranges of different clients.
+>
+> IoMgr clients may want to work on multiple scan ranges at a time to maximize CPU and I/O utilization. Clients can call `RequestContext::GetNextUnstartedRange()` to start as many concurrent scan ranges as required, e.g. from each parallel scanner thread. Once a scan range has been returned via `GetNextUnstartedRange()`, the caller must allocate any memory needed for buffering reads, after which the IoMgr wil start to fill the buffers with data while the caller concurrently consumes and processes the data. For example, the logic in a scanner thread might look like:
+>
+>  ```c++
+>   while (more_ranges)
+>    range = context->GetNextUnstartedRange()
+>    while (!range.eosr)
+>      buffer = range.GetNext()
+>  ```
+>
+> Note that the IoMgr rather than the client is responsible for choosing which scan range to process next, which allows optimizations like distributing load across disks.
+>
 
- ```c++
+`IoMgr` 被设计为在大量客户之间共享可用的磁盘 I/O 带宽，以及高效使用可用的 I/O 带宽。 `IoMgr` 接口让客户端管理自己的 CPU 和内存使用，而 IoMgr 管理不同 I/O 设备，分配 I/O 带宽以扫描不同客户的数据。
+
+`IoMgr` 客户可能希望一次处理多个 `ScanRange` 以最大化 CPU 和 I/O 利用率。根据需要启动尽可能多的并发扫描请调用 `RequestContext::GetNextUnstartedRange()` ，例如，在**每个并行扫描线程**中调用改函数启动一个扫描。一旦通过 `GetNextUnstartedRange()` 返回了扫描范围，调用者必须分配<u>缓冲读取</u>所需的任何内存，之后 `IoMgr` 将开始用数据填充缓冲区，而调用者同时消费和处理数据。例如，扫描器线程中的逻辑可能如下所示：
+
+```c++
   while (more_ranges)
    range = context->GetNextUnstartedRange()
    while (!range.eosr)
      buffer = range.GetNext()
- ```
+```
+请注意，是 IoMgr 而非其客户端负责选择接下来要处理的 `ScanRange`，这允许进行诸如跨磁盘分配负载等优化。
 
-Note that the IoMgr rather than the client is responsible for choosing which scan range to process next, which allows optimizations like distributing load across disks.
 
-### Buffer Management
+### 缓存管理 [Buffer Management]
 
-Buffers for reads are either a) allocated on behalf of the caller with AllocateBuffersForRange() ("IoMgr-allocated"), b) cached HDFS buffers if the scan range was read from the HDFS cache, or c) a client buffer, large enough to fit the whole scan range's data, that is provided by the caller when constructing the scan range.
+> Buffers for reads are either a) allocated on behalf of the caller with AllocateBuffersForRange() ("IoMgr-allocated"), b) cached HDFS buffers if the scan range was read from the HDFS cache, or c) a client buffer, large enough to fit the whole scan range's data, that is provided by the caller when constructing the scan range.
+>
+> All three kinds of buffers are wrapped in `BufferDescriptor`s before returning to the caller. The caller must always call `ReturnBuffer()` on the buffer descriptor to allow recycling of the buffer memory and to release any resources associated with the buffer or scan range.
+>
+> In case a), `ReturnBuffer()` may re-enqueue the buffer for `GetNext()` to return again if needed. E.g. if 24MB of buffers were allocated to read a 64MB scan range, ==each buffer== must be returned multiple times. Callers must be careful to call ReturnBuffer() with the previous buffer returned from the range before calling GetNext() so that at least one buffer is available for the I/O mgr to read data into. **Calling GetNext() when the scan range has no buffers to read data into causes a resource deadlock**. NB: if the scan range was allocated N buffers, then it's always ok for the caller to hold onto N - 1 buffers, but currently the IoMgr doesn't give the caller a way to determine the value of N.
+>
+> If the caller wants to maximize I/O throughput, it can give the range enough memory for 3 max-sized buffers per scan range. Having two queued buffers (plus the buffer that is currently being processed by the client) gives good performance in most scenarios:
+>
+> 1. If the consumer is consuming data faster than we can read from disk, then the queue will be empty most of the time because the buffer will be immediately pulled off the queue as soon as it is added. There will always be an I/O request in the disk queue to maximize I/O throughput, which is the bottleneck in this case.
+> 2. If we can read from disk faster than the consumer is consuming data, the queue will fill up and there will always be a buffer available for the consumer to read, so the consumer will not block and we maximize consumer throughput, which is the bottleneck in this case.
+> 3. If the consumer is consuming data at approximately the same rate as we are reading from disk, then the steady state is that the consumer is processing one buffer and one buffer is in the disk queue. The additional buffer can absorb bursts where the producer runs faster than the consumer or the consumer runs faster than the producer without blocking either the producer or consumer. 
+>
+>  See `IDEAL_MAX_SIZED_BUFFERS_PER_SCAN_RANGE`.
 
-All three kinds of buffers are wrapped in BufferDescriptors before returning to the caller. The caller must always call ReturnBuffer() on the buffer descriptor to allow recycling of the buffer memory and to release any resources associated with the buffer or scan range.
+用于读取的缓冲区是 a) 使用 `ScanRange::AllocateBuffersForRange()` 代表调用者分配("IoMgr-allocated") ，b) 如果从 HDFS 缓存中读取 ScanRange，则读取 HDFS 的缓冲区，或者 c) 客户的缓冲区，大到足以容纳整个 `ScanRange` 的数据，由调用者在构造 `ScanRange` 时提供。
 
-In case a), ReturnBuffer() may re-enqueue the buffer for GetNext() to return again if needed. E.g. if 24MB of buffers were allocated to read a 64MB scan range, each buffer must be returned multiple times. Callers must be careful to call ReturnBuffer() with the previous buffer returned from the range before calling GetNext() so that at least one buffer is available for the I/O mgr to read data into. Calling GetNext() when the scan range has no buffers to read data into causes a resource deadlock. NB: if the scan range was allocated N buffers, then it's always ok for the caller to hold onto N - 1 buffers, but currently the IoMgr doesn't give the caller a way to determine the value of N.
+在返回给调用者之前，三种缓冲区都包装在 `BufferDescriptor` 中。调用者必须始终在缓冲区描述符上调用 `ScanRange::ReturnBuffer()` 以允许回收缓冲区内存，并释放与缓冲区或 `ScanRange` 相关的任何资源。
 
-If the caller wants to maximize I/O throughput, it can give the range enough memory for 3 max-sized buffers per scan range. Having two queued buffers (plus the buffer that is currently being processed by the client) gives good performance in most scenarios:
+在情况 a) 下，`ScanRange::ReturnBuffer()` 可以将缓冲区重新入队，以便 `ScanRange::GetNext()` 在需要时再次返回。例如，如果分配 24MB 的缓冲区来读取 64MB 的 `ScanRange`，则必须多次返回每个缓冲区。在调用 `ScanRange::GetNext()` 之前，调用者**必须**为前一个缓冲区调用 `ScanRange::ReturnBuffer()`，以便至少有一个缓冲区可供 I/O 管理器读取数据。 当 `ScanRange` 没有缓冲区可读取数据时调用 `GetNext()` 会导致资源死锁。**注意**：如果为 `ScanRange` 分配了 N 个缓冲区，那么**调用者**保留 N - 1 个缓冲区总是可以的，但目前 `IoMgr` 没有给调用者提供确定 N 值的方法。
 
-1. If the consumer is consuming data faster than we can read from disk, then the queue will be empty most of the time because the buffer will be immediately pulled off the queue as soon as it is added. There will always be an I/O request in the disk queue to maximize I/O throughput, which is the bottleneck in this case.
-2. If we can read from disk faster than the consumer is consuming data, the queue will fill up and there will always be a buffer available for the consumer to read, so the consumer will not block and we maximize consumer throughput, which is the bottleneck in this case.
-3. If the consumer is consuming data at approximately the same rate as we are reading from disk, then the steady state is that the consumer is processing one buffer and one buffer is in the disk queue. The additional buffer can absorb bursts where the producer runs faster than the consumer or the consumer runs faster than the producer without blocking either the producer or consumer. 
+如果调用者想要最大化 I/O 吞吐量，它可以为每个 `ScanRange` 提供足够多内存的 3 个缓冲区。多数情况下，两个缓冲区排队，一个缓冲区客户端当前正在处理，可以提供良好的性能：
 
- See IDEAL_MAX_SIZED_BUFFERS_PER_SCAN_RANGE.
+1. 如果消费者消耗数据的速度比我们从磁盘读取的速度快，那么队列大部分时间都是空的，因为缓冲区一旦添加就会立即从队列中拉出。磁盘队列中总会有一个 I/O 请求来最大化 I/O 吞吐量，这就是这种情况下的瓶颈。
+2. 如果我们从磁盘读取数据的速度快于消费者消费数据的速度，那么队列就会被填满，总有一个缓冲区可供消费者读取，因此消费者不会阻塞，我们就可以最大化消费者吞吐量，这是这种情况下的瓶颈。
+3. 如果消费者消耗数据的速率与我们从磁盘读取的速率大致相同，那么稳定状态是消费者正在处理一个缓冲区，并且一个缓冲区在磁盘队列中。 额外的缓冲区可以应对突发事件（即生产者运行速度突然快于消费者，或者消费者运行速度突然快于生产者），而不会阻塞生产者或消费者。
+
+参见 `IDEAL_MAX_SIZED_BUFFERS_PER_SCAN_RANGE`.
 
 ### Caching support
 
@@ -453,7 +483,7 @@ To reduce latency and avoid being network bound when reading from remote filesys
 >
 > TODO: IoMgr should be able to request additional scan ranges from the coordinator to help deal with stragglers.
 
-This is cache line aligned because the FileHandleCache needs cache line alignment for its partitions.
+This is cache line aligned because the `FileHandleCache` needs cache line alignment for its partitions.
 
 # Scan Parquet
 
@@ -507,12 +537,17 @@ This is cache line aligned because the FileHandleCache needs cache line alignmen
 
 ### Memory management
 
-Pointers into memory returned from stream methods remain valid until either `ReleaseCompletedResources()` is called or an operation advances the stream's read offset past the end of the memory. E.g. if `ReadBytes(peek=false)` is called, the memory returned is invalidated when `ReadBytes()`, `SkipBytes()`, `ReadVint()`, etc is called. If the memory is obtained by a "peeking" operation, then the memory returned remains valid until the read offset in the stream is advanced past the end of the memory. E.g. if `ReadBuffer(n, peek=true)` is called, then the memory remains valid if `SkipBytes(n)` is called the first time, but not if `SkipBytes()` is called again to advance further.
+> Pointers into memory returned from stream methods remain valid until either `ReleaseCompletedResources()` is called or an operation advances the stream's read offset past the end of the memory. E.g. if `ReadBytes(peek=false)` is called, the memory returned is invalidated when `ReadBytes()`, `SkipBytes()`, `ReadVint()`, etc is called. If the memory is obtained by a "peeking" operation, then the memory returned remains valid until the read offset in the stream is advanced past the end of the memory. E.g. if `ReadBuffer(n, peek=true)` is called, then the memory remains valid if `SkipBytes(n)` is called the first time, but not if `SkipBytes()` is called again to advance further.
+>
+> Each stream only requires a single I/O buffer to make progress on reading through the stream. Additional I/O buffers allow the I/O manager to read ahead in the scan range. The scanner context also allocates memory from a `MemPool` for reads that <u>straddle</u> I/O buffers (e.g. a small read at the boundary of I/O buffers or a read larger than a single I/O buffer). The amount of memory allocated from the `MemPool` is determined by the maximum buffer size read from the stream, plus some overhead. E.g. `ReadBytes(length=50KB)` requires allocating a 50KB buffer from the MemPool if the read straddles a buffer boundary.
+>
+> > TODO: Some of the synchronization mechanisms such as cancelled() can be removed
+>  once the legacy hdfs scan node has been removed.
+>
 
-Each stream only requires a single I/O buffer to make progress on reading through the stream. Additional I/O buffers allow the I/O manager to read ahead in the scan range. The scanner context also allocates memory from a `MemPool` for reads that <u>straddle</u> I/O buffers (e.g. a small read at the boundary of I/O buffers or a read larger than a single I/O buffer). The amount of memory allocated from the `MemPool` is determined by the maximum buffer size read from the stream, plus some overhead. E.g. `ReadBytes(length=50KB)` requires allocating a 50KB buffer from the MemPool if the read straddles a buffer boundary.
+从 `Stream` 的方法返回的指向内存的指针保持有效，直到调用 `ReleaseCompletedResources()` 或操作将 `Stream` 的读取偏移量推进到内存末尾。例如，如果调用 `ReadBytes(peek=false)`，则在调用 `ReadBytes()`、`SkipBytes()`、`ReadVint()` 等时返回的内存无效。如果内存是通过 **peek** 操作获得，则返回的内存保持有效，直到流中的读取偏移量超过内存的末尾。例如。如果调用 `ReadBuffer(n, peek=true)`，则如果第一次调用 `SkipBytes(n)`，内存保持有效，但如果再次调用 `SkipBytes()` 以进一步前进，则内存不再有效。
 
-> TODO: Some of the synchronization mechanisms such as cancelled() can be removed
- once the legacy hdfs scan node has been removed.
+每个流只需要一个 I/O 缓冲区就可以在读取流时取得进展。额外的 I/O 缓冲区允许 I/O 管理器在 `ScanRange` 内提前读取。Scanner 上下文还从 `MemPool` 为 <u>跨越</u> I/O 缓冲区的读取分配内存（例如，在 I/O 缓冲区边界的小读取或大于单个 I/O 缓冲区的读取）。从 `MemPool` 分配的内存量取决于从流中读取的最大缓冲区大小，加上一些开销。例如。 `ReadBytes(length=50KB)` 如果读取跨越缓冲区边界，则需要从 `MemPool` 分配 50KB 缓冲区。
 
 
 ## HdfsParquetScanner
@@ -520,10 +555,14 @@ Each stream only requires a single I/O buffer to make progress on reading throug
 ### Schema resolution
 Additional columns are allowed at the end in either the table or file schema (i.e., extra columns at the end of the schema or extra fields at the end of a struct).  If there are extra columns in the file schema, they are simply ignored. If there are extra in the table schema, we return NULLs for those columns (if they're materialized).
 
-### Disk IO
-Parquet (and other columnar formats) use scan ranges differently than other formats. Each materialized column maps to a single ScanRange per row group.  For streaming reads, all the columns need to be read in parallel. This is done by issuing one ScanRange (in `IssueInitialRanges()`) for the file footer per split. `ProcessSplit()` is called once for each original split and determines the row groups whose midpoints fall within that split. We use the mid-point to determine whether a row group should be processed because if the row group size is less than or equal to the split size, the mid point guarantees that we have at least 50% of the row group in the current split. `ProcessSplit()` then computes the column ranges for these row groups and submits them to the `IoMgr` for immediate scheduling (so they don't surface in `RequestContext::GetNextUnstartedRange()`). Scheduling them immediately also guarantees they are all read at once.
+### 磁盘 IO [Disk IO]
+> Parquet (and other columnar formats) use scan ranges differently than other formats. Each materialized column maps to a single ScanRange per row group.  For streaming reads, all the columns need to be read in parallel. This is done by issuing one ScanRange (in `IssueInitialRanges()`) for the file footer per split. `ProcessSplit()` is called once for each original split and determines the row groups whose midpoints fall within that split. We use the mid-point to determine whether a row group should be processed because if the row group size is less than or equal to the split size, the mid point guarantees that we have at least 50% of the row group in the current split. `ProcessSplit()` then computes the column ranges for these row groups and submits them to the `IoMgr` for immediate scheduling (so they don't surface in `RequestContext::GetNextUnstartedRange()`). Scheduling them immediately also guarantees they are all read at once.
+>
+> Like the other scanners, each parquet scanner object is one to one with a `ScannerContext`. Unlike the other scanners though, the context will have multiple streams, one for each column. Row groups are processed one at a time this way.
 
-Like the other scanners, each parquet scanner object is one to one with a `ScannerContext`. Unlike the other scanners though, the context will have multiple streams, one for each column. Row groups are processed one at a time this way.
+Parquet（以及其他列格式）使用 `ScanRange` 的方式和其他格式不同。每个**物化的列**映射到每个行组的单个 `ScanRange`。流式读取需要并行读取所有列。这是通过为每个 Split 对应的文件 footer 构建一个 `ScanRange` 来完成，参见 `IssueInitialRanges()` 。 **`ProcessSplit()` 为每个原始 Split 调用一次**，**并确定中点是否落在该 Split 内的行组**。我们使用中点来确定是否应该处理行组，因为如果**行组大小 <=  Split 大小**，中点保证我们在当前拆分中至少有 50% 的行组。 `ProcessSplit()` 然后计算这些行组的列范围并将它们提交给 `IoMgr` 以立即调度（因此它们不会出现在`RequestContext::GetNextUnstartedRange()` 中）。立即安排它们还可以保证它们都被立即读取。
+
+与其他 Scanner 一样，每个 Parquet  Scanner 与 `ScannerContext`是一对一的关系。**与其他 Scanner 不同的是，ScannerContext 为每列生成一个 Stream。按这种方式依次处理行组**。
 
 ### Nested types
 
@@ -755,8 +794,6 @@ Unlike the top-level tuples, the item tuples of CollectionValues are populated i
 > [Impala-5843](https://issues.apache.org/jira/browse/IMPALA-5843)
 
 A Parquet file can contain a so called "page index". It has two parts, a column index and an offset index. The column index contains statistics like minimum and maximum values for each page. The offset index contains information about page locations in the Parquet file and top-level row ranges. `HdfsParquetScanner` evaluates the min/max conjuncts against the column index and determines the surviving pages with the help of the offset index. Then it will configure the column readers to only scan the pages and row ranges that have a chance to store rows that pass the conjuncts.
-
-
 
 ### AssembleRows
 

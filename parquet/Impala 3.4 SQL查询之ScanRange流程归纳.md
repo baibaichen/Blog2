@@ -279,7 +279,7 @@ ExecuteInternal(impala-server.cc):977
 
 ### PerDiskState
 
-在[Impala HDFS_SCAN_NODE之IO threads模型](https://blog.csdn.net/skyyws/article/details/115350188)这篇文章中提到，IO thread会先获取一个 `RequestContext` 对象，每个对象都包含一个 `PerDiskState` 的集合：
+在 [Impala HDFS_SCAN_NODE之IO threads 模型](https://blog.csdn.net/skyyws/article/details/115350188)这篇文章中提到，IO thread会先获取一个 `RequestContext` 对象，每个对象都包含一个 `PerDiskState` 的集合：
 
 ```c++
   /// Per disk states to synchronize multiple disk threads accessing the same request
@@ -316,9 +316,9 @@ class RequestContext::PerDiskState {
   }
 ```
 
-将num_threads_in_op_+1，然后is_on_queue_设置为0，表示该RequestContext对象已经不在队列中。当我们获取了对应的ScanRange之后，就会将is_on_queue_设置为1，并将RequestContext对象放到队尾，此时其他的io thread就可以有机会再次获取这个RequestContext对象进行处理：
+将 `num_threads_in_op_+1`，然后 `is_on_queue_` 设置为 0，表示该 `RequestContext` 对象已经不在队列中。当我们获取了对应的 `ScanRange` 之后，就会将 `is_on_queue_` 设置为 1，并将 `RequestContext` 对象放到队尾，此时其他的 io thread 就可以有机会再次获取这个 `RequestContext` 对象进行处理：
 
-```javascript
+```c++
 // request-context.cc
 void RequestContext::PerDiskState::ScheduleContext(const unique_lock<mutex>& context_lock,
     RequestContext* context, int disk_id) {
@@ -334,11 +334,11 @@ void RequestContext::PerDiskState::ScheduleContext(const unique_lock<mutex>& con
 
 ## 四
 
-在上篇文章中，我们主要介绍了 ScanRange 的构造，以及在FE和BE端的一些处理流程。同时，我们还介绍了IO thead处理模型中一个比较重要的对象RequestContext::PerDiskState，以及部分成员变量的含义，在本篇文章中，我们将介绍其中一个比较重要的成员：unstarted_scan_ranges_。
+在上篇文章中，我们主要介绍了 `ScanRange` 的构造，以及在 FE 和 BE 端的一些处理流程。同时，我们还介绍了IO thead 处理模型中一个比较重要的对象 `RequestContext::PerDiskState`，以及部分成员变量的含义，在本篇文章中，我们将介绍其中一个比较重要的成员：`unstarted_scan_ranges_`。
 
 ### BE端的 `ScanRange`
 
-上篇文章中我们提到，FE端的 `ScanRange` 信息，主要通过 `TScanRange` 传到 BE 端，然后构造为 `TPlanFragmentInstanceCtx` 中的 `TScanRangeParams`，传到各个 executor 进行实际的扫描操作，那么当各个 executor 接收到请求之后，就会根据这些信息，构造相应的 `ScanRange` 类。ScanRang e是继承 RequestRange 这个类的，另外 WriteRange 也继承于 RequestRange 。从名字就可以看出，WriteRange 主要是针对写入的情况，这里我们不展开介绍，主要看下 `ScanRange` 对象。首先，RequestRange 主要包含了 file、offset、len 这些基本信息。而`ScanRange` 则增加了一些额外的信息，如下所示：
+上篇文章中我们提到，FE端的 `ScanRange` 信息，主要通过 `TScanRange` 传到 BE 端，然后构造为 `TPlanFragmentInstanceCtx` 中的 `TScanRangeParams`，传到各个 executor 进行实际的扫描操作，那么当各个 executor 接收到请求之后，就会根据这些信息，构造相应的 `ScanRange` 类。`ScanRange` 是继承 `RequestRange` 这个类的，另外 `WriteRange` 也继承于 `RequestRange` 。从名字就可以看出，`WriteRange` 主要是针对写入的情况，这里我们不展开介绍，主要看下 `ScanRange` 对象。首先，`RequestRange` 主要包含了 `file`、`offset`、`len` 这些基本信息。而`ScanRange` 则增加了一些额外的信息，如下所示：
 
 ```c++
 class ScanRange : public RequestRange {
@@ -434,7 +434,7 @@ struct HdfsFileDesc {
   InternalQueue<ScanRange> unstarted_scan_ranges_;
 ```
 
-从注释我们可以看到，`unstarted_scan_ranges_` 表示是还没有开始进行scan操作的 `ScanRange`，这个解释比较空泛，我们接着看下 `unstarted_scan_ranges` 这个成员更新的相关函数调用（当前是针对 Parquet 格式的表进行梳理）：
+从注释我们可以看到，`unstarted_scan_ranges_` 表示是还没有开始进行扫描操作的 `ScanRange`，这个解释比较空泛，我们接着看下 `unstarted_scan_ranges_` 这个成员更新的相关函数调用（当前是针对 Parquet 格式的表进行梳理）：
 
 ```
 ExecFInstance(query-state.cc):697
@@ -456,7 +456,7 @@ ExecFInstance(query-state.cc):697
 ----------num_remaining_ranges_++
 ```
 
-在 `HdfsScanNodeBase::IssueInitialScanRange` s函数中，我们通过 `per_type_files_` 成员，获取所有PARQUET 格式的 `HdfsFileDesc`集合，然后在 `HdfsScanner::IssueFooterRanges` 函数中，循环构造初始的`ScanRange`（不同的文件格式，这里的处理流程有所不同），由于当前是 PARQUET 文件，所以会构造每个文件footer 的 `ScanRange`，这里我们摘取一些主要的步骤看下（忽略其他的一些特殊情况）：
+在 `HdfsScanNodeBase::IssueInitialScanRanges` 函数中，我们通过 `per_type_files_` 成员，获取所有PARQUET 格式的 `HdfsFileDesc`集合，然后在 `HdfsScanner::IssueFooterRanges` 函数中，循环构造初始的`ScanRange`（不同的文件格式，这里的处理流程有所不同），由于当前是 PARQUET 文件，所以会构造每个文件footer 的 `ScanRange`，这里我们摘取一些主要的步骤看下（忽略其他的一些特殊情况）：
 
 ```c++
     //这里FOOTER_SIZE是一个常量，为1024*100
@@ -502,7 +502,7 @@ if (!scan_node->IsZeroSlotTableScan() || footer_split == split) {
 }
 ```
 
-也就是说，当满足条件时，我们对于一个file的多个split，我们会分别构造一个footer ScanRange，而不是1个。但是这些footer ScanRange的len、offset、file信息都是一样的，唯一不同的就是meta_data_，该成员类型是void*，但是实际会被赋值为ScanRangeMetadata。meta_data_中的original_split会保存原始的split对应的ScanRange信息，也就是原始的len、offset。 当处理完成所有的文件之后，我们最终通过RequestContext::AddRangeToDisk函数，将这些footer的ScanRange加入到unstarted_scan_ranges_对象中，同时，每入队一个ScanRange对象，我们会将num_unstarted_scan_ranges_这个成员加1。也就是说，这个unstarted_scan_ranges_最终存放的是所有file文件的footer ScanRange。 上面我们介绍了unstarted_scan_ranges_这个队列的入队流程，接着我们看下出队的操作。在前面的文章中，我们提到了，IO thread会从RequestContext队列的头部取出一个RequestContext对象，然后通过该RequestContext对象获取一个ScanRange进行处理，相关处理函数如下：
+对于文件的每个 Split，**都分别构造 1 个** footer `ScanRange`。这些 footer `ScanRange`的 `len`、`offset`、`file` 信息都一样，唯一不同的就是 `meta_data_`，成员类型是 `void*`，实际类型为 `ScanRangeMetadata`。`meta_data_` 中的 `original_split_` 会保存原始 Split 对应的`ScanRange`信息，即原始的长度和偏移量。处理完所有文件之后，最终通过`RequestContext::AddRangeToDisk`，将这些 footer 的 `ScanRange` 加入到 `unstarted_scan_ranges_` 中，每入队一个 `ScanRange` 对象， `num_unstarted_scan_ranges_` 同时加 1。因此这个`unstarted_scan_ranges_`最终存放的是所有文件的footer `ScanRange`。上面我们介绍了`unstarted_scan_ranges_` 队列的入队流程，接着我们看下出队的操作。在前面的文章中，我们提到了，IO thread 会从 `RequestContext` 队列的头部取出一个 `RequestContext` 对象，然后通过该 `RequestContext`对象获取一个 `ScanRange` 进行处理，相关处理函数如下：
 
 ```c++ 
 RequestRange* RequestContext::GetNextRequestRange(int disk_id) {
@@ -537,7 +537,7 @@ RequestRange* RequestContext::GetNextRequestRange(int disk_id) {
 
 ![img](https://ask.qcloudimg.com/http-save/yehe-8327180/ef60e3811418ac034e714df06d01169e.png?imageView2/2/w/1620)
 
- 这里我们简单说明一下，`RequestContex` 对象会包含多个 `PerDiskState`对象，每一个 `PerDiskState` 对象表示一种 disk queue，例如 Remote HDFS、S3 等，所以 `RequestContex` 对象的这些成员，统计的是所有`PerDiskState` 的相应成员的**累加和**，比如 `num_unstarted_scan_ranges_` 这个成员，统计的就是该 `RequestContext` 对象上的所有 `PerDiskState` 的 `unstarted_scan_ranges_`  的总和。这点需要注意。 下面我们来看下 `ready_to_start_ranges_` 和 `next_scan_range_to_start_` 的相关处理，函数调用如下所示：
+这里我们简单说明一下，`RequestContex` 对象会包含多个 `PerDiskState`对象，每一个 `PerDiskState` 对象表示一种 disk queue，例如 Remote HDFS、S3 等，所以 `RequestContex` 对象的这些成员，统计的是所有`PerDiskState` 的相应成员的**累加和**，比如 `num_unstarted_scan_ranges_` 这个成员，统计的就是该 `RequestContext` 对象上的所有 `PerDiskState` 的 `unstarted_scan_ranges_`  的总和。这点需要注意。 下面我们来看下 `ready_to_start_ranges_` 和 `next_scan_range_to_start_` 的相关处理，函数调用如下所示：
 
 ![img](https://ask.qcloudimg.com/http-save/yehe-8327180/9dadb364239ee37fc125785818d781e5.png?imageView2/2/w/1620)
 
@@ -558,13 +558,13 @@ disk_states_[disk_id].set_next_scan_range_to_start(nullptr);
 
 ## 五
 
-在上篇文章中，我们介绍了 PerDiskState 的 `unstarted_scan_ranges_` 这个队列的更新逻辑，主要就是成员的入队和出队。总结下来就是：HdfsScanNode 会获取每个文件的 footer ScanRange，然后入队；IO thread会通过 RequestContext 获取对应的 PerDiskState，然后出队，并设置到`next_scan_range_to_start_` 成员，同时入队到 RequestContext 的 `ready_to_start_ranges_` 队列。IO thead 并不会直接从 `unstarted_scan_ranges_` 获取对象，进行扫描操作，而是会从另外一个队列 `in_flight_ranges_` 中获取对象，返回并进行后续的操作。在本文中，我们同样会结合代码，一起学习下如何更新 `in_flight_ranges_` 队列。
+在上篇文章中，我们介绍了 `PerDiskState` 的 `unstarted_scan_ranges_` 这个队列的更新逻辑，主要就是成员的入队和出队。总结下来就是：`HdfsScanNode` 会获取每个文件的 footer `ScanRange`，然后入队；IO thread 会通过 `RequestContext` 获取对应的 `PerDiskState`，然后出队，并设置到`next_scan_range_to_start_` 成员，同时入队到 `RequestContext` 的 `ready_to_start_ranges_` 队列。IO thead 并不会直接从 `unstarted_scan_ranges_` 获取对象，进行扫描操作，而是会从另外一个队列 `in_flight_ranges_` 中获取对象，返回并进行后续的操作。在本文中，我们同样会结合代码，一起学习下如何更新 `in_flight_ranges_` 队列。
 
 ### 给 `ScanRange` 分配 buffer
 
 > 已重构，见 [IMPALA-7556](https://issues.apache.org/jira/browse/IMPALA-7556)
 
-**首先**，我们来看下 ScanRang e的buffer分配问题。在将ScanRange放到 `in_flight_ranges_` 队列之前，需要先给 `ScanRange` 分配 buffer，只有当分配了 buffer 之后，IO thread 才能进行实际的扫描操作。Buffer 分配的主要处理就是在 AllocateBuffersForRange 函数中。我们先来看下主要的处理逻辑：
+**首先**，我们来看下 ScanRange 的buffer分配问题。在将ScanRange放到 `in_flight_ranges_` 队列之前，需要先给 `ScanRange` 分配 buffer，只有当分配了 buffer 之后，IO thread 才能进行实际的扫描操作。Buffer 分配的主要处理就是在 AllocateBuffersForRange 函数中。我们先来看下主要的处理逻辑：
 
 ```c++
 // DiskIoMgr::AllocateBuffersForRange()
@@ -616,7 +616,7 @@ vector<int64_t> DiskIoMgr::ChooseBufferSizes(int64_t scan_range_len, int64_t max
 
 1. 需要先获取 buffer，才能进行扫描操作，如果没有可用的 buffer，则直接返回，需要 Scanner 线程分配 buffer 之后，才能继续；
 2. 如果本次操作完成之后，当前的 `ScanRange` 还没有读完，需要放回 `in_flight_range` 队列，等待再次处理；
-3. 保存数据的 buffer，会更新到 ScanRange 的 `ready_buffers_`成员，后续 Scanner 线程会获取 `ready_buffers_` 中的 buffer，进行处理；
+3. 保存数据的 buffer，会更新到 `ScanRange` 的 `ready_buffers_`成员，后续 Scanner 线程会获取 `ready_buffers_` 中的 buffer，进行处理；
 
 ### Impala 处理 Parquet 格式文件
 
@@ -630,12 +630,12 @@ vector<int64_t> DiskIoMgr::ChooseBufferSizes(int64_t scan_range_len, int64_t max
 
 结合上述的UML，我们将处理流程归纳为如下几点：
 
-1. 对于每一个 split，executor 都会构造一个 HdfsParquetScanner（如果是其他的文件格式，则是其他的scanner对象）；
-2. HdfsParquetScanner 会根据SQL中涉及列，来构造 ParquetColumnReader，或者是其子类BaseScalarColumnReader，每一个 reader 负责处理一个列的数据；
-3. 一个 split，可能会包含多个 RowGroup，Impala 会根据 RowGroup 中的 ColumnChunk 信息，来初始化 BaseScalarColumnReader 中的 ParquetColumnChunkReade r对象，ParquetColumnChunkReader 主要负责从 data pages 中读取数据、解压、数据 buffer 的拷贝等；
-4. 在初始化 ParquetColumnChunkReader 的时候，会一并初始化的它的一个成员ParquetPageReader，ParquetPageReader 就是最终实际去读 page headers 和 data pages。
+1. Executor 为每个 Split 都构造一个 `HdfsParquetScanner`（如果是其他文件格式，则为其他的 Scanner）
+2. `HdfsParquetScanner` 会根据SQL中涉及列，来构造 `ParquetColumnReader`，或者是其子类`BaseScalarColumnReader`，每一个 **reader** 负责处理一个列的数据；
+3. 一个 Split，可能会包含多个 `RowGroup`，Impala 会根据 RowGroup 中的 `ColumnChunk` 信息，来初始化 `BaseScalarColumnReader` 中的 `ParquetColumnChunkReadeR` 对象，`ParquetColumnChunkReader` 主要负责从数据页中读取数据、解压、数据 buffer 的拷贝等；
+4. 在初始化 ParquetColumnChunkReader 的时候，会一并初始化的它的一个成员`ParquetPageReader`，`ParquetPageReader` 就是最终实际去读 page headers 和数据页。
 
-需要注意的是，上面的这些操作，都是在 executor 上，由 Scanner 线程进行处理的，而真正的ScanRange 的扫描操作，是由 IO thread 进行的。
+需要注意的是，上面的这些操作，都是在 executor 上，由 Scanner 线程处理，而真正的 ScanRange 的扫描操作，是由 IO thread 进行。
 
 ### `in_flight_ranges_` 的出队操作
 
@@ -716,36 +716,36 @@ doCreateExecRequest(Frontend.java):1600
 
 最左边的红色方框代表的路径表示：IO thread在处理完对应的ScanRange时，会更新相应的bytes_read、unused_iomgr_buffers_等成员。处理完成之后，会判断当前这个ScanRange是否处理完成，如果处理完成的话，则直接将num_remaining_ranges_成员减1，表示这个ScanRange已经处理完成。如果处理的结果是ReadOutcome::SUCCESS_NO_EOSR，则表示这个ScanRange还没有处理完成，会将这个ScanRange再次放回到in_flight_ranges_队列。这样其他的IO thread可以再次获取这个ScanRange进行处理。
 
-#### 非ExternalBufferTag::NO_BUFFER
+#### 非 ExternalBufferTag::NO_BUFFER
 
-对于图中的第二条路径，主要是针对非remote HDFS的情况。在[Impala 3.4 SQL查询之ScanRange详解（四）](https://blog.csdn.net/skyyws/article/details/115770717)中介绍BE端的ScanRange的时候，我们提到会根据FE端的文件信息来构造ScanRange，此时会构造一个buffer tag，如下所示：
+对于图中的第二条路径，主要是针对非 Remote HDFS的情况。在 [Impala 3.4 SQL查询之ScanRange详解（四）](https://blog.csdn.net/skyyws/article/details/115770717)中介绍BE 端的 `ScanRange` 的时候，我们提到会根据 FE 端的文件信息来构造 ScanRange，此时会构造一个 buffer tag，如下所示：
 
-```javascript
-// HdfsScanNodeBase::Prepare()
-    int cache_options = BufferOpts::NO_CACHING;
-    if (params.__isset.try_hdfs_cache && params.try_hdfs_cache) {
-      cache_options |= BufferOpts::USE_HDFS_CACHE;
-    }
-    if ((!expected_local || FLAGS_always_use_data_cache) && !IsDataCacheDisabled()) {
-      cache_options |= BufferOpts::USE_DATA_CACHE;
-    }
+```c++
+// HdfsScanPlanNode::ProcessScanRangesAndInitSharedState
+int cache_options = BufferOpts::NO_CACHING;
+if (params.__isset.try_hdfs_cache() && params.try_hdfs_cache()) {
+    cache_options |= BufferOpts::USE_HDFS_CACHE;
+}
+if ((!expected_local || FLAGS_always_use_data_cache) && !IsDataCacheDisabled()) {
+    cache_options |= BufferOpts::USE_DATA_CACHE;
+}
 ```
 
 对于 Remote HDFS，这里最终 `cache_options` 的值就是 4，即 `NO_CACHING | USE_DATA_CACHE` 。接着在 `RequestContext::GetNextUnstartedRange` 函数中，会使用该 tag 进行判断，如下所示：
 
 ``` c++
 // RequestContext::GetNextUnstartedRange()
-      ScanRange::ExternalBufferTag buffer_tag = (*range)->external_buffer_tag();
-      if (buffer_tag == ScanRange::ExternalBufferTag::NO_BUFFER) {
-        // We can't schedule this range until the client gives us buffers. The context
-        // must be rescheduled regardless to ensure that 'next_scan_range_to_start' is
-        // refilled.
-        disk_states_[disk_id].ScheduleContext(lock, this, disk_id);
-        (*range)->SetBlockedOnBuffer();
-        *needs_buffers = true;
-      } else {
-        ScheduleScanRange(lock, *range);
-      }
+ScanRange::ExternalBufferTag buffer_tag = (*range)->external_buffer_tag();
+if (buffer_tag == ScanRange::ExternalBufferTag::NO_BUFFER) {
+    // We can't schedule this range until the client gives us buffers. The context
+    // must be rescheduled regardless to ensure that 'next_scan_range_to_start' is
+    // refilled.
+    disk_states_[disk_id].ScheduleContext(lock, this, disk_id);
+    (*range)->SetBlockedOnBuffer();
+    *needs_buffers = true;
+} else {
+    ScheduleScanRange(lock, *range);
+}
 ```
 
 只有当  tag  不是 `NO_BUFFER` 的时候，才会将 ScanRange  加入 `in_flight_ranges_` 队列。也就是说，对于  Remote HDFS  的扫描操作，不是直接将 ScanRange 加入到 `in_flight_ranges_` 队列，而是在其他的地方进行处理。由于笔者手头的测试环境都是 Remote HDFS，因此目前暂不展开说明这种情况。
@@ -881,13 +881,15 @@ for (int j = 0; j < num_threads_per_disk; ++j) {
 }
 ```
 
-在进行线程创建的时候，将函数 `DiskQueue::DiskThreadLoop` 绑定到了该线程上，该函数就是通过一个 while循环来不断的进行处理，相关的函数调用如下所示：
+在进行线程创建的时候，将函数 `DiskQueue::DiskThreadLoop` 绑定到了该线程上，该函数就是通过一个 `while` 循环来不断的进行处理，相关的函数调用如下所示：
 
-```
+```c
+/**
 DiskThreadLoop(disk-io-mrg.cc)
--GetNextRequestRange(disk-io-mrg.cc)
---GetNextRequestRange(request-context.cc)
--DoRead(scan-range.cc)/Write(disk-io-mgr.cc)
+  |-GetNextRequestRange(disk-io-mrg.cc)
+  |--GetNextRequestRange(request-context.cc)
+  |-DoRead(scan-range.cc)/Write(disk-io-mgr.cc)
+*/
 ```
 
 `GetNextRequestRange` 函数就是用来获取当前这个`DiskQueue`（例如远端 HDFS 访问的 queue）的下一个`RequestRange`，来进行具体的 io 操作。`RequestRange` 代表一个文件中的连续字节序列，主要分为：`ScanRange` 和 `WriteRange`。每个 disk 线程一次只能处理一个 `RequestRange`。这里 impala 采用了一个两层的设计，在 `GetNextRequestRange` 中，首先会需要获取一个 `RequestContext` 对象，`RequestContext` 可以理解为一个查询的某个 instance 下的所有 IO 请求集合，可以简单理解为某个表的 `RequestRange` 集合都被封装在一个 `RequestContext` 对象中。获取 `RequestContext` 的代码如下所示：
@@ -902,7 +904,7 @@ DCHECK(*request_context != nullptr);
 
 ![](https://img-blog.csdnimg.cn/20210331144401259.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3NreXl3cw==,size_16,color_FFFFFF,t_70)
 
-最终获取到了一个 RequestRange 之后，会进行判断，是 READ 还是 WRITE，进行相应地处理。这里我们以 READ 为例，相关函数调用如下所示：
+最终获取到了一个 `RequestRange` 之后，会进行判断，是 READ 还是 WRITE，进行相应地处理。这里我们以 READ 为例，相关函数调用如下所示：
 
 ```c++
 DiskThreadLoop(disk-io-mrg.cc)
