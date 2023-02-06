@@ -49,7 +49,7 @@ Our focus here is the following innovations:
 
 > **Transition lookaside buffer** (TLB). A special kind of cache, the TLB is part of the virtual memory support built into modern CPUs: it remembers the latest translations of logical into physical page addresses (e.g., 64). Each memory load/store needs address translation; if the page address is in the TLB (a TLB hit), there is no additional cost. If not, a more complex lookup in a mapping table is needed; thus a TLB miss implies a penalty. Moreover, the lookup in the (memory-resident) TLB mapping table might generate additional CPU cache misses. Note that with a typical page size of 4KB and 64 entries in the TLB, on many systems TLB delay already comes into play for random access to data structures (e.g., hash-tables) larger than 256KB.
 
-==**转换后备缓冲器**== (TLB)。 TLB 是一种特殊的高速缓存，内置于现代 CPU 中用于支持虚拟内存：它会记住逻辑页面地址到物理页面地址（例如 64）最新的转换。每个内存加载/存储都需要地址转换； 如果页面地址在 TLB 中（TLB 命中），则没有额外成本。否则，则需要在映射表中进行更复杂的查找； 因此 TLB 未命中意味着惩罚。<u>此外，在（内存驻留的）TLB 映射表中搜索，可能会产生额外的 CPU 缓存未命中</u>。==注意，对于典型的 4KB 页面和 TLB 中的 64 条记录==，在许多系统上，对于大于 256KB 的数据结构（例如哈希表）的随机访问，TLB 延迟已经开始发挥作用。
+==**转换后备缓冲器**== (TLB)。TLB 是一种特殊的高速缓存，内置于现代 CPU 中用于支持虚拟内存：它会记住逻辑页面地址到物理页面地址（例如 64）最新的转换。每个内存加载/存储都需要地址转换； 如果页面地址在 TLB 中（TLB 命中），则没有额外成本。否则，则需要在映射表中进行更复杂的查找； 因此 TLB 未命中意味着惩罚。<u>此外，在（内存驻留的）TLB 映射表中搜索，可能会产生额外的 CPU 缓存未命中</u>。==注意，对于典型的 4KB 页面和 TLB 中的 64 条记录==，在许多系统上，对于大于 256KB 的数据结构（例如哈希表）的随机访问，TLB 延迟已经开始发挥作用。
 
 **Unified hardware model**. Summarizing the above discussion, we describe a computer’s memory hardware as a cascading hierarchy of N levels of caches (including TLBs). An index i ∈ {1, . . . , N} identifies the respective value of a specific level. Exploiting the dualism that an access to level i + 1 is caused by a miss on level i allows some simplification of the notation. Introducing the miss latency li = li + 1 and the respective miss bandwidth bi = bi + 1 yields li = Zi /bi. Each cache level is characterized by the parameters given in Table 1.b We point out, that these parameters also cover the cost-relevant characteristics of disk accesses. Hence, viewing main memory (e.g., a database system’s buffer pool) as cache (level N + 1) for I/O operations, it is straightforward to include disk access in this hardware model.
 
@@ -79,7 +79,7 @@ Level #entries pagesize  miss-latency
 
 缓存与后续内容相关的一些基本特性和参数：
 
-**容量** (C)。 缓存的容量定义了它的总大小（以字节为单位）。 典型的高速缓存大小范围从 32KB 到 4MB。
+**容量** (C)。缓存的容量定义了它的总大小（以字节为单位）。典型的高速缓存大小范围从 32KB 到 4MB。
 
 
 # 3. MONETDB ARCHITECTURE
@@ -130,36 +130,55 @@ For ease of presentation, we did not apply a hash-function in Figure 3. In pract
 When a user submits a query to a running database server, its query optimizer determines a physical plan, choosing the right order of the operators as well as choosing the physical algorithm to use. For instance, it may compare `SortMerge` with Hash-Join. Additionally, in case of Hash-Join, the optimizer must now also determine how many partitions H, thus, radix-bits B, to use. On the one hand, it needs crucial parameters of the unified hardware model (i.e., the cache configurations) as derived by Calibrator (see Section 2.1); e.g., at DBMS startup. On the other hand, it should model the memory access cost of query processing operators given a value distribution estimate and tuning parameters (such as B). The lines in Figure 4(d) represent the cost prediction of our model for Partitioned Hash-Join, indicating that the techniques described in Section 5 can be quite accurate.
 
 # 5. MODELING MEMORY ACCESS COSTS
-Cache-conscious database algorithms, such as the radix-partitioned hash-join, achieve their optimal performance only if they are carefully tuned to the hardware specifics. Predictive and accurate cost models provide the cornerstones to automate this tuning task. We model the data access behavior in terms of a combination of basic access patterns using the unified hardware model from Section 2.1.
+> Cache-conscious database algorithms, such as the radix-partitioned hash-join, achieve their optimal performance only if they are carefully tuned to the hardware specifics. Predictive and accurate cost models provide the cornerstones to automate this tuning task. We model the data access behavior in terms of a combination of basic access patterns using the unified hardware model from Section 2.1.
+
+缓存敏感的数据库算法，例如**基数分区 Hash join**，只有在针对硬件细节进行仔细调整时才能实现最佳性能。预测性和准确的成本模型为自动执行此调整任务提供了基石。我们使用 2.1 节中的统一硬件模型根据基本访问模式的组合对数据访问行为进行建模。
 
 ## 5.1. Memory access cost
-Memory access cost can be modeled by estimating the number of cache misses M and scoring them with their respective miss latency *l*.^13^ Akin to detailed I/O cost models we distinguish between random and sequential access. However, we now have multiple cache levels with varying characteristics. Hence, the challenge is to predict the number and kind of cache misses *for all cache levels*. Our approach is to treat all cache levels individually, though equally, and calculate the total cost as the sum of the cost for all levels:
+> Memory access cost can be modeled by estimating the number of cache misses M and scoring them with their respective miss latency *l*.^13^ Akin to detailed I/O cost models we distinguish between random and sequential access. However, we now have multiple cache levels with varying characteristics. Hence, the challenge is to predict the number and kind of cache misses *for all cache levels*. Our approach is to treat all cache levels individually, though equally, and calculate the total cost as the sum of the cost for all levels:
+> $$
+> T_{\mathrm{Mem}}=\sum_{i=1}^{N}\left(\mathrm{M}_{i}^{\mathrm{s}} \cdot l_{i}^{\mathrm{s}}+\mathrm{M}_{i}^{\mathrm{r}} \cdot l_{i}^{\mathrm{r}}\right)
+> $$
+> This leaves the challenge to properly estimate the number and kind of cache misses per cache level for various database algorithms. The task is similar to estimating the number and kind of I/O operations in traditional cost models. However, our goal is to provide a generic technique for predicting cache miss rates, sacrificing as little accuracy as possible.
+>
+>
+> The idea is to abstract data structures as data regions and model the complex data access patterns of database algorithms in terms of simple compounds of a few *basic data access patterns*. For these basic patterns, we then provide cost functions to estimate their cache misses. Finally, we present rules to combine basic cost functions and to derive the cost functions of arbitrarily complex patterns.
+
+内存访问成本可以通过估计高速缓存未命中数 M，并根据各自的**未命中延迟** *l* ^13^ 来对它们进行评分建模。和详细的 I/O 成本模型类似，也区分**随机访问**和**顺序访问**。然而，我们现在有多个具有不同特性的缓存层。<u>因此，挑战在于预测**所有缓存层**的缓存未命中数和类型</u>。我们的方法是单独但平等地对待所有缓存层，并将总成本计算为所有缓存层的成本总和：
 $$
 T_{\mathrm{Mem}}=\sum_{i=1}^{N}\left(\mathrm{M}_{i}^{\mathrm{s}} \cdot l_{i}^{\mathrm{s}}+\mathrm{M}_{i}^{\mathrm{r}} \cdot l_{i}^{\mathrm{r}}\right)
 $$
-This leaves the challenge to properly estimate the number and kind of cache misses per cache level for various database algorithms. The task is similar to estimating the number and kind of I/O operations in traditional cost models. However, our goal is to provide a generic technique for predicting cache miss rates, sacrificing as little accuracy as possible.
 
-The idea is to abstract data structures as data regions and model the complex data access patterns of database algorithms in terms of simple compounds of a few basic data access patterns. For these basic patterns, we then provide cost functions to estimate their cache misses. Finally, we present rules to combine basic cost functions and to derive the cost functions of arbitrarily complex patterns.
+现在挑战是，为各种数据库算法正确估计在每个缓存层的**缓存未命中数**和**类型**。该任务类似于在传统成本模型中估算 I/O 的操作数和种类。然而，我们的目标是提供一种通用的技术来预测缓存未命中率，尽可能少地牺牲准确性。
+
+其思想是将数据结构抽象为数据区域，并根据几个**基本数据访问模式**的简单组合对数据库算法的复杂数据访问模式进行建模。对于这些基本模式，我们提供成本函数来估计它们缓存未命中的开销。最后，我们提出了<u>组合基本成本函数</u>和<u>导出任意复杂模式的成本函数</u>的规则。
 
 ### 5.1.1. Basic Access Patterns
 
-Data structures are modeled using a set of data regions $\mathbb{D}$. A data region $R \in \mathbb{D}$ consists of |R| data items of size R (in bytes). We call |R| the length of region R, R its width, and ||R|| = |R| · R its size.
+> Data structures are modeled using a set of data regions $\mathbb{D}$. A data region $R \in \mathbb{D}$ consists of $|R|$ data items of size $\overline{\underline{R}}$ (in bytes). We call $|R|$ the *length* of region $R$,  $\overline{\underline{R}}$ its *width*, and $\|R\|=|R| \cdot \overline{\underline{R}} $ its *size*.
+>
+> A database table is hence represented by a region $R$ with $|R|$ being the table’s cardinality and $\overline{\underline{R}}$ being the tuple size (width). Similarly, more complex structures like trees are modeled by regions with $|R|$ representing the number of nodes and $\overline{\underline{R}}$ representing the size (width) of a node.
+>
+> The following basic access patterns are **==eminent==** in the majority of relational algebra implementations.
+>
 
-A database table is hence represented by a region R with |R| being the table’s cardinality and R being the tuple size (width). Similarly, more complex structures like trees are modeled by regions with |R| representing the number of nodes and R representing the size (width) of a node.
+A **single sequential traversal** `s_trav(R)` sweeps over $R$, accessing each ata item in $R$ exactly once (cf., Figure 5).
 
-The following basic access patterns are **eminent** in the majority of relational algebra implementations.
+A **single random traversal** `r_trav(R)` visits each data item in $R$ exactly once. However, the data items are not accessed in storage order, but chosen randomly (cf., Figure 6).
 
-A single sequential traversal s_trav(R) sweeps over R, accessing each data item in R exactly once (cf., Figure 5).
+A **repetitive sequential traversal** `rs_trav(r, d, R)` performs `r` sequential traversals over $R$. d = uni (unidirectional) indicates that all traversals sweep over $R$ in the same direction. d = bi (bidirectional) indicates that subsequent traversals go in alternating directions.
 
-A single random traversal r_trav(R) visits each data item in R exactly once. However, the data items are not accessed in storage order, but chosen randomly (cf., Figure 6).
+A **repetitive random traversal** `rr_trav(r, R)` performs `r` random traversals over $R$. Assuming that the permutation orders of two subsequent traversals are independent, there is no point in discriminating uni- and bidirectional accesses.
 
-A repetitive sequential traversal rs_trav(r, d, R) performs r sequential traversals over R. d = uni (unidirectional) indicates that all traversals sweep over R in the same direction. d = bi (bidirectional) indicates that subsequent traversals go in alternating directions.
+**Random access** `r_acc(r, R)` hits `r` randomly chosen data items in $R$ after another. The choices are independent of each other. Each data item may be hit more than once. Even with $r ≥ |R|$ we do not require that each data item is hit at least once.
 
-A repetitive random traversal rr_trav(r, R) performs r random traversals over R. Assuming that the permutation orders of two subsequent traversals are independent, there is no point in discriminating uni- and bidirectional accesses.
+An `interleaved access` $nest(R, m, P, O[, D])$ models a nested multicursor access pattern where R is divided into m (equal size d) subregions. Each subregion has its own local cursor. All local cursors perform the same basic pattern . O specifies, whether the global cursor picks the local cursors randomly (O = ran) or sequentially (O = seq). In the latter case, D specifies, whether all traversals of the global cursor across the local cursors use the same direction (D = uni), or whether subsequent traversals use alternating directions (D = bi). Figure 7 shows an example.
 
-Random access r_acc(r, R) hits r randomly chosen data items in R after another. The choices are independent of each other. Each data item may be hit more than once. Even with r ≥ |R| we do not require that each data item is hit at least once.
+数据结构用一组数据区域 $\mathbb{D}$ 建模。 数据区域 $R \in \mathbb{D}$ 由大小为 $\overline{\underline{R}}$（以字节为单位）的 $|R|$ 个数据项组成。 我们称 $|R|$ 为区域 $R$ 的**长度**，$\overline{\underline{R}}$ 为它的**宽度**，$\|R\|=|R| \cdot \overline{\underline{R}}$  为它的**大小**。
 
-An interleaved access nest(R, m, , O[, D]) models a nested multicursor access pattern where R is divided into m (equal size d) subregions. Each subregion has its own local cursor. All local cursors perform the same basic pattern . O specifies, whether the global cursor picks the local cursors randomly (O = ran) or sequentially (O = seq). In the latter case, D specifies, whether all traversals of the global cursor across the local cursors use the same direction (D = uni), or whether subsequent traversals use alternating directions (D = bi). Figure 7 shows an example.
+因此，数据库的表由区域 $R$ 表示，其中 $|R|$ 是表的<u>==基数==</u>，$\overline{\underline{R}}$ 是元组大小（宽度）。 类似地，更复杂的结构（如树）由区域建模，$|R|$ 表示节点数，$\overline{\underline{R}}$ 表示节点的大小（宽度）。
+
+在大多数关系代数实现中，以下基本访问模式是**==突出的==**。
 
 ### 5.1.2. Compound Access Patterns
 Database operations access more than one data region, e.g., their input(s) and their output, which leads to compound data access patterns. We use b, c, and  = b ∪ c (b ∩ c = /0) to denote the set of basic access patterns, compound access patterns, and all access patterns, respectively.
