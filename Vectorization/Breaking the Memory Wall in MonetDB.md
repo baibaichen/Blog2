@@ -41,6 +41,8 @@ Our focus here is the following innovations:
 
 **Line size** (Z). Caches are organized in cache lines, which represent the smallest unit of transfer between adjacent cache levels. Whenever a cache miss occurs, a complete cache line (i.e., multiple consecutive words) is loaded from the next cache level or from main memory, transferring all bits in the cache line in parallel over a wide bus. This exploits spatial locality, increasing the chances of cache hits for future references to data that is “close to” the reference that caused a cache miss. The typical cache-line size is 64 bytes.
 
+**线条大小** (Z)。 高速缓存按高速缓存行组织，表示相邻高速缓存级别之间的最小传输单元。 每当发生高速缓存未命中时，都会从下一个高速缓存级别或从主存储器加载完整的高速缓存行（即多个连续字），通过宽总线并行传输高速缓存行中的所有位。 这利用了空间局部性，增加了缓存命中的机会，以便将来引用“接近”导致缓存未命中的引用的数据。 典型的高速缓存行大小为 64 字节。
+
 **Associativity** (A). An *A-way set associative cache* allows loading a line into one of A different positions. If A > 1, some *cache replacement policy* chooses one from the A candidates. Least recently used (LRU) is the most common replacement algorithm. In case A = 1, the cache is called directly mapped. This organization causes the least (virtually no) overhead in determining the cache-line candidate. However, it also offers the least flexibility and may cause a lot of so-called conflict misses. The other extreme case is fully associative caches. Here, each memory address can be loaded to any line in the cache (A = #). This avoids conflict misses, and only so-called capacity misses occur as the cache capacity gets exceeded. However, determining the cache-line candidate in this strategy causes a relatively high overhead that increases with the cache size. Hence, it is feasible only for smaller caches. Current PCs and workstations typically implement two- to eight-way set associative caches.
 
 **Latency** (λ) is the time span from issuing a data access until the result is available in the CPU. Accessing data that is already available in the L1 cache causes *L1 access latency* (λ~L1~), which is typically rather small (1 or 2 CPU cycles). In case the requested data is not found in L1, an *L1 miss* occurs, additionally delaying the data access by *L2 access latency* (λ~L2~) for accessing the L2 cache. Analogously, if the data is not yet available in L2, an L2 miss occurs, further delaying the access by *memory access latency* (λ~Mem~) to finally load the data from main memory. Hence, the total latency to access data that is in neither cache is λ~Mem~ + λ~L2~ + λ~L1~. As mentioned above, all current hardware actually transfers multiple consecutive words, i.e., a complete cache line, during this time.
@@ -162,7 +164,7 @@ $$
 > The following basic access patterns are **==eminent==** in the majority of relational algebra implementations.
 >
 
-A **single sequential traversal** `s_trav(R)` sweeps over $R$, accessing each ata item in $R$ exactly once (cf., Figure 5).
+A **single sequential traversal** `s_trav(R)` sweeps over $R$, accessing each data item in $R$ exactly once (cf., Figure 5).
 
 A **single random traversal** `r_trav(R)` visits each data item in $R$ exactly once. However, the data items are not accessed in storage order, but chosen randomly (cf., Figure 6).
 
@@ -172,13 +174,23 @@ A **repetitive random traversal** `rr_trav(r, R)` performs `r` random traversals
 
 **Random access** `r_acc(r, R)` hits `r` randomly chosen data items in $R$ after another. The choices are independent of each other. Each data item may be hit more than once. Even with $r ≥ |R|$ we do not require that each data item is hit at least once.
 
-An `interleaved access` $nest(R, m, P, O[, D])$ models a nested multicursor access pattern where R is divided into m (equal size d) subregions. Each subregion has its own local cursor. All local cursors perform the same basic pattern . O specifies, whether the global cursor picks the local cursors randomly (O = ran) or sequentially (O = seq). In the latter case, D specifies, whether all traversals of the global cursor across the local cursors use the same direction (D = uni), or whether subsequent traversals use alternating directions (D = bi). Figure 7 shows an example.
+An **interleaved access** $nest(R, m, P, O[, D])$ models a nested multicursor access pattern where R is divided into m (equal size d) subregions. Each subregion has its own local cursor. All local cursors perform the same basic pattern . O specifies, whether the global cursor picks the local cursors randomly (O = ran) or sequentially (O = seq). In the latter case, D specifies, whether all traversals of the global cursor across the local cursors use the same direction (D = uni), or whether subsequent traversals use alternating directions (D = bi). Figure 7 shows an example.
 
 数据结构用一组数据区域 $\mathbb{D}$ 建模。 数据区域 $R \in \mathbb{D}$ 由大小为 $\overline{\underline{R}}$（以字节为单位）的 $|R|$ 个数据项组成。 我们称 $|R|$ 为区域 $R$ 的**长度**，$\overline{\underline{R}}$ 为它的**宽度**，$\|R\|=|R| \cdot \overline{\underline{R}}$  为它的**大小**。
 
 因此，数据库的表由区域 $R$ 表示，其中 $|R|$ 是表的<u>==基数==</u>，$\overline{\underline{R}}$ 是元组大小（宽度）。 类似地，更复杂的结构（如树）由区域建模，$|R|$ 表示节点数，$\overline{\underline{R}}$ 表示节点的大小（宽度）。
 
 在大多数关系代数实现中，以下基本访问模式是**==突出的==**。
+
+**单次顺序遍历** `s_trav(R)` 扫过 $R$，恰好访问 $R$ 中的每个数据项一次（参见图 5）。
+
+**单次随机遍历** `r_trav(R)` 恰好访问 $R$ 中的每个数据项一次。 但是，数据项不是按存储顺序访问的，而是随机选择的（参见图 6）。
+
+**重复顺序遍历** `rs_trav(r, d, R)` 在 $R$ 上执行 `r` 次顺序遍历。 d = uni（单向）表示所有遍历都以相同的方向扫过 $R$。 d = bi（双向）表示后续扫描按反方向遍历。
+
+**重复随机遍历** `rr_trav(r, R)` 在 $R$ 上执行 `r` 次随机遍历。 假设两个后续遍历的排列顺序是独立的，那么区分单向和双向访问是没有意义的。
+
+
 
 ### 5.1.2. Compound Access Patterns
 Database operations access more than one data region, e.g., their input(s) and their output, which leads to compound data access patterns. We use b, c, and  = b ∪ c (b ∩ c = /0) to denote the set of basic access patterns, compound access patterns, and all access patterns, respectively.
