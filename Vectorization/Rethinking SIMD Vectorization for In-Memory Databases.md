@@ -189,7 +189,7 @@ GPU 还被用于数据库中的通用查询 [2] 和加速运算符，例如索�
 
 本文，我们提出了一种哈希表向量化的通用形式，称为**垂直向量化**，可应用于哈希表的任何变体，而无需改变哈希表布局。**基本原则是为每个向量通道处理不同的输入 *key***。所有向量通道都处理来自输入的不同 *key*，并访问哈希表的不同位置。
 
-我们讨论的哈希表变体是线性探测（第 5.1 节）、双重哈希（第 5.2 节）和布谷鸟哈希（第 5.3 节）。对于哈希函数，我们使用乘法哈希，这需要两次乘法，或者对于 2*^(n)* 桶，一次乘法和一次移位。乘法在主流 CPU 中花费很少的周期，并且在 SIMD 中得到支持。
+我们讨论的哈希表变体是线性探测（第 5.1 节）、双重哈希（第 5.2 节）和 cuckoo 哈希（第 5.3 节）。对于哈希函数，我们使用乘法哈希，这需要两次乘法，或者对于 2^n^ 个桶，一次乘法和一次移位。乘法在主流 CPU 中花费很少的周期，并且 SIMD 也支持。
 
 ### 5.1 Linear Probing
 
@@ -221,8 +221,6 @@ GPU 还被用于数据库中的通用查询 [2] 和加速运算符，例如索�
 >
 > For both probing and building, selective loads and stores assume there are enough items in the input to saturate the vector register. To process the last items in the input, we switch to scalar code. The last items are bounded in number by $2 * W$ , which is negligible compared to the total number of input tuples. Thus, the overall throughput is unaffected.
 
----
-
 线性探测是一种开放寻址方案，为了插入条目或终止搜索，线性遍历表直到找到一个空桶为止。哈希表存储 *key* 和有效负载但不存储指针。用于探测哈希表的标量代码如算法 4 所示。
 
 | ![Algorithm 4 Linear Probing Probe (Scalar)](./Rethinking/A4.png)     | ![Algorithm 5 Linear Probing Probe (Vector)](./Rethinking/A5.png)     |
@@ -232,7 +230,7 @@ GPU 还被用于数据库中的通用查询 [2] 和加速运算符，例如索�
 
 更简单的方法是一次处理 *W* 个 *key*，并使用嵌套循环来查找所有匹配项。然而，**==内部循环的执行次数将与任何一组 *W* 个 *key* 访问的桶的最大数量一样多==**，因而未充分利用 SIMD 通道，因为 *W* 个 *key* 访问的桶的平均数量可能明显小于最大桶数。通过动态重用向量通道，我们正在**乱序**读取探测输入。因此，探测算法不再*稳定*，即输出的顺序并不总是与探测输入之前的顺序匹配。
 
-**构建**一个线性探测表类似。我们需要找到一个空桶以插入一个新的元组。标量代码如算法 6 所示，向量代码如算法 7 所示。
+线性探测表的**构建**类似。我们需要找到一个空桶以插入一个新的元组。标量代码如算法 6 所示，向量代码如算法 7 所示。
 
 | ![Algorithm 6 Linear Probing Build (Scalar)](./Rethinking/A6.png)     | ![Algorithm 7 Linear Probing Build (Vector)](./Rethinking/A7.png)     |
 | ---- | ---- |
@@ -251,27 +249,50 @@ GPU 还被用于数据库中的通用查询 [2] 和加速运算符，例如索�
 
 ### 5.2 Double Hashing
 
-Duplicate keys in hash tables can be handled by storing the payloads in a separate table, or by repeating the keys. The first approach works well when most matching keys are repeated. The second approach works well with mostly unique keys, but suffers from clustering duplicate keys in the same region, if linear probing is used. Double hashing uses a second hash function to distribute collisions so that the number of accessed buckets is close to the number of true matches. Thus, we can use the second approach for both cases. Comparing multiple hash table layouts based on the number of repeats is out of the scope of this paper.
+> Duplicate keys in hash tables can be handled by storing the payloads in a separate table, or by **repeating** the keys. The first approach works well when most matching keys are repeated. The second approach works well with mostly unique keys, but suffers from clustering duplicate keys in the same region, if linear probing is used. Double hashing uses a second hash function to distribute collisions so that the number of accessed buckets is close to the number of true matches. Thus, we can use the second approach for both cases. Comparing multiple hash table layouts based on the number of repeats is out of the scope of this paper.
+>
+> >**Algorithm 8** Double Hashing Function
+>
+> Algorithm 8 shows the double hashing scheme that we propose. Here, *m* is the subset of vector lanes that have probed at least one bucket. If the primary hash function *h*~1~ is in [0*, |T|*), the **collision** hash function *h*~2~ is in [1*, |T|*), and *|T|* is prime, then *h* = *h*~1~ +*N·h*~2~ modulo *|T|* (double hashing) *never* repeats the same bucket for *N \< |T|* collisions. To avoid the expensive modulos, we use *h − |T|* when *h ≥ |T|*.
 
->**Algorithm 8** Double Hashing Function
+哈希表中的重复键可以通过将有效载荷存储在单独的表中，或者通过**重复** *key* 来处理。当大多数<u>匹配</u> *key* 重复时，第一种方法效果很好。第二种方法适用于大多数 *key* 唯一的情况，但如果使用线性探测，则会在同一区域聚集重复 *key*。双重哈希使用第二个哈希函数来分散冲突，使访问的桶数接近真正匹配的数量。这样，两种情况都可以使用第二种方法。基于重复数量比较多种哈希表布局超出了本文的范围。
 
-Algorithm 8 shows the double hashing scheme that we propose. Here, *m* is the subset of vector lanes that have probed at least one bucket. If the primary hash function *h*~1~ is in [0*, \|T\|*), the collision hash function *h*2 is in [1*, \|T\|*), and *\|T\|* is prime, then *h* = *h*1 +*N·h*2 modulo *\|T\|* (double hashing) *never* repeats the same bucket for *N \< \|T\|* collisions. To avoid the expensive modulos, we use *h − \|T\|* when *h ≥ \|T\|*.
+| <img src="./Rethinking/A8.png" alt="Algorithm 8 Double Hashing Function"  /> |
+| :----------------------------------------------------------: |
 
-### 5.2 Cuckoo Hashing
+算法 8 展示了我们提出的双重哈希方案。这里，*m* 是探测过至少一个桶的向量通道的子集。如果主哈希函数 *h*~1~ 在 [0, |T|) 中，==**碰撞**哈希函数 *h*~2~ 在 [1, |T|) 中，并且 |T| 是素数，则 *h* = *h*~1~ +*N·h*~2~ % |T| （双重哈希）**不会**对 N < |T|  重复碰撞同一个桶==。**为了避免昂贵的取模**，当 h ≥ |T| 时，我们使用 h − |T|。
 
-Cuckoo hashing [23] is another hashing scheme that uses multiple hash functions. and is the only hash table scheme that has been vectorized in previous work [30], as a means to allow multiple keys per bucket (horizontal vectorization). Here, we study cuckoo hashing to compare our (vertical vectorization) approach against previous work [30, 42]. We also show that complicated control flow logic, such as cuckoo table building, can be transformed to data flow vector logic.
-
-The scalar code for cuckoo table probing, which we omit due to space requirements, can be written in two ways. In the simple way, we check the second bucket only if the first bucket does not match. The alternative way is to always access both buckets and blend their results using bitwise operations [42]. The latter approach eliminates branching at the expense of always accessing both buckets. Still, it has been shown to be faster than other variants on CPUs [42].
-
-> **Algorithm 9** Cuckoo Hashing Probing
-
-Vectorized cuckoo table probing is shown in Algorithm 9. No inner loop is required since we have only two choices. We load *W* keys with an aligned vector load and gather the first bucket per key. For the keys that do not match, we gather the second bucket. Cuckoo tables do not directly support key repeats. Probing is stable by reading the input “inorder”, but accesses remote buckets when out of the cache. 
-
+### 5.3 Cuckoo Hashing
+> Cuckoo hashing [23] is another hashing scheme that uses multiple hash functions. and is the only hash table scheme that has been vectorized in previous work [30], as a means to allow multiple keys per bucket (horizontal vectorization). Here, we study cuckoo hashing to compare our (vertical vectorization) approach against previous work [30, 42]. We also show that complicated control flow logic, such as cuckoo table building, can be transformed to data flow vector logic.
+>
+> The scalar code for cuckoo table probing, which we omit due to space requirements, can be written in two ways. In the simple way, we check the second bucket only if the first bucket does not match. The alternative way is to always access both buckets and blend their results using bitwise operations [42]. The latter approach eliminates branching at the expense of always accessing both buckets. Still, it has been shown to be faster than other variants on CPUs [42].
+>
+> > **Algorithm 9** Cuckoo Hashing Probing
+>
+Vectorized cuckoo table probing is shown in Algorithm 9. No inner loop is required since we have only two choices. We load *W* keys with an aligned vector load and gather the first bucket per key. For the keys that do not match, we gather the second bucket. Cuckoo tables do not directly support key repeats. Probing is stable by reading the input “inorder”, but accesses **==remote buckets==** when out of the cache. 
+>
 Building a cuckoo hashing table is more complicated. If both bucket choices are not empty, we create space by displacing the tuple of one bucket to its alternate location. This process may be repeated until an empty bucket is reached.
+>
+> >**Algorithm 10** Cuckoo Hashing Building
+>
+> Vectorized cuckoo table building, shown in Algorithm 10, reuses vector lanes to load new tuples from the input. The remaining lanes are either previously conflicting or displaced tuples. The newly loaded tuples gather buckets using one or both hash functions to find an empty bucket. The tuples that were carried from the previous loop use the alternative hash function compared to the previous loop. We scatter the tuples to the hash table and gather back the keys to detect conflicts. The lanes with newly displaced tuples, which were gathered earlier in this loop, and the conflicting lanes are passed through to the next loop. The other lanes are reused.
 
->**Algorithm 10** Cuckoo Hashing Building
+Cuckoo 哈希 [23] 是另一种使用多个哈希函数的<u>==哈希方案==</u>。作为一种每个桶允许有多个 *key* 的方法（水平向量化），它是唯一一个在之前的工作 [30] 中被向量化的<u>==哈希表方案==</u>。本文研究 Cuckoo  哈希，将所提出的方法（垂直向量化）与以前工作 [30、42] 进行比较。文中还证明，复杂的<u>==控制流逻辑==</u>，如构造 Cuckoo  哈希表，可以转化为<u>==数据流向量逻辑==</u>。
 
-Vectorized cuckoo table building, shown in Algorithm 10, reuses vector lanes to load new tuples from the input. The remaining lanes are either previously conflicting or displaced tuples. The newly loaded tuples gather buckets using one or both hash functions to find an empty bucket. The tuples that were carried from the previous loop use the alternative hash function compared to the previous loop. We scatter the tuples to the hash table and gather back the keys to detect conflicts. The lanes with newly displaced tuples, which were gathered earlier in this loop, and the conflicting lanes are passed through to the next loop. The other lanes are reused.
+Cuckoo  哈希表探测的标量代码可以用两种方式编写，由于篇幅原因而省略。简单来说，我们只在第一个桶不匹配时才检查第二个桶。另一种方法是始终访问两个桶，并使用按位运算混合它们的结果 [42]。后一种方法消除了分支，但总是需要访问两个桶。尽管如此，已经证明它比 CPU 上的其他变体更快 [42]。
+
+向量化的 Cuckoo  哈希表探测如算法 9 所示。因为只有两种选择，所以不需要内循环。我们使用对齐的向量加载加载 *W* 键，并 **gather** 每个键的第一个桶。对于不匹配的键，gather 第二个桶。Cuckoo 表不直接支持重复 *key*。通过**按顺序**读取输入，探测是稳定的，但在超出缓存时要访问**==远程桶==**。
+
+构建 Cuckoo  哈希表要复杂得多。如果两个桶都不为空，通过将一个桶的元组置换到它的备用位置来创建空间。重复此过程，直到找到一个空桶为止。
+
+| ![Algorithm 9 Cuckoo Probing Build](./Rethinking/A9.png)     | ![Algorithm 10 Cuckoo Probing Build](./Rethinking/A10.png)     |
+| ---- | ---- |
+
+向量化构建Cuckoo  哈希表如算法 10 所示，重用向量通道以从输入中加载新的元组。剩余的通道**要么是先前冲突的元组，要么是被置换的元组**。新加载的元组使用一个或两个哈希函数 **gather** 桶，以找到空桶。与前一轮循环相比，从先前循环携带的元组使用替代哈希函数。我们将元组 **scatter** 到哈希表中，并 **gather** 回 *key* 以检测冲突。具有新置换元组（在此循环中较早期 gather ）的通道和冲突通道将传递到下一个循环。其他通道可重复使用。
+
+#### 参考
+1. [Cuckoo Hashing的应用及性能优化](https://developer.aliyun.com/article/563053)
+2. [Cuckoo Hashing](https://medium.com/@kewei.train/cuckoo-hashing-95e037f4f024)
 
 ## 6 BLOOM FILTERS
 
@@ -455,7 +476,7 @@ Bucketized hash table probing is faster by using 128-bit SIMD (SSE 4) to probe 4
 
 > **Figure 7: Probe cuckoo hashing table (2 functions, shared, 32-bit key *→* 32-bit probed payload)**
 
-Figure 8 interleaves building and probing of shared-nothing tables, as done in the last phase of partitioned hash join, using Xeon Phi. The build to probe ratio is 1:1, all keys match, and we vary the hash table size. The hash tables are 4 KB in L1, 64 KB in L2, and 1 MB out of cache. Both inputs have 32-bit keys and payloads, the output has the matching keys and the two payloads, the load factor is 50%, and we saturate Phi’s memory. Throughput is defined as (*\|R\|* + *\|S\|*)*/t*. The speedup is 2.6–4X when the hash table resides in L1, 2.4–2.7X in L2, and 1.2–1.4X out of the cache.
+Figure 8 interleaves building and probing of shared-nothing tables, as done in the last phase of partitioned hash join, using Xeon Phi. The build to probe ratio is 1:1, all keys match, and we vary the hash table size. The hash tables are 4 KB in L1, 64 KB in L2, and 1 MB out of cache. Both inputs have 32-bit keys and payloads, the output has the matching keys and the two payloads, the load factor is 50%, and we saturate Phi’s memory. Throughput is defined as (*|R|* + *|S|*)*/t*. The speedup is 2.6–4X when the hash table resides in L1, 2.4–2.7X in L2, and 1.2–1.4X out of the cache.
 
 > **Figure 8: Build & probe linear probing, double  hashing, & cuckoo hashing on Xeon Phi (1:1 build– probe, shared-nothing, 2X 32-bit key & payload)**
 
@@ -630,9 +651,9 @@ We presented generic SIMD vectorized implementations for analytical databases ex
 
 ### A.  **NOTATION**
 
-> We now explain the notation of the vectorized algorithmic descriptions. Boolean vector operations result in boolean vector bitmasks that are shown as scalar variables. For example, $m \leftarrow \vec{x}<\vec{y}$ results in the bitmask *m*. Assignments such as $m \leftarrow true$, set the *W* bits of *m*. Vectors as array indexes denote a gather or a scatter. For example, $\vec{x} \leftarrow A[y]$ is a vector load, while ==$\vec{x} \leftarrow A[\vec{y}]$== is a gather. Selective loads and stores as well as selective gathers and scatters use a bitmask as a subscript in the assignment. For example, $\vec{x} \leftarrow_m A[y]$ is a selective load, while $\vec{x} \leftarrow_m A[\vec{y}]$ is a selective gather. $|m|$ is the bit population count of *m* and $|T|$ is the size of array *T* . If-then-else statements, such as $\vec{x} \leftarrow m\ ?\ \vec{y}:\vec{z} $, use vector blending. Finally, scalar values in vector expressions use vectors generated before the main loop. For example, $\vec{x} \leftarrow \vec{x}+k$ and $m \leftarrow \vec{x}>k$ use a vector with *k* in all lanes.
+> We now explain the notation of the vectorized algorithmic descriptions. Boolean vector operations result in boolean vector bitmasks that are shown as scalar variables. For example, $m \leftarrow \vec{x}<\vec{y}$ results in the bitmask *m*. Assignments such as $m \leftarrow true$, set the *W* bits of *m*. Vectors as array indexes denote a gather or a scatter. For example, $\vec{x} \leftarrow A[y]$ is a vector load, while $\vec{x} \leftarrow A[\vec{y}]$ is a gather. Selective loads and stores as well as selective gathers and scatters use a bitmask as a subscript in the assignment. For example, $\vec{x} \leftarrow_m A[y]$ is a selective load, while $\vec{x} \leftarrow_m A[\vec{y}]$ is a selective gather. $|m|$ is the bit population count of *m* and $|T|$ is the size of array *T* . If-then-else statements, such as $\vec{x} \leftarrow m\ ?\ \vec{y}:\vec{z} $, use vector blending. Finally, scalar values in vector expressions use vectors generated before the main loop. For example, $\vec{x} \leftarrow \vec{x}+k$ and $m \leftarrow \vec{x}>k$ use a vector with *k* in all lanes.
 
-我们现在解释描述向量化算法的符号。布尔向量操作的结果是布尔向量位掩码，以标量的形式显示。例如，$m \leftarrow \vec{x}<\vec{y}$ 的结果是位掩码 *m*。如 $m \leftarrow true$ 这样的赋值，表示设置 *m* 的 *W* 位。作为数组索引的向量表示 **gather**  或 **scatter**。例如，$\vec{x} \leftarrow A[y]$ 表示向量加载，而 ==$\vec{x} \leftarrow A[\vec{y}]$== 是  **gather** 。选择性加载和存储，以及选择性 **gather** 和 **scatter**，都使用位掩码作为赋值的下标。例如，$\vec{x} \leftarrow_m A[y]$ 是选择性加载，而 $\vec{x} \leftarrow_m A[\vec{y}]$ 是选择性 **gather**。$|m|$ 是 *m* 的位总数， $|T|$ 是数组 *T* 的大小。If-then-else 语句，例如 $\vec{x} \leftarrow m\ ?\ \vec{y}:\vec{z} $，使用向量混合。最后，向量表达式中的标量值使用在主循环之前生成的向量。例如，$\vec{x} \leftarrow \vec{x}+k$ 和 $m \leftarrow \vec{x}>k$ 在所有通道中使用带有 *k* 的向量。
+我们现在解释描述向量化算法的符号。布尔向量操作的结果是布尔向量位掩码，以标量的形式显示。例如，$m \leftarrow \vec{x}<\vec{y}$ 的结果是位掩码 *m*。如 $m \leftarrow true$ 这样的赋值，表示设置 *m* 的 *W* 位。作为数组索引的向量表示 **gather**  或 **scatter**。例如，$\vec{x} \leftarrow A[y]$ 表示向量加载，而 $\vec{x} \leftarrow A[\vec{y}]$ 是  **gather** 。选择性加载和存储，以及选择性 **gather** 和 **scatter**，都使用位掩码作为赋值的下标。例如，$\vec{x} \leftarrow_m A[y]$ 是选择性加载，而 $\vec{x} \leftarrow_m A[\vec{y}]$ 是选择性 **gather**。$|m|$ 是 *m* 的位总数， $|T|$ 是数组 *T* 的大小。If-then-else 语句，例如 $\vec{x} \leftarrow m\ ?\ \vec{y}:\vec{z} $，使用向量混合。最后，向量表达式中的标量值使用在主循环之前生成的向量。例如，$\vec{x} \leftarrow \vec{x}+k$ 和 $m \leftarrow \vec{x}>k$ 在所有通道中使用带有 *k* 的向量。
 
 ### B. GATHER & SCATTER
 
