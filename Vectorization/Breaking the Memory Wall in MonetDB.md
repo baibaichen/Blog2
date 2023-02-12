@@ -165,18 +165,18 @@ $$
 >
 > The following basic access patterns are **==eminent==** in the majority of relational algebra implementations.
 >
-
-A **single sequential traversal** `s_trav(R)` sweeps over $R$, accessing each data item in $R$ exactly once (cf., Figure 5).
-
-A **single random traversal** `r_trav(R)` visits each data item in $R$ exactly once. However, the data items are not accessed in storage order, but chosen randomly (cf., Figure 6).
-
-A **repetitive sequential traversal** `rs_trav(r, d, R)` performs `r` sequential traversals over $R$. d = uni (unidirectional) indicates that all traversals sweep over $R$ in the same direction. d = bi (bidirectional) indicates that subsequent traversals go in alternating directions.
-
-A **repetitive random traversal** `rr_trav(r, R)` performs `r` random traversals over $R$. Assuming that the permutation orders of two subsequent traversals are independent, there is no point in discriminating uni- and bidirectional accesses.
-
-**Random access** `r_acc(r, R)` hits `r` randomly chosen data items in $R$ after another. The choices are independent of each other. Each data item may be hit more than once. Even with $r ≥ |R|$ we do not require that each data item is hit at least once.
-
-An **interleaved access** $nest(R, m, P, O[, D])$ models a nested multicursor access pattern where R is divided into m (equal size d) subregions. Each subregion has its own local cursor. All local cursors perform the same basic pattern . O specifies, whether the global cursor picks the local cursors randomly (O = ran) or sequentially (O = seq). In the latter case, D specifies, whether all traversals of the global cursor across the local cursors use the same direction (D = uni), or whether subsequent traversals use alternating directions (D = bi). Figure 7 shows an example.
+> A **single sequential traversal** `s_trav(R)` sweeps over $R$, accessing each data item in $R$ exactly once (cf., Figure 5).
+>
+> A **single random traversal** `r_trav(R)` visits each data item in $R$ exactly once. However, the data items are not accessed in storage order, but chosen randomly (cf., Figure 6).
+>
+> A **repetitive sequential traversal** `rs_trav(r, d, R)` performs `r` sequential traversals over $R$. d = uni (unidirectional) indicates that all traversals sweep over $R$ in the same direction. d = bi (bidirectional) indicates that subsequent traversals go in alternating directions.
+>
+> A **repetitive random traversal** `rr_trav(r, R)` performs `r` random traversals over $R$. Assuming that the permutation orders of two subsequent traversals are independent, there is no point in discriminating uni- and bidirectional accesses.
+>
+> **Random access** `r_acc(r, R)` hits `r` randomly chosen data items in $R$ after another. The choices are independent of each other. Each data item may be hit more than once. Even with $r ≥ |R|$ we do not require that each data item is hit at least once.
+>
+> An **interleaved access** $nest(R, m, \mathcal{P} , O[, D])$ models a nested multi-cursor access pattern where R is divided into m (equal size d) subregions. Each subregion has its own local cursor. All local cursors perform the same basic pattern $\mathcal{P}$. O specifies, whether the global cursor picks the local cursors randomly (O = ran) or sequentially (O = seq). In the latter case, D specifies, whether all traversals of the global cursor across the local cursors use the same direction (D = uni), or whether subsequent traversals use alternating directions (D = bi). Figure 7 shows an example.
+>
 
 数据结构用一组数据区域 $\mathbb{D}$ 建模。 数据区域 $R \in \mathbb{D}$ 由大小为 $\overline{\underline{R}}$（以字节为单位）的 $|R|$ 个数据项组成。 我们称 $|R|$ 为区域 $R$ 的**长度**，$\overline{\underline{R}}$ 为它的**宽度**，$\|R\|=|R| \cdot \overline{\underline{R}}$  为它的**大小**。
 
@@ -192,28 +192,43 @@ An **interleaved access** $nest(R, m, P, O[, D])$ models a nested multicursor ac
 
 **重复随机遍历** `rr_trav(r, R)` 在 $R$ 上执行 `r` 次随机遍历。 假设两个后续遍历的排列顺序是独立的，那么区分单向和双向访问是没有意义的。
 
+**随机访问** `r_acc(r, R)` 依次命中 $R$ 中的 `r` 个随机选择的数据项。这些选择相互独立。每个数据项可能命中多次。 即使 $r ≥ |R|$，我们也不要求每个数据项至少被命中一次。
 
+**交错访问** $nest(R, m, \mathcal{P} , O[, D])$ 对<u>==嵌套多游标访问模式==</u>建模，其中 R 被划分为 m 个（大小等于 d）子区域。每个子区域都有自己的本地游标。 所有本地游标执行相同的基本模式 $\mathcal{P}$。O 指定全局游标是随机 （O = ran） 还是顺序（O = seq）选择局部游标。在后一种情况下，D 指定全局游标在局部游标上的所有遍历是否使用相同的方向（D = uni），或者后续遍历是否使用反方向 （D = bi）。 图 7 显示了一个示例。
 
 ### 5.1.2. Compound Access Patterns
-Database operations access more than one data region, e.g., their input(s) and their output, which leads to compound data access patterns. We use b, c, and  = b ∪ c (b ∩ c = /0) to denote the set of basic access patterns, compound access patterns, and all access patterns, respectively.
+> Database operations access more than one data region, e.g., their input(s) and their output, which leads to compound data access patterns. We use $\mathbb{P}_b$, $\mathbb{P}_c$ and $\mathbb{P}=\mathbb{P}_b \cup \mathbb{P}_c(\mathbb{P}_b \cap  \mathbb{P}_c =\emptyset)$ to denote the set of basic access patterns, compound access patterns, and all access patterns, respectively.
+>
+> Be $\mathcal{P}_1,\dots \mathcal{P}_p\in \mathbb{P}\ (p>1)$ data access patterns. There are only two principle ways to combine patterns. They are executed either *sequentially* ($\oplus :  \mathbb{P} \times \mathbb{P} \rightarrow \mathbb{P}$) or *concurrently* ($\odot :  \mathbb{P} \times \mathbb{P} \rightarrow \mathbb{P}$). We can apply $\oplus$ and $\odot$ repeatedly to describe more complex patterns.
+>
+> Table 2 illustrates compound access patterns of some typical database algorithms. For convenience, reoccurring compound access patterns are assigned a new name.
 
-Be 1,…, p ∈  (p > 1) data access patterns. There are only two principle ways to combine patterns. They are executed either sequentially ( :  ×  → ) or concurrently ( :  ×  → ). We can apply  and  repeatedly to describe more complex patterns.
+数据库操作访问多个数据区域，例如输入和输出，这导致**复合数据访问模式**。我们使用 $\mathbb{P}_b$, $\mathbb{P}_c$ 和 $\mathbb{P}=\mathbb{P}_b \cup \mathbb{P}_c(\mathbb{P}_b \cap \mathbb{P}_c =\emptyset)$ 分别表示**基本访问模式**、**复合访问模式**和**所有访问模式**的集合。
 
-Table 2 illustrates compound access patterns of some typical database algorithms. For convenience, reoccurring compound access patterns are assigned a new name.
+数据访问模式 $\mathcal{P}_1,\dots \mathcal{P}_p\in \mathbb{P}\ (p>1)$ 。组合模式只有两种主要方法。要么**顺序执行** $\oplus : \mathbb{P} \times \mathbb{P} \rightarrow \mathbb{P}$或并发执行 $\odot: \mathbb{P} \times \mathbb{P} \rightarrow \mathbb{P}$。 我们可以重复应用 $\oplus$ 和 $\odot$ 来描述更复杂的模式。
+
+表 2 说明了一些典型数据库算法的复合访问模式。为方便起见，重复出现的复合访问模式被分配了一个新名称。
 
 ## 5.2. Cost functions
-For each basic pattern, we estimate both sequential and random cache misses for each cache level i ∈ {1, . . . , N}. Given an access pattern  ∈ , we describe the number of misses per cache level as a pair 
+> For each basic pattern, we estimate both sequential and random cache misses for each cache level $i \in \{1, \dots,N \}$. Given an access pattern $\mathcal{P}\in \mathbb{P}$, we describe the number of misses per cache level as a pair 
+> $$
+> \stackrel{\mathrm{r}}{\mathrm{M}_{i}}(\mathcal{P})=\left\langle\mathrm{M}_{i}^{\mathrm{s}}(\mathcal{P}), \mathrm{M}_{i}^{\mathrm{r}}(\mathcal{P})\right\rangle \in \mathrm{N} \times \mathbf{N}
+> $$
+> containing the number of sequential and random cache misses. The detailed cost functions for all basic patterns introduced above can be found in Manegold.^11,12^
+>
+> The major challenge with compound patterns is to model cache interference and dependencies among basic patterns.
+>
+
+对于每个基本模式，我们估计每个缓存层 $i \in \{1, \dots,N \}$ 的顺序和随机**缓存未命中**。给定一个访问模式 $\mathcal{P}\in \mathbb{P}$，我们将每个缓存层的未命中数描述为包含<u>顺序</u>和<u>随机</u>缓存未命中数的一对。 上面介绍的所有基本模式的详细成本函数可以在 Manegold^11,12^ 中找到。
 $$
 \stackrel{\mathrm{r}}{\mathrm{M}_{i}}(\mathcal{P})=\left\langle\mathrm{M}_{i}^{\mathrm{s}}(\mathcal{P}), \mathrm{M}_{i}^{\mathrm{r}}(\mathcal{P})\right\rangle \in \mathrm{N} \times \mathbf{N}
 $$
-containing the number of sequential and random cache misses. The detailed cost functions for all basic patterns introduced above can be found in Manegold.^11,12^
-
-The major challenge with compound patterns is to model cache interference and dependencies among basic patterns.
+复合模式的主要挑战是对基本模式之间的缓存干扰和依赖关系进行建模。
 
 ### 5.2.1. Sequential Execution
-When executed sequentially, patterns do not interfere. Consequently, the resulting total number of cache misses is at most the sum of the cache misses of all patterns. However, if two subsequent patterns operate on the same data region, the second might benefit from the data that the first one leaves in the cache. It depends on the cache size, the data sizes, and the characteristics of the patterns, how many cache misses may be saved this way. To model this effect, we consider the contents or state of the caches, described by a set S of pairs 〈R, r〉 ∈ D × [0, 1], stating for each data region R the fraction r that is available in the cache.
+When executed sequentially, patterns do not interfere. Consequently, the resulting total number of cache misses is at most the sum of the cache misses of all patterns. However, if two subsequent patterns operate on the same data region, the second might benefit from the data that the first one leaves in the cache. It depends on the cache size, the data sizes, and the characteristics of the patterns, how many cache misses may be saved this way. To model this effect, we consider the contents or state of the caches, described by a set $\mathbf{S}$ of pairs $\langle R, \rho\rangle \in \mathbb{D} \times[0,1]$, stating for each data region $R$ the fraction $\rho$ that is available in the cache.
 
-In Manegold11,12 we discuss how to calculate (i) the cache misses of a basic pattern q ∈ b given a cache state Sq−1 as
+In Manegold^11,12^ we discuss how to calculate (i) the cache misses of a basic pattern $\mathcal{P}_q \in \mathbb{P}_b$ given a cache state $\mathbf{S}^{q -1}$ as
 $$
 \stackrel{I}{M}_{i}\left(\mathrm{~S}_{i}^{q-1}, \mathcal{P}_{q}\right)=\mathcal{F}^{\prime}\left(\mathrm{S}_{i}^{q-1}, \stackrel{I}{M}_{i}\left(\mathcal{P}_{q}\right)\right)
 $$
@@ -221,17 +236,17 @@ and (ii) the resulting cache state after executing $\mathcal{P}_{q}$ as
 $$
 \mathrm{S}_{i}^{q}\left(\mathrm{~S}_{i}^{q-1}, \mathcal{P}_{q}\right)=\mathcal{F}^{\prime \prime}\left(\mathrm{S}_{i}^{q-1}, \mathcal{P}_{q}\right)
 $$
-With these, we can calculate the number of cache misses that occur when executing patterns P1, . . . , Pp ∈ , p > 1 sequentially, given an initial cache state S^0^, as
+With these, we can calculate the number of cache misses that occur when executing patterns $\mathcal{P}_1,\dots \mathcal{P}_p\in \mathbb{P}\ (p>1)$ sequentially, given an initial cache state $\mathbf{S}^{0}$ , as
 $$
 TODO
 $$
 
 ### 5.2.2. Concurrent Execution
-When executing patterns concurrently, we actually have to consider the fact that they are competing for the same cache. We model the impact of the cache interference between concurrent patterns by dividing the cache among all patterns. Each pattern  gets a fraction 0 < .n < 1 of the cache according to its footprint size F, i.e., the number of cache lines that it potentially revisits. The detailed formulas for Fi() with  ∈  are given in Manegold.^11,12^
+When executing patterns concurrently, we actually have to consider the fact that they are competing for the same cache. We model the impact of the cache interference between concurrent patterns by dividing the cache among all patterns. Each pattern $\mathcal{P}$ gets a fraction 0 < .v < 1 of the cache according to its *footprint size* $\mathbf{F}$, i.e., the number of cache lines that it potentially revisits. The detailed formulas for $\mathbf{F}_i( \mathcal{P})$ with $\mathcal{P} \in \mathbb{P}$ are given in Manegold.^11,12^
 
-We use MÆ i/n to denote the number of misses with only a fraction 0 < .n < 1 of the total cache size available. 
+We use $\mathbf{\vec{M}}_{i/v}$ to denote the number of misses with only a fraction 0 < .v < 1 of the total cache size available. 
 
-With these tools at hand, we calculate the cache misses for concurrent execution of patterns 1, . . . , p ∈  (p > 1) given an initial cache state S0 as
+With these tools at hand, we calculate the cache misses for concurrent execution of patterns $\mathcal{P}_1,\dots \mathcal{P}_p\in \mathbb{P}\ (p>1)$ given an initial cache state $\mathbf{S}^{0}$ as
 $$
 TODO
 $$
@@ -272,4 +287,3 @@ Architecture-conscious results continue to appear regularly in major database re
 ==到目前为止，较少重复的是专注于高度 CPU 高效执行的 MonetDB 结果==。得益于CPU设计和编译器优化器支持的趋势，通过重塑关系代数，将其映射到**紧密循环的数组处理**中，从而带来了迄今为止无与伦比的原始计算效率。
 
 从广义上讲，面对不断变化的**计算机体系结构**和**数据库应用环境**，围绕 MonetDB 的研究旨在重新定义数据库体系结构。这项研究仍在继续，例如，通过使用搭载查询执行的==**自动实时索引策略**（“数据库破解”）==使数据库系统进行自我调优，<u>或者</u>使用**模块化的运行时框架**来提高查询优化器的效率和健壮性，**该框架将查询优化从查询执行前的静态过程转换为查询优化和执行不断交织的动态机制**。
-

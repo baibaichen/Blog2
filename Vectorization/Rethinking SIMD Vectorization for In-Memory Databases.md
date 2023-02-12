@@ -166,7 +166,7 @@ GPU 还被用于数据库中的通用查询 [2] 和加速运算符，例如索�
 | <img src="./Rethinking/A3.png" alt="图 1" style="zoom: 67%;" /> |
 | :----------------------------------------------------------: |
 
-当我们在内存中物化数据而不打算很快重用它们时，我们使用<u>**流式存储**</u>（Stream Store）。主流 CPU 提供非<u>**临时存储**</u>（non-temporal store），可以绕过较高的缓存层，且增加了用于存储数据的内存带宽。Xeon Phi 不支持标量<u>流式存储</u>，但提供了一条指令，<u>在不首先加载向量的情况下，用向量中的数据覆盖缓存行</u>。这种技术要求向量长度等于高速缓存行，并且消除了对主流 CPU 中使用<u>**写组合缓冲区**</u>的需要。所有按顺序将输出写入内存的运算符都使用缓冲，在算法描述中省略了它。
+当我们在内存中物化数据而不打算很快重用它们时，我们使用<u>**流式存储**</u>（Stream Store）。主流 CPU 提供<u>**非临时存储**</u>（non-temporal store），可以绕过较高的缓存层，且增加了用于存储数据的内存带宽。Xeon Phi 不支持标量<u>流式存储</u>，但提供了一条指令，<u>在不首先加载向量的情况下，用向量中的数据覆盖缓存行</u>。这种技术要求向量长度等于高速缓存行，并且消除了对主流 CPU 中使用<u>**写组合缓冲区**</u>的需要。所有按顺序将输出写入内存的运算符都使用缓冲，在算法描述中省略了它。
 
 ##  5 HASH TABLES
 
@@ -181,7 +181,7 @@ GPU 还被用于数据库中的通用查询 [2] 和加速运算符，例如索�
 > The hash table variants we discuss are linear probing (Section 5.1), double hashing (Section 5.2), and cuckoo hashing (Section 5.3). For the hash function, we use multiplicative hashing, which requires two multiplications, or for 2*^(n)* buckets, one multiplication and a shift. Multiplication costs very few cycles in mainstream CPUs and is supported in SIMD.
 >
 
-哈希表在数据库系统中用于执行 Join 和聚合，因为它们允许常量时间的 *key* 查找。 在 Hash join 中，一个**关系**用于构建哈希表，另一个**关系**探测哈希表以找到匹配项。在分组聚合中，它们用于将元组映射到唯一的组 ID，或者用于插入和更新部分聚合。
+哈希表在数据库系统中用于执行 Join 和聚合，因为它们允许常量时间的 *key* 查找。在 Hash join 中，一个**关系**用于构建哈希表，另一个**关系**探测哈希表以找到匹配项。在分组聚合中，它们用于将元组映射到唯一的组 ID，或者用于插入和更新部分聚合。
 
 在哈希表中使用 SIMD 指令是一种构建**分桶哈希表**的方法。在每个桶中放置多个 *key*，使用 SIMD 将它们与探测 *key* 进行向量化比较，而不是与单个 *key* 进行比较。我们将单个输入（探测）*key* 与多个哈希表 *key* 比较的方法称为**水平向量化**。一些哈希表变体，例如 bucketized cuckoo hashing [30]，可以支持更高的负载因子。加载单个 32 位的**字**与加载整个向量一样快，因此，分桶探测的成本减少到和提取正确的有效负载一样，这需要 $log W$ 个步骤。
 
@@ -189,7 +189,7 @@ GPU 还被用于数据库中的通用查询 [2] 和加速运算符，例如索�
 
 本文，我们提出了一种哈希表向量化的通用形式，称为**垂直向量化**，可应用于哈希表的任何变体，而无需改变哈希表布局。**基本原则是为每个向量通道处理不同的输入 *key***。所有向量通道都处理来自输入的不同 *key*，并访问哈希表的不同位置。
 
-我们讨论的哈希表变体是线性探测（第 5.1 节）、双重哈希（第 5.2 节）和布谷鸟哈希（第 5.3 节）。 对于哈希函数，我们使用乘法哈希，这需要两次乘法，或者对于 2*^(n)* 桶，一次乘法和一次移位。乘法在主流 CPU 中花费很少的周期，并且在 SIMD 中得到支持。
+我们讨论的哈希表变体是线性探测（第 5.1 节）、双重哈希（第 5.2 节）和布谷鸟哈希（第 5.3 节）。对于哈希函数，我们使用乘法哈希，这需要两次乘法，或者对于 2*^(n)* 桶，一次乘法和一次移位。乘法在主流 CPU 中花费很少的周期，并且在 SIMD 中得到支持。
 
 ### 5.1 Linear Probing
 
@@ -198,7 +198,7 @@ GPU 还被用于数据库中的通用查询 [2] 和加速运算符，例如索�
 > > **Algorithm 4** Linear Probing Probe (Scalar)
 > > **Algorithm 5** Linear Probing Probe (Vector)
 >
-> The vectorized implementation of probing a hash table using a linear probing scheme is shown in Algorithm 5. Our vectorization principle is to process a different key per SIMD lane using gathers to access the hash table. Assuming *W* vector lanes, we process *W* different input keys on each loop. Instead of using a nested loop to find all matches for the *W* keys before loading the next *W* keys, we reuse vector lanes as soon as we know there are no more matches in the table, by selectively loading new keys from the input to replace finished keys. Thus, each key executes the same number of loops as in scalar code. Every time a match is found, we use selective stores to write to the output the vector lanes that have matches. In order to support each key having executed an arbitrary number of loops already, we keep a vector of offsets that maintain how far each key has searched in the table. When a key is overwritten, the offset is reset to zero.
+> The vectorized implementation of probing a hash table using a linear probing scheme is shown in Algorithm 5. Our vectorization principle is to process a different key per SIMD lane using gathers to access the hash table. Assuming *W* vector lanes, we process *W* different input keys on each loop. <u>Instead of using a nested loop to find all matches for the *W* keys before loading the next *W* keys, we reuse vector lanes as soon as we know there are no more matches in the table, by selectively loading new keys from the input to replace finished keys</u>. Thus, each key executes the same number of loops as in scalar code. Every time a match is found, we use selective stores to write to the output the vector lanes that have matches. In order to support each key having executed an arbitrary number of loops already, we keep a vector of offsets that maintain how far each key has searched in the table. When a key is overwritten, the offset is reset to zero.
 >
 >
 > A simpler approach is to process *W* keys at a time and use a nested loop to find all matches. However, the inner loop would be executed as many times as the maximum number of buckets accessed by any one of the *W* keys, underutilizing the SIMD lanes, because the average number of accessed buckets of *W* keys can be significantly smaller than the maximum. By reusing vector lanes dynamically, we are reading the probing input “out-of-order”. Thus, the probing algorithm is no longer *stable*, i.e., the order of the output does not always match the previous order of the probing input.
@@ -223,12 +223,12 @@ GPU 还被用于数据库中的通用查询 [2] 和加速运算符，例如索�
 
 ---
 
-线性探测是一种开放寻址方案，为了插入条目或终止搜索，线性遍历表直到找到一个空桶为止。 哈希表存储 *key* 和有效负载但不存储指针。 用于探测哈希表的标量代码如算法 4 所示。
+线性探测是一种开放寻址方案，为了插入条目或终止搜索，线性遍历表直到找到一个空桶为止。哈希表存储 *key* 和有效负载但不存储指针。用于探测哈希表的标量代码如算法 4 所示。
 
 > **Algorithm 4** Linear Probing Probe (Scalar)
 > **Algorithm 5** Linear Probing Probe (Vector)
 
-The vectorized implementation of probing a hash table using a linear probing scheme is shown in Algorithm 5. Our vectorization principle is to process a different key per SIMD lane using gathers to access the hash table. Assuming *W* vector lanes, we process *W* different input keys on each loop. Instead of using a nested loop to find all matches for the *W* keys before loading the next *W* keys, we reuse vector lanes as soon as we know there are no more matches in the table, by selectively loading new keys from the input to replace finished keys. Thus, each key executes the same number of loops as in scalar code. Every time a match is found, we use selective stores to write to the output the vector lanes that have matches. In order to support each key having executed an arbitrary number of loops already, we keep a vector of offsets that maintain how far each key has searched in the table. When a key is overwritten, the offset is reset to zero.
+算法 5 显示了使用线性探测方案探测哈希表的向量化实现。我们的向量化原理是使用 gather 来访问哈希表，每个 SIMD 通道处理不同的 *key*。 假设有 *W* 个向量通道，我们在每轮循环中处理 *W* 个不同的输入 *key*。<u>在加载下一轮 *W* 个 *key* 之前，我们没有使用嵌套循环来查找 *W* 个 *key* 的所有匹配项，而是在知道表中没有更多匹配项时，通过有选择地从输入中加载新 *key* 来替换已完成的 *key*，重用向量通道</u>。因此，每个 *key* 执行的循环次数与标量代码相同。每次找到匹配项时，都会使用**选择性存储**将具有匹配项的向量通道写入输出。为了支持那些已经执行了任意数量循环的 *key*，我们保留了一个偏移量向量，用于维护每个 *key* 在表中搜索的距离。当某个 *key* 被覆盖时，重置偏移量为 0。
 
 
 A simpler approach is to process *W* keys at a time and use a nested loop to find all matches. However, the inner loop would be executed as many times as the maximum number of buckets accessed by any one of the *W* keys, underutilizing the SIMD lanes, because the average number of accessed buckets of *W* keys can be significantly smaller than the maximum. By reusing vector lanes dynamically, we are reading the probing input “out-of-order”. Thus, the probing algorithm is no longer *stable*, i.e., the order of the output does not always match the previous order of the probing input.
@@ -238,7 +238,7 @@ Building a linear probing table is similar. We need to reach an empty bucket to 
 > **Algorithm 6** Linear Probing Build (Scalar)
 > **Algorithm 7** Linear Probing Build (Vector)
 
-The basics of vectorized probe and build of linear probing hash tables are the same. We process different input keys per SIMD lane and on top of gathers, we now also use scatters to store the keys non-contiguously. We access the input“out-oforder” to reuse lanes as soon as keys are inserted. To insert tuples, we first gather to check if the buckets are empty and then scatter the tuples only if the bucket is empty. The tuples that accessed a non-empty bucket increment an offset vector in order to search the next bucket in the next loop.
+The basics of vectorized probe and build of linear probing hash tables are the same. We process different input keys per SIMD lane and on top of gathers, we now also use scatters to store the keys non-contiguously. We access the input“out-of-order” to reuse lanes as soon as keys are inserted. To insert tuples, we first gather to check if the buckets are empty and then scatter the tuples only if the bucket is empty. The tuples that accessed a non-empty bucket increment an offset vector in order to search the next bucket in the next loop.
 
 
 In order to ensure that multiple tuples will not try to fill the same empty bucket, we add a conflict detection step before scattering the tuples. Two lanes are conflicting if they point to the same location. However, we do not need to identify both lanes but rather the leftmost one that would get its value overwritten by the rightmost during the scatter. To identify these lanes, we scatter arbitrary values using a vector with unique values per lane (e.g., [1,2,3,...,*W* ]). Then, we gather using the same index vector. If the scattered matches the gather value, the lane can scatter safely. The conflicting lanes search the next bucket in the next loop.
@@ -249,7 +249,7 @@ If the input keys are unique (e.g., join on a candidate key), we can scatter the
 
 The algorithmic descriptions show the keys and values of the hash table on separate arrays. In practice, the hash table uses an interleaved key-value layout. To halve the number of cache accesses, we pack multiple gathers into fewer wider gathers. For example, when using 32-bit keys and 32-bit payloads, the two consecutive 16-way 32-bit gathers of the above code can be replaced with two 8-way 64-bit gathers and a few shuffle operations to split keys and payloads. The same applies to scatters (see Appendix E for details).
 
-For both probing and building, selective loads and stores assume there are enough items in the input to saturate the vector register. To process the last items in the input, we switch to scalar code. The last items are bounded in number by $2 * W$ , which is negligible compared to the total number of input tuples. Thus, the overall throughput is unaffected.
+对于探测和构建，**选择性加载**和**选择性存储**假设输入中有足够的数据饱和向量寄存器。为了处理输入中的最后一项，我们切换到标量代码。最后一项的数量以 $2 \cdot W$ 为界，与输入元组的总数相比可以忽略不计。 因此，总吞吐量不受影响。
 
 ### 5.2 Double Hashing
 
@@ -277,9 +277,13 @@ Vectorized cuckoo table building, shown in Algorithm 10, reuses vector lanes to 
 
 ## 6 BLOOM FILTERS
 
-Bloom filters are an essential data structure for applying selective conditions across tables before joining them, a *semi join*. A tuple qualifies from the Bloom filter, if *k* specific bits are set in the filter, based on *k* hash functions. Aborting a tuple as soon as one bit-test fails is essential to achieve high performance, because most tuples fail after a few bit tests.
+> Bloom filters are an essential data structure for applying selective conditions across tables before joining them, a *semi join*. A tuple qualifies from the Bloom filter, if *k* specific bits are set in the filter, based on *k* hash functions. Aborting a tuple as soon as one bit-test fails is essential to achieve high performance, because most tuples fail after a few bit tests.
+>
+> Vectorized Bloom filter probing was recently shown to get a significant performance boost over scalar code on the latest mainstream CPUs, especially when the Bloom filter is cache resident [27]. The design and implementation follows the principle of processing different input keys per lane and is one of our influences for this paper. However, no fundamental vector opeations were explicitly defined. Here, we evaluate the vectorized Bloom filter design [27] on Xeon Phi.
 
-Vectorized Bloom filter probing was recently shown to get a significant performance boost over scalar code on the latest mainstream CPUs, especially when the Bloom filter is cache resident [27]. The design and implementation follows the principle of processing different input keys per lane and is one of our influences for this paper. However, no fundamental vector opeations were explicitly defined. Here, we evaluate the vectorized Bloom filter design [27] on Xeon Phi.
+Bloom 过滤器是一种基本的数据结构，用于在关联表之前，在表之间应用选择性条件，即**半连接**。如果 *k* 个哈希函数在过滤器中设置了 *k* 个特定位，则元组通过 Bloom 过滤器的测试。因为大多数元组都无法通过几个位测试，为了获得高性能，在一个位测试失败后，必须立即中止元组测试。
+
+最近的研究表明，在最新的主流 CPU 上，与标量代码相比，向量化 Bloom 过滤器探测可以获得显著的性能提升，特别是当布隆过滤器驻留在缓存时 [27]。本文的创新点之一是，**设计和实现遵循每个通道处理不同输入 *key* 的原则**。本文没有明确定义基本向量操作，而是评估 Xeon Phi 上向量化 Bloom 过滤器的设计 [27]。
 
 ## 7 PARTITIONING
 
@@ -289,82 +293,135 @@ Vectorized Bloom filter probing was recently shown to get a significant performa
 
 ### 7.1 Radix & Hash Histogram
 
-Prior to moving any data, in order to partition into contiguous segments, we use a histogram to set the boundaries. To compute the histogram, <u>==we increment a count based on the partition function of each key==</u>. By using multiplicative hashing, hash partitioning becomes equally fast to radix.
+> Prior to moving any data, in order to partition into contiguous segments, we use a histogram to set the boundaries. To compute the histogram, <u>==we increment a count based on the partition function of each key==</u>. By using multiplicative hashing, hash partitioning becomes equally fast to radix.
+>
+> > **Algorithm 11** Radix Partitioning Histogram
+>
+> Vectorized histogram generation, shown in Algorithm 11, uses gathers and scatters to increment counts. However, if multiple lanes scatter to the same histogram count, the count will still be incremented by 1 and all items (over)written to the same location. To avoid conflicts, we replicate the histogram to isolate each lane. Thus, lane *j* increments *H*′[*i · W* + *j*] instead of *H*[*i*]. In the end, the *W* histograms  are reduced into one. <u>==If the histograms do not fit in the fastest cache, we use 1-byte counts and flush on overflow==</u>.
+>
 
-> **Algorithm 11** Radix Partitioning Histogram
+在移动任何数据之前，为了拆分成连续的段，使用<u>==直方图==</u>来设置边界。为了计算直方图，<u>==为每个 *key* 的分区函数增加一个计数==</u>。使用乘法哈希，Hash 分区变得与基数分区一样快。
 
-Vectorized histogram generation, shown in Algorithm 11, uses gathers and scatters to increment counts. However, if multiple lanes scatter to the same histogram count, the count will still be incremented by 1 and all items (over)written to the same location. To avoid conflicts, we replicate the histogram to isolate each lane. Thus, lane *j* increments *H*′[*i · W* + *j*] instead of *H*[*i*]. In the end, the *W* histograms  are reduced into one. <u>==If the histograms do not fit in the fastest cache, we use 1-byte counts and flush on overflow==</u>.
-
-在移动任何数据之前，为了拆分成连续的段，使用<u>==直方图==</u>来设置边界。为了计算直方图，<u>==为每个 *key* 的分区函数增加一个计数==</u>。 使用乘法哈希，Hash 分区变得与基数分区一样快。
-
-如算法 11 中所示，向量化直方图生成使用 **gather** 和 **scatter** 来递增计数。但是，如果多个通道 **scatter** 到同一个直方图计数，则计数仍只递增 1，并且所有数据（覆盖）写入同一位置。为避免冲突，我们复制直方图以隔离每条通道。因此，通道 *j* **递增** *H*′[*i · W* + *j*] 而不是 *H*[*i*]。最后，*W* 个直方图被缩减为一个直方图。<u>==如果直方图放不进最快的缓存，使用 1 字节计数并在溢出时刷新==</u>。
+如算法 11 中所示，向量化直方图生成使用 **gather** 和 **scatter** 来递增计数。但是，如果多个通道 **scatter** 到同一个直方图计数，则计数仍只递增 1，并且所有数据（覆盖）写入同一位置。为避免冲突，我们复制直方图以隔离每条通道。因此，通道 *j* **递增** *H*′[*i · W* + *j*] 而不是 *H*[*i*]。最后，*W* 个直方图被缩减为一个直方图。<u>==如果直方图放不进最快的缓存，使用 1 字节计数，并在溢出时刷新==</u>。
 
 ### 7.2 Range Histogram
 
-Radix and hash partitioning functions are significantly faster than range partitioning functions. In range function, we execute a binary search over a sorted array of splitters. Although the array is cache resident, the number of accesses is logarithmic and all accesses are dependent on each other, thus the cache hit latency in the critical path is exposed [26]. Branch elimination only marginally improves performance. 
+> Radix and hash partitioning functions are significantly faster than range partitioning functions. In range function, we execute a binary search over a sorted array of **splitters**. Although the array is cache resident, the number of accesses is logarithmic and all accesses are dependent on each other, thus the cache hit latency in the critical path is exposed [26]. Branch elimination only marginally improves performance. 
+>
+> Binary search can be vectorized using gather instructions to load the splitters from the sorted array, as shown in Algorithm 12, by processing *W* keys in parallel. The search path is computed by blending low and high pointers. We can assume without loss of generality that $P = 2^n$, since we can always patch the splitter array with maximum values.
+>
+> > **Algorithm 12** Range Partitioning Function
+>
+> Recently, a range index was proposed where each node has multiple splitters that are compared against one input key using SIMD comparisons [26]. Each node is at least as wide as a vector and scalar code is used for index arithmetic and to access the nodes (without gathers), relying on the superscalar pipeline to hide the cost of scalar instructions. The SIMD index can be seen as horizontal vectorization for binary search and is evaluated on simple and complex cores.
 
-Binary search can be vectorized using gather instructions to load the splitters from the sorted array, as shown in Algorithm 12, by processing *W* keys in parallel. The search path is computed by blending low and high pointers. We can assume without loss of generality that *P* = 2*^(n)*, since we can always patch the splitter array with maximum values.
+基数和哈希分区函数明显快于范围分区函数。在范围函数中，我们对已排序的**拆分器**数组执行二分搜索。虽然数组有缓存，但访问次数是对数的，所有访问都相互依赖，因此暴露了关键路径中的**缓存命中延迟** [26]。分支消除只会略微提高性能。
 
-> **Algorithm 12** Range Partitioning Function
+如算法 12 所示，通过并行处理 *W* 个键，可以使用 **gather** 指令对二分搜索进行向量化，以从排序的数组中加载**拆分器**。<u>==通过混合低指针和高指针来计算搜索路径==</u>。我们可以假设 $P=2^n$，而不失一般性，因为我们总是可以用最大值修补**拆分器**数组。
 
-Recently, a range index was proposed where each node has multiple splitters that are compared against one input key using SIMD comparisons [26]. Each node is at least as wide as a vector and scalar code is used for index arithmetic and to access the nodes (without gathers), relying on the superscalar pipeline to hide the cost of scalar instructions. The SIMD index can be seen as horizontal vectorization for binary search and is evaluated on simple and complex cores.
+最近，提出了一种范围索引，其中每个节点都有多个**拆分器**，这些**拆分器**使用 SIMD 与一个输入键进行比较 [26] 。每个节点至少与向量一样宽，标量代码用于索引算法和访问节点（没有 **gather**），依靠超标量流水线来隐藏标量指令的成本。SIMD 索引可以看作是二分查找的水平向量化，可以在简单和复杂的核心上进行计算。
 
 ### 7.3 Shuffling
 
-The data shuffling phase of partitioning involves the actual movement of tuples. To generate the output partitions in contiguous space, we maintain an array of partition offsets, initialized by the prefix sum of the histogram. The offset array is updated for every tuple transferred to the output.
+> The data shuffling phase of partitioning involves the actual movement of tuples. To generate the output partitions in contiguous space, we maintain an array of partition offsets, initialized by the **prefix sum** of the histogram. The offset array is updated for every tuple transferred to the output.
+>
+> Vectorized shuffling uses gathers and scatters to increment the offset array and scatters the tuples to the output. However, if multiple vector lanes have tuples that belong to the same partition, the offset would be incremented by one and these tuples would be (over)written to the same location.
+>
+> We compute a vector of conflict offsets, by using gathers and scatters to detect conflicts iteratively, as shown in Algorithm 13. First, we scatter unique values per lane to an array with *P* entries. Then, we gather using the same indexes and compare against the scattered vector to find conflicts. We increment the conflicting lanes and repeat the process for these lanes only until no lanes conflict. Even if *W* iterations are executed, the total number of accesses to distinct memory locations is always *W* , i.e., if *a~i~* is the number of accesses to distinct memory locations in iteration *i*, then $\sum a_i = W$.
+>
+> > **Algorithm 13** Conflict Serialization Function $(\vec{h}, A)$
+>
+> Since the rightmost lane is written during conflicts, tuples of the same partition in the same vector are written in reverse order. Also, per group of *k* conflicting lanes, the rightmost lane will incorrectly increment the offset by 1, not by *k*. By reversing the index vector during serialization, we update the offsets correctly and also maintain the input order. *Stable* partitioning is essential for algorithms such as LSB radixsort. Vectorized shuffling is shown in Algorithm 14.
+>
+> > **Algorithm 14** Radix Partitioning Shuffling
+>
 
-Vectorized shuffling uses gathers and scatters to increment the offset array and scatters the tuples to the output. However, if multiple vector lanes have tuples that belong to the same partition, the offset would be incremented by one and these tuples would be (over)written to the same location.
+分区数据的 **shuffle** 阶段涉及元组的实际移动。为了在连续空间中生成输出分区，我们维护一个分区偏移数组，由直方图的**前缀和**初始化。输出每个元组时都会更新这个偏移数组。
 
-We compute a vector of conflict offsets, by using gathers and scatters to detect conflicts iteratively, as shown in Algorithm 13. First, we scatter unique values per lane to an array with *P* entries. Then, we gather using the same indexes and compare against the scattered vector to find conflicts. We increment the conflicting lanes and repeat the process for these lanes only until no lanes conflict. Even if *W* iterations are executed, the total number of accesses to distinct memory locations is always *W* , i.e., if *ai* is the number of accesses to distinct memory locations in iteration *i*, then *ai* = *W* .
+向量化 **shuffle** 使用 **gather** 和 **scatter** 递增偏移数组，并将元组 **scatter** 到输出。但是，如果多个向量通道具有属于同一个分区的元组，则偏移量将递增 1，并且这些元组将被（覆盖）写入同一位置。
 
-> **Algorithm 13** Conflict Serialization Function (*→h*, *A*)
+如算法 13 所示，通过使用 gather 和 scatter 迭代地检测冲突，获得**冲突偏移量**向量。首先，我们将每个通道的唯一值分散到具有 *P* 个元素的数组中。然后，我们使用相同的索引进行收集，并与分散的向量进行比较，以找到冲突。我们增加冲突通道，并仅对这些通道重复该过程，直到没有通道冲突为止。即使执行了 *W* 次迭代，对不同内存位置的访问总数始终为 *W* ，即，如果 *a~i~* 是迭代 *i* 中对不同内存位置的访问次数，则 $ \sum a_i = W$。
 
-Since the rightmost lane is written during conflicts, tuples of the same partition in the same vector are written in reverse order. Also, per group of *k* conflicting lanes, the rightmost lane will incorrectly increment the offset by 1, not by *k*. By reversing the index vector during serialization, we update the offsets correctly and also maintain the input order. *Stable* partitioning is essential for algorithms such as LSB radixsort. Vectorized shuffling is shown in Algorithm 14.
-
-> **Algorithm 14** Radix Partitioning Shuffling
+由于最右边的通道是在冲突期间写入的，所以同一向量中相同分区的元组是以相反的顺序写入的。此外，每组 *k* 个冲突通道，最右边的通道将错误地将偏移量增加 1，而不是 *k*。通过在序列化期间反转索引向量，我们可以正确更新偏移量并保持输入顺序。稳定分区对于 LSB 基数排序等算法至关重要。向量化 **shuffle** 如算法 14 所示。
 
 ### 7.4 Buffered Shuffling
 
-Shuffling, as described so far, is fast if the input is cache resident, but falls into certain performance pitfalls when larger than the cache. First, it suffers from TLB thrashing when the partitioning fanout exceeds the TLB capacity [20]. Second, it generates many cache conflicts [31] and in the worst case, may be bound by the size of the cache associativity set. Third, using normal stores, we trigger cache loads to execute the stores and reduce the bandwidth due to loading cache lines that will only be overwritten [38].
+> Shuffling, as described so far, is fast if the input is cache resident, but falls into certain performance pitfalls when larger than the cache. First, it suffers from TLB thrashing when the **partitioning fanout** exceeds the TLB capacity [20]. Second, it generates many cache conflicts [31] and in the worst case, may be bound by the size of the **cache associativity set.** ==Third, using normal stores, we trigger <u>cache loads</u> to execute the stores== and reduce the bandwidth due to loading cache lines that will only be overwritten [38].
+>
+> The vectorized implementation of simple non-buffered shuffling improves performance, but suffers from the same performance pitfalls as the scalar version. In general, vectorization improves performance compared to its scalar counterpart, but does not overcome algorithmic inefficiencies.
+>
+> To solve these problems, recent work proposed keeping the data in buffers and flushing them in groups [31]. If the buffers are small and packed together, they will not cause TLB or cache misses. Thus, with *W* buffer slots per partition, we reduce cache and TLB misses to 1*/W* . If the buffers are flushed with non-temporal stores, we facilitate hardware write combining and avoid polluting the cache with output data [38]. The fanout is bounded by the cache capacity to keep the buffer cache resident. The scalar code for buffered shuffling is thoroughly described in previous work [4, 26].
+>
+> The improvement of vectorized buffered shuffling shown in Algorithm 15 over vectorized unbuffered shuffling shown in Algorithm 14, is scattering the tuples to the cache resident buffer rather than directly to the output. For each vector of tuples, once the tuples are scattered, we iterate over the partitions that the current *W* input tuples belong to, and flush to the output when all available buffer slots are filled.
+>
+> > **Algorithm 15** Radix Partitioning Buffered Shuffling
+>
+> Since multiple tuples can be written to the buffer for the same partition on each loop, we identify which vector lanes will not cause overflow and scatter them selectively before flushing the buffers that are full. After the buffers are flushed, we scatter the remaining tuples to the buffer.
+>
+> We identify which vector lanes point to partitions that have filled their buffers using the output index. Given that tuples in multiple vector lanes can belong to the same partition, we identify the lanes that wrote to the last partition slot and ensure that we will not flush the same data twice in the same loop. 
+>
+> Flushing occurs “horizontally” one partition at a time, after selectively storing the partitions in the stack. Flushing data from the buffers to the output is done by streaming stores to avoid polluting the cache with output data [38]. Note that we are streaming to multiple outputs, thus, single output buffering (Section 4) does not apply.
+>
+> Hash partitioning is used to split the data into groups with non-overlapping keys and **has no need to be stable**. Instead of <u>==conflict serialization==</u>, we detect and process conflicting lanes during the next loop. Performance is slightly increased because very few conflicts normally occur per loop if *P > W* . 
+>
+> As in hash tables, if the tuples are keys and rids stored on separate arrays, **we do fewer and wider scatters by interleaving the two columns before storing to the buffers**.
+>
+> To partition multiple columns of payloads, we can either shuffle all the columns together as a unified tuple or shuffle one column at a time. Shuffling unified tuples should optimally compile specific code for each query at run time. Otherwise, we can process one column at a time using precompiled type-specialized code. In the latter approach, which we use here, during histogram generation, we store **partition destinations** alongside the **conflict serialization offsets** in a temporary array. Thus, we avoid reloading the wider keys as well as redoing conflict serialization for each column. The temporary array must be log *P* + log *W* bits wide per entry.
 
-The vectorized implementation of simple non-buffered shuffling improves performance, but suffers from the same performance pitfalls as the scalar version. In general, vectorization improves performance compared to its scalar counterpart, but does not overcome algorithmic inefficiencies.
+如前所述，如果输入可以驻留在缓存中，则 **shuffle** 速度很快，但当输入大于缓存时，就会陷入某些性能缺陷。首先，当**分区扇出**超过 TLB 容量时，会遭受 TLB 抖动 [20]。其次，它会产生许多缓存冲突 [31]，在最坏的情况下，可能会受到缓存关联集大小的限制。第三，我们触发缓存加载以执行存储（即使用普通存储），为了减少带宽，只加载会被覆盖的缓存行 [38]。
 
-To solve these problems, recent work proposed keeping the data in buffers and flushing them in groups [31]. If the buffers are small and packed together, they will not cause TLB or cache misses. Thus, with *W* buffer slots per partition, we reduce cache and TLB misses to 1*/W* . If the buffers are flushed with non-temporal stores, we facilitate hardware write combining and avoid polluting the cache with output data [38]. The fanout is bounded by the cache capacity to keep the buffer cache resident. The scalar code for buffered shuffling is thoroughly described in previous work [4, 26].
+简单无缓冲 shuffle 的向量化实现提高了性能，但与标量版本存在相同的性能缺陷。一般来说，与标量相比，向量化提高了性能，但不能克服算法的低效。
 
-The improvement of vectorized buffered shuffling shown in Algorithm 15 over vectorized unbuffered shuffling shown in Algorithm 14, is scattering the tuples to the cache resident buffer rather than directly to the output. For each vector of tuples, once the tuples are scattered, we iterate over the partitions that the current *W* input tuples belong to, and flush to the output when all available buffer slots are filled.
+为了解决这些问题，最近的工作提出将数据保存在缓冲区中，并分组刷新它们 [31]。如果缓冲区很小并且打包在一起，则不会导致 TLB 或缓存未命中。因此，每个分区有 *W* 个缓冲区插槽，我们将缓存和 TLB 未命中率减少到 1*/W* 。如果使用<u>**非临时存储**</u>（non-temporal store）刷新缓冲区，我们将促进硬件写入组合，避免输出数据污染缓存 [38]。为了能驻留在缓冲区中，扇出受缓存容量限制。**缓冲 shuffle** 的标量代码在之前的工作 [4、26] 中有详细描述。
+
+算法 15 中所示的向量化缓冲 shuffle 算法相对于算法 14 中所示的向量化无缓冲 shuffle 的改进是：将元组 scatter 到缓冲区而不是直接输出。对于元组的每个向量，一旦元组分散，我们将迭代当前 *W* 个输入元组所属的分区，并在所有可用的缓冲区槽都已填满时刷新到输出。
 
 > **Algorithm 15** Radix Partitioning Buffered Shuffling
 
-Since multiple tuples can be written to the buffer for the same partition on each loop, we identify which vector lanes will not cause overflow and scatter them selectively before flushing the buffers that are full. After the buffers are flushed, we scatter the remaining tuples to the buffer.
+由于在每个循环中可以将多个元组写入同一分区的缓冲区，因此我们确定哪些向量通道不会导致溢出，并在刷新已满的缓冲区之前有选择地分散它们。刷新缓冲区后，我们将剩余的元组分散到缓冲区中。
 
-We identify which vector lanes point to partitions that have filled their buffers using the output index. Given that tuples in multiple vector lanes can belong to the same partition, we identify the lanes that wrote to the last partition slot and ensure that we will not flush the same data twice in the same loop. 
+我们使用输出索引确定哪些向量通道指向的分区已填充其缓冲区。考虑到多个向量通道中的元组可以属于同一个分区，我们确定写入最后一个<u>==分区**槽**==</u>的通道，并确保我们不会在同一个循环中两次刷新相同的数据。
 
-Flushing occurs “horizontally” one partition at a time, after selectively storing the partitions in the stack. Flushing data from the buffers to the output is done by streaming stores to avoid polluting the cache with output data [38]. Note that we are streaming to multiple outputs, thus, single output buffering (Section 4) does not apply.
+在有选择地将分区存储在堆栈中之后，每次**水平**刷新一个分区。通过<u>**流式存储**</u>（Stream Store）将数据从缓冲区刷新到输出，以避免输出数据污染缓存 [38]。请注意，我们是在流式传输到多个输出，因此，单输出缓冲区（第 4 节）不适用。
 
-Hash partitioning is used to split the data into groups with non-overlapping keys and has no need to be stable. Instead of conflict serialization, we detect and process conflicting lanes during the next loop. Performance is slightly increased because very few conflicts normally occur per loop if *P \> W* . 
+哈希分区用于将数据分成多个组，每个组的 *key* 不重叠，且不需要数据的稳定性。我们在下一个循环中检测并处理冲突通道，而不是<u>==冲突序列化==</u>。性能略有提高，因为如果 *P > W* ，每个循环通常会发生很少的冲突。
 
-As in hash tables, if the tuples are keys and rids stored on separate arrays, we do fewer and wider scatters by interleaving the two columns before storing to the buffers.
+与在哈希表中一样，如果元组是存储在不同数组中的 *key* 和 *rid*，那么在存储到缓冲区之前，**交错两列来进行更少和更广泛的分散**。
 
-To partition multiple columns of payloads, we can either shuffle all the columns together as a unified tuple or shuffle one column at a time. Shuffling unified tuples should optimally compile specific code for each query at run time. Otherwise, we can process one column at a time using precompiled type-specialized code. In the latter approach, which we use here, during histogram generation, we store partition destinations alongside the conflict serialization offsets in a temporary array. Thus, we avoid reloading the wider keys as well as redoing conflict serialization for each column. The temporary array must be log *P* + log *W* bits wide per entry.
+要对多个列的有效载荷进行分区，我们可以将所有列作为一个统一的元组来 shuffle，也可以一次 shuffle 一列。Shuffle 统一元组应该在运行时为每个查询编译特定的代码。否则，我们可以使用预编译的类型专用代码一次处理一列。 我们使用后一种方法，在直方图生成期间，将**分区目的地**和**冲突序列化偏移量**存储在一个临时数组中。因此，我们可以避免重新加载较宽的 *key*，以及为每列重做冲突序列化。临时数组的每条记录必须为 log *P* + log *W* 位宽。
+
+
 
 ## 8 SORTING
 
-Sorting is used in databases as a subproblem for join and aggregation. Sorting is also used for declustering, index building, compression, and duplicate elimination. Recent work showed that large-scale sorting is synonymous to partitioning. Radixsort and comparison sorting based on range partitioning have comparable performance, by maximizing the fanout to minimize the number of partition passes [26]. 
+> Sorting is used in databases as a subproblem for join and aggregation. Sorting is also used for <u>==declustering==</u>, index building, compression, and duplicate elimination. Recent work showed that large-scale sorting is synonymous to partitioning. **Radixsort and comparison sorting based on range partitioning have comparable performance, by maximizing the fanout to minimize the number of partition passes [26].** 
+>
+> Here, we implement least-significant-bit (LSB) radixsort, which is the fastest method for 32-bit keys [26]. We do not evaluate larger keys as Xeon Phi only supports 32-bit integer arithmetic in vector code. Parallel LSB radixsort splits the input equally among threads and uses the prefix sum of the histograms from all threads to interleave the partition outputs. Histogram generation and shuffling operate shared nothing maximizing thread parallelism. By using vectorized buffered partitioning, we also maximize data parallelism.
 
-Here, we implement least-significant-bit (LSB) radixsort, which is the fastest method for 32-bit keys [26]. We do not evaluate larger keys as Xeon Phi only supports 32-bit integer arithmetic in vector code. Parallel LSB radixsort splits the input equally among threads and uses the prefix sum of the histograms from all threads to interleave the partition outputs. Histogram generation and shuffling operate sharednothing maximizing thread parallelism. By using vectorized buffered partitioning, we also maximize data parallelism.
+在数据库中，排序是 Join 和聚合的子问题。排序还用于<u>==去聚类==</u>、索引构建、压缩和重复消除。最近的工作表明，大规模排序等同于分区。**通过最大化扇出来最小化分区的轮数，基数排序和基于范围分区的比较排序具有相当的性能 [26]**。
+
+这里，我们实现了最低有效位 (LSB) 基数排序，这是 32 位 *key* 最快的方法 [26]。我们不评估更大的 *key*，因为 Xeon Phi 仅支持在向量代码中进行 32 位整数运算。并行 LSB 基数排序在线程之间平均分配输入，并使用来自所有线程**直方图的前缀和**来交错分区输出。直方图生成和 shuffle 操作不共享任何数据，最大化线程并行性。通过使用向量化缓冲分区，我们还可以最大限度地提高数据并行性。
 
 ## 9 HASH JOIN
 
-Joins are one of the most frequent operators in analytical queries that can be expensive enough to dominate query execution time. Recent work has focused on comparing mainmemory equi-joins, namely sort-merge join and hash join. The former is dominated by sorting [4, 14]. In the baseline hash join, the inner relation is built into a hash table and the outer relation probes the hash table to find matches.
+> Joins are one of the most frequent operators in analytical queries that can be expensive enough to dominate query execution time. Recent work has focused on comparing main memory equi-joins, namely sort-merge join and hash join. The former is dominated by sorting [4, 14]. In the baseline hash join, the inner relation is built into a hash table and the outer relation probes the hash table to find matches.
+>
+> Partitioning can be applied to hash join forming multiple variants with different strengths and weaknesses. Here, we design three hash join variants using different degrees of partitioning that also allow for different degrees of vectorization. Because the inputs are much larger than the cache, we use buffered shuffling during partitioning (Section 7.4).
+>
+> In the first variant termed *no partition*, we do not use partitioning. The building procedure builds a shared hash table across multiple threads using atomic operations. The threads are synchronized using a barrier. The read-only probing procedure then proceeds without atomics. On the other hand, building the hash table cannot be fully vectorized because atomic operations are not supported in SIMD. 
+>
+> In the second variant termed *min partition*, we use partitioning to eliminate the use of atomics by not building a shared hash table. We partition the inner (building) relation into *T* parts, *T* being the number of threads, and build *T* hash tables without sharing across threads. During probing, we pick both which hash table and which bucket to search. All parts of the algorithm can be fully vectorized, after we slightly modify the code to probe across the *T* hash tables. 
+>
+> In the third variant termed *max partition*, we partition both relations until the inner relation parts are small enough to fit in a cache-resident hash table. In our implementation, the original partitioning phase splits both relations across *T* threads and each part is further partitioned by a single thread in one or more passes. The resulting partitions are used to build and probe hash tables in the cache, typically the L1. All parts of the algorithm can be fully vectorized.
 
+Join 是分析查询中最常见的运算符之一，其开销可能足以支配整个查询执行时间。最近的工作重点是内存中的等值 join，即，sort-merge join和 hash join。前者的开销以排序为主 [4, 14]。在 hash join 的基础实现中，内部关系用于构建哈希表，外部关系用于探测哈希表以找到匹配项。
 
-Partitioning can be applied to hash join forming multiple variants with different strengths and weaknesses. Here, we design three hash join variants using different degrees of partitioning that also allow for different degrees of vectorization. Because the inputs are much larger than the cache, we use buffered shuffling during partitioning (Section 7.4).
+分区可以应用于 hash join，形成具有不同优点和缺点的多个变体。这里，我们设计了三个 hash join 的变体，使用不同程度的分区，也允许不同程度的向量化。因为输入比缓存大得多，所以我们在分区期间使用缓存 shuffle（第 7.4 节）。
 
-In the first variant termed *no partition*, we do not use partitioning. The building procedure builds a shared hash table across multiple threads using atomic operations. The threads are synchronized using a barrier. The read-only probing procedure then proceeds without atomics. On the other hand, building the hash table cannot be fully vectorized because atomic operations are not supported in SIMD. 
+第一个称为**无分区**变体，不使用分区。 构建过程使用原子操作跨多个线程构建共享哈希表。线程使用屏障（barrier）进行同步。 只读探测过程接下来不需要原子操作。另一方面，由于 SIMD 不支持原子操作，构建哈希表不能完全向量化。
 
-In the second variant termed *min partition*, we use partitioning to eliminate the use of atomics by not building a shared hash table. We partition the inner (building) relation into *T* parts, *T* being the number of threads, and build *T* hash tables without sharing across threads. During probing, we pick both which hash table and which bucket to search. All parts of the algorithm can be fully vectorized, after we slightly modify the code to probe across the *T* hash tables. 
+第二种称为**最小分区**变体，因为使用分区不需要构建共享的哈希表，所以消除了原子指令（同步）。我们将内部（构建）关系划分为 *T* 部分，*T* 是线程数，构建 *T* 个不跨线程共享的哈希表。在探测期间，我们选择要搜索的哈希表和桶。在我们稍微修改代码以遍历 *T* 个哈希表后，算法的所有部分都可以完全向量化。
 
-In the third variant termed *max partition*, we partition both relations until the inner relation parts are small enough to fit in a cache-resident hash table. In our implementation, the original partitioning phase splits both relations across *T* threads and each part is further partitioned by a single thread in one or more passes. The resulting partitions are used to build and probe hash tables in the cache, typically the L1. All parts of the algorithm can be fully vectorized.
+第三种称为**最大分区**变体，我们对两个关系进行分区，直到**内部关系**部分足够小，使得哈希表可以放进缓存中。在我们的实现中，原始分区阶段在 *T* 个线程中拆分两个关系，每个部分在单个线程进一步进行一轮或多轮分区。按分区构建和探测（缓存中的）哈希表，通常是 L1。算法的所有部分都可以完全向量化。
 
 ## 10 EXPERIMENTAL EVALUATION
 
