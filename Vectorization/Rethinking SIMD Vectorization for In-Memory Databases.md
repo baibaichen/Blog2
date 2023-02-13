@@ -223,7 +223,7 @@ GPU 还被用于数据库中的通用查询 [2] 和加速运算符，例如索�
 
 线性探测是一种开放寻址方案，为了插入条目或终止搜索，线性遍历表直到找到一个空桶为止。哈希表存储 *key* 和有效负载但不存储指针。用于探测哈希表的标量代码如算法 4 所示。
 
-| ![Algorithm 4 Linear Probing Probe (Scalar)](./Rethinking/A4.png)     | ![Algorithm 5 Linear Probing Probe (Vector)](./Rethinking/A5.png)     |
+| ![Algorithm 4 Linear Probing Probe (Scalar)](./Rethinking/A4.png)     | ![Algorithm 5 Linear Probing Probe (Vector)](./Rethinking/A5_1.png)     |
 | ---- | ---- |
 
 算法 5 显示了使用线性探测方案**探测**哈希表的向量化实现。我们的向量化原理是使用 gather 来访问哈希表，每个 SIMD 通道处理不同的 *key*。假设有 *W* 个向量通道，我们在每轮循环中处理 *W* 个不同的输入 *key*。<u>在加载下一轮 *W* 个 *key* 之前，我们没有使用嵌套循环来查找 *W* 个 *key* 的所有匹配项，而是在知道表中没有更多匹配项时，通过有选择地从输入中加载新 *key* 来替换已完成的 *key*，重用向量通道</u>。因此，每个 *key* 执行的循环次数与标量代码相同。每次找到匹配项时，都会使用**选择性存储**将具有匹配项的向量通道写入输出。为了支持那些已经执行了任意数量循环的 *key*，我们保留了一个偏移量向量，用于维护每个 *key* 在表中搜索的距离。当某个 *key* 被覆盖时，重置偏移量为 0。
