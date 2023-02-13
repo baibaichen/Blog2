@@ -238,7 +238,7 @@ $$
 $$
 With these, we can calculate the number of cache misses that occur when executing patterns $\mathcal{P}_1,\dots \mathcal{P}_p\in \mathbb{P}\ (p>1)$ sequentially, given an initial cache state $\mathbf{S}^{0}$ , as
 $$
-TODO
+\stackrel{r}{\mathrm{M}}_{i}\left(\mathrm{~S}_{i}^{0}, \oplus\left(\mathcal{P}_{1}, \ldots, \mathcal{P}_{p}\right)=\right.\sum_{q=1}^{p} \stackrel{\mathbf{r}}{\mathbf{M}}_{i} \left(\mathrm{S}_{i}^{q-1}, \mathcal{P}_{q}\right)
 $$
 
 ### 5.2.2. Concurrent Execution
@@ -248,7 +248,7 @@ We use $\mathbf{\vec{M}}_{i/v}$ to denote the number of misses with only a fract
 
 With these tools at hand, we calculate the cache misses for concurrent execution of patterns $\mathcal{P}_1,\dots \mathcal{P}_p\in \mathbb{P}\ (p>1)$ given an initial cache state $\mathbf{S}^{0}$ as
 $$
-TODO
+\stackrel{r}{\mathrm{M}}_{i}\left(\mathrm{~S}_{i}^{0}, \mathrm{e}\left(\mathcal{P}_{1}, \ldots, \mathcal{P}_{p}\right)\right)=\sum_{q=1}^{p} \stackrel{r}{\mathbf{M}}_{i / v_{q}}\left(\mathbf{S}_{i}^{0}, \mathcal{P}_{q}\right) ^{\mathbf{r}}
 $$
 
 For our radix-partitioned hash-join algorithm, Figures 4d and 8 compare the cost predicted by our cost model to the measured execution times on an Athlon PC. An exhaustive experimental validation of our models is presented in Manegold.^11,12^
