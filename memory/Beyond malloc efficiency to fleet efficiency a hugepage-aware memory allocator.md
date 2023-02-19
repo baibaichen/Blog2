@@ -35,19 +35,20 @@ Our contributions are as follows:
 > A user-space allocator that is aware of the behavior produced by these policies can cooperate with their outcomes by densely aligning the packing of allocations with hugepage boundaries, favouring the use of allocated hugepages, and (ideally) returning unused memory at the same alignment^2^. A *hugepage-aware allocator* helps with managing memory contiguity at the user level. The goal is to maximally pack allocations onto nearly-full hugepages, and conversely, to minimize the space used on empty (or emptier) hugepages, so that they can be returned to the OS as complete hugepages. This efficiently uses memory and interacts well with the kernel’s transparent hugepage support. Additionally, more consistently allocating and releasing hugepages forms a positive feedback loop: reducing fragmentation at the kernel level and improving the likelihood that future allocations will be backed by hugepages.
 >
 > >  2. This is important as the memory backing a hugepage must be physically contiguous. By returning complete hugepages we can actually assist the operating system in managing fragmentation.
->
 
-虚拟内存需要通过称为转换后备缓冲区 (TLB) [[7](#_bookmark43)] 的缓存将用户空间地址转换为**物理**地址。 TLB 的容量有限，对于许多应用程序，使用默认页面大小时，整个 TLB 仅能覆盖总内存的一小部分。 现代处理器通过在其 TLB 中支持 **hugepages** 来增加这种覆盖范围。 一个完整对齐的大页（x86 上通常 2MiB）只占用一条 TLB 条目。 **Hugepages** 通过增加 TLB 的有效容量和减少 TLB 未命中来减少停顿 [[5](#_bookmark41), [26](#_bookmark62)]。
+虚拟内存需要通过称为转换后备缓冲区 (TLB) [[7](#_bookmark43)] 的缓存将用户空间地址转换为**物理**地址。TLB 的容量有限，对于许多应用程序，使用默认页面大小时，整个 TLB 仅能覆盖总内存的一小部分。现代处理器通过在其 TLB 中支持 **hugepages** 来增加这种覆盖范围。一个完整对齐的大页（x86 上通常 2MiB）只占用一条 TLB 条目。**Hugepages** 通过增加 TLB 的有效容量和减少 TLB 未命中来减少停顿 [[5](#_bookmark41), [26](#_bookmark62)]。
 
-传统的分配器以页面大小的块来管理内存。 Transparent Huge Pages (THP) [[4](#_bookmark40)] 提供了一个机会，内核可以利用页表中的大页，**机会性地**覆盖连续的页。 从表面上看，内存分配器只需要分配与大页对齐，且大小等于大页的内存块，即可利用此支持。
+传统的分配器以页面大小的块来管理内存。Transparent Huge Pages (THP) [[4](#_bookmark40)] 提供了一个机会，内核可以利用页表中的大页，**机会性地**覆盖连续的页。从表面上看，内存分配器只需要分配与大页对齐，且大小等于大页的内存块，即可利用此支持。
 
-将内存**释放**回操作系统（仓库规模下，我们有长期运行的工作负载和动态工作周期，因此释放内存是必需的）的内存分配器面临着更加艰巨的挑战。 返回非大页面的对齐内存区域，要求内核使用较小的页面来表示剩余的内容，这破坏了内核提供大页的能力，并为剩余使用的页面强加了性能成本。 或者，分配器可能会等待整个大页面空闲，然后再将其返回给操作系统。 这保留了大页面的覆盖率，但相对于实际使用量可能会显着放大，从而使内存闲置。 DRAM 是部署 WSC 的一项重要成本 [[27](#_bookmark63)]。在这个过程中，分配器对外部碎片的管理是很重要的，这些未使用的空间块太小，无法服务于分配请求。例如，考虑 [图 1](#_bookmark3) 中的分配。 在这一系列分配之后，有 2 个可用空间单元。 选择要么使用小页面，这会导致碎片较少但 TLB 条目的使用效率较低，要么使用大页面，TLB 效率高但碎片较多。
+将内存**释放**回操作系统（仓库规模下，我们有长期运行的工作负载和动态工作周期，因此释放内存是必需的）的内存分配器面临着更加艰巨的挑战。返回非大页面的对齐内存区域，要求内核使用较小的页面来表示剩余的内容，这破坏了内核提供大页的能力，并为剩余使用的页面强加了性能成本。或者，分配器可能会等待整个大页面空闲，然后再将其返回给操作系统。这保留了大页面的覆盖率，但相对于实际使用量可能会显着放大，从而使内存闲置。DRAM 是部署 WSC 的一项重要成本 [[27](#_bookmark63)]。在这个过程中，分配器对外部碎片的管理是很重要的，这些未使用的空间块太小，无法服务于分配请求。例如，考虑 [图 1](#_bookmark3) 中的分配。在这一系列分配之后，有 2 个可用空间单元。选择要么使用小页面，这会导致碎片较少但 TLB 条目的使用效率较低，要么使用大页面，TLB 效率高但碎片较多。
 
-**了解这些策略产生行为**的用户空间分配器，通过将内存打包在一起分配，以便与大页面边界紧密对齐，有利于使用已分配的大页面，（理想情况下）能以相同的对齐方式返回未使用的内存来配合它们的结果^2^。 **Hugepage** 感知的分配器有助于在用户级别管理内存连续性。 目标是最大限度地在几乎满的大页面上分配打包的内存，相反，在空的（或更空的）大页面上最小化使用的空间，以便它们可以作为完整的大页面返回给操作系统。 这有效地使用了内存，并与内核的透明大页面支持很好地交互。 此外，更一致地分配和释放大页面形成了一个正反馈循环：减少内核级别的碎片，提高了未来分配大页的可能性。
+| Figure 1: Allocation and deallocation patterns leading to fragmentation |
+| :----------------------------------------------------------: |
+|       ![](tcmalloc/F1.png)        |
 
-> 2. 这很重要，因为支持大页面的内存必须在物理上是连续的。 通过返回完整的大页面，我们实际上可以帮助操作系统管理碎片。
+**了解这些策略产生行为**的用户空间分配器，通过将内存打包在一起分配，以便与大页面边界紧密对齐，有利于使用已分配的大页面，（理想情况下）能以相同的对齐方式返回未使用的内存来配合它们的结果^2^。**Hugepage** 感知的分配器有助于在用户级别管理内存连续性。目标是最大限度地在几乎满的大页面上分配打包的内存，相反，在空的（或更空的）大页面上最小化使用的空间，以便它们可以作为完整的大页面返回给操作系统。这有效地使用了内存，并与内核的透明大页面支持很好地交互。此外，更一致地分配和释放大页面形成了一个正反馈循环：减少内核级别的碎片，提高了未来分配大页的可能性。
 
-
+> 2. 这很重要，因为支持大页面的内存必须在物理上是连续的。通过返回完整的大页面，我们实际上可以帮助操作系统管理碎片。
 
 ## 3 Overview of TCMALLOC
 
@@ -89,38 +90,42 @@ The design of “stacked” caches make the system usefully modular, and there a
 TCMALLOC’s pageheap has a simple interface for managing memory.
 
 -   `New(N)` allocates a span of *N* pages
--   Delete(S) returns a New’d span (S) to the allocator.
--   `Release(N)` gives \>= *N* unused pages cached by the page heap back to the OS
+-   `Delete(S)` returns a New’d span (S) to the allocator.
+-   `Release(N)` gives >= *N* unused pages cached by the page heap back to the OS
 
+**TCMALLOC** 是一种用于大规模应用程序的内存分配器，常见于 WSC 设置中。它显示出强大的性能 [[21](#_bookmark57)]。我们的设计直接建立在 TCMALLOC 的结构之上。
 
+| Figure 2: Organization of memory in TCMALLOC. Systemmapped memory is broken into (multi-)page *spans*, which are sub-divided into objects of an assigned, fixed *sizeclass*, here 25 KiB. |
+| :----------------------------------------------------------: |
+|       ![](tcmalloc/F2.png)        |
 
-**TCMALLOC** 是一种用于大规模应用程序的内存分配器，常见于 WSC 设置中。 它显示出强大的性能 [[21](#_bookmark57)]。 我们的设计直接建立在 TCMALLOC 的结构之上。
+[图 2](#_bookmark6) 展示了内存在 TCMALLOC 中的组织结构。对象按大小分开。首先，TCMALLOC 将内存划分为 **spans**，与页面大小对齐^3^。
 
-[图 2](#_bookmark6) 展示了内存在 TCMALLOC 中的组织结构。 对象按大小分开。 首先，TCMALLOC 将内存划分为 **spans**，与页面大小对齐^3^。
+> 3. 令人困惑的是，TCMALLOC 的**页面大小**参数不一定是系统页面大小。默认配置是使用 8 KiB TCMALLOC**页面**，这是 x86 上的两个（小）虚拟内存页面。
 
-> 3. 令人困惑的是，TCMALLOC 的**页面大小**参数不一定是系统页面大小。 默认配置是使用 8 KiB TCMALLOC**页面**，这是 x86 上的两个（小）虚拟内存页面。
-
-> Figure 2: Organization of memory in TCMALLOC. Systemmapped memory is broken into (multi-)page *spans*, which are sub-divided into objects of an assigned, fixed *sizeclass*, here 25 KiB.
 
 任何内存分配器都应该回答的两个问题定义了 TCMALLOC 的结构：
 
 1. 我们如何选择对象大小和组织元数据以最小化空间开销和碎片？
 2. 我们如何可扩展地支持并发分配？
 
-足够大的分配是通过仅包含分配对象的 **span** 来实现的。其他 **span** 包含多个相同大小的较小对象（**sizeclass**）。 **小**对象大小边界是 256 KiB。 在这个小阈值内，**分配请求**被四舍五入到 100 个大小级别中的一个。 TCMALLOC 将对象存储在一系列缓存中，如[图 3](#_bookmark7) 所示。从一个简单的 **pageheap** 分配 **span**，它跟踪所有未使用的页面并进行最佳分配。
+足够大的分配是通过仅包含分配对象的 **span** 来实现的。其他 **span** 包含多个相同大小的较小对象（**sizeclass**）。**小**对象大小边界是 256 KiB。在这个小阈值内，**分配请求**被四舍五入到 100 个大小级别中的一个。TCMALLOC 将对象存储在一系列缓存中，如[图 3](#_bookmark7) 所示。从一个简单的 **pageheap** 分配 **span**，它跟踪所有未使用的页面并进行最佳分配。
 
-> Figure 3: The organization of caches in TCMALLOC; we see memory allocated from the OS to the pageheap, distributed up into spans given to the central caches, to local caches. This paper focuses on a new implementation for the pageheap.
+|Figure 3: The organization of caches in TCMALLOC; we see memory allocated from the OS to the pageheap, distributed up into spans given to the central caches, to local caches. This paper focuses on a new implementation for the pageheap. |
+| :----------------------------------------------------------: |
+|       ![](tcmalloc/F3.png)        |
 
-Pageheap 还负责在可能的情况下将不再需要的内存返回给操作系统。 不是在 `free()` 路径上执行此操作，而是定期调用专用的释放内存方法，旨在维持可配置的、稳定的释放速率（以 MB/s 为单位）。 这是一种启发式。 TCMALLOC 希望在稳定状态下同时使用尽可能少的内存，避免昂贵的系统分配，而这些分配可能会通过使用先前提供的内存来消除。 我们在第 [4.3](#_bookmark16) 节中更详细地讨论了处理这种峰谷分配模式。
+Pageheap 还负责在可能的情况下将不再需要的内存返回给操作系统。不是在 `free()` 路径上执行此操作，而是定期调用专用的释放内存方法，旨在维持可配置的、稳定的释放速率（以 MB/s 为单位）。这是一种启发式。TCMALLOC 希望在稳定状态下同时使用尽可能少的内存，避免昂贵的系统分配，而这些分配可能会通过使用先前提供的内存来消除。我们在第 [4.3](#_bookmark16) 节中更详细地讨论了处理这种峰谷分配模式。
 
-理想情况下，TCMALLOC 将返回用户代码**很快**不需要的所有内存。 内存需求的变化不可预测，这使得返回未使用的内存同时保留内存以避免系统调用和页面错误变得具有挑战性。关于内存返回策略的更好决策具有很高的价值，在 [7](#_bookmark35) 节中进行了讨论。
+理想情况下，TCMALLOC 将返回用户代码**很快**不需要的所有内存。内存需求的变化不可预测，这使得返回未使用的内存同时保留内存以避免系统调用和页面错误变得具有挑战性。关于内存返回策略的更好决策具有很高的价值，在 [7](#_bookmark35) 节中进行了讨论。
 
-TCMALLOC 将首先尝试从**本地**缓存提供分配，就像大多数现代分配器一样 [[9](#_bookmark45),[12](#_bookmark48),[20](#_bookmark56),[39](#_bookmark75) ]。最初这些是同名的**<u>==每线程缓存==</u>**，为不同尺寸的分配存储一个空闲对象列表。 为了减少闲置内存并提高高线程应用程序的重用率，TCMALLOC 现在使用**每超线程本地缓存**。 当本地缓存没有适合<u>大小</u>的对象来服务请求时（或者在尝试 free() 后有太多对象），请求路由到该<u>大小类</u>的单个**中央缓存**。 它有两个组件——一个快速的、受互斥锁保护的**传输缓存**（包含来自该<u>大小类</u>的平面对象数组）和一个大的、受互斥锁保护的**中央空闲列表**，包含分配给该<u>大小类</u>的每个 span；可以从这些 span 中获取或返回对象。 当一个 span 中的所有对象都已返回到中央空闲列表中的一个 span 时，该 span 将返回到 **pageheap**。
+TCMALLOC 将首先尝试从**本地**缓存提供分配，就像大多数现代分配器一样 [[9](#_bookmark45),[12](#_bookmark48),[20](#_bookmark56),[39](#_bookmark75) ]。最初这些是同名的**<u>==每线程缓存==</u>**，为不同尺寸的分配存储一个空闲对象列表。为了减少闲置内存并提高高线程应用程序的重用率，TCMALLOC 现在使用**每超线程本地缓存**。当本地缓存没有适合<u>大小</u>的对象来服务请求时（或者在尝试 free() 后有太多对象），请求路由到该<u>大小类</u>的单个**中央缓存**。它有两个组件——一个快速的、受互斥锁保护的**传输缓存**（包含来自该<u>大小类</u>的平面对象数组）和一个大的、受互斥锁保护的**中央空闲列表**，包含分配给该<u>大小类</u>的每个 span；可以从这些 span 中获取或返回对象。当一个 span 中的所有对象都已返回到中央空闲列表中的一个 span 时，该 span 将返回到 **pageheap**。
 
-在我们的 WSC 中，大多数分配都很小（50% 的分配空间是对象≤ 8192 字节），如图 [4](#_bookmark8) 所示。 然后将这些聚合到 span 中。 pageheap 主要分配 1 或 2 页 span，如图 [5](#_bookmark9) 所示。 80% 的 span 小于**大页面**。
+在我们的 WSC 中，大多数分配都很小（50% 的分配空间是对象≤ 8192 字节），如图 [4](#_bookmark8) 所示。然后将这些聚合到 span 中。pageheap 主要分配 1 或 2 页 span，如图 [5](#_bookmark9) 所示。80% 的 span 小于**大页面**。
 
-> Figure 4: CDF of allocation sizes from WSC applications, weighted by bytes.
-> Figure 5: CDF of TCMALLOC span sizes from WSC applications, weighted by bytes.
+| Figure 4: CDF of allocation sizes from WSC applications, weighted by bytes. | Figure 5: CDF of TCMALLOC span sizes from WSC applications, weighted by bytes. |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| ![](tcmalloc/F4.png) | ![](tcmalloc/F5.png) | 
 
 **堆叠**缓存的设计使系统有效地模块化，并且有几个伴随的优点：
 
@@ -131,17 +136,16 @@ TCMALLOC 将首先尝试从**本地**缓存提供分配，就像大多数现代�
 TCMALLOC 的 pageheap 有一个简单的内存管理接口。
 
 - `New(N)` 分配*N* 页的 span
-- Delete(S) 释放一个 span (S) 给分配器。
-- `Release(N)` 将页面堆缓存的 \>= *N* 个未使用页面返回给操作系统。
-
+- `Delete(S`) 释放一个 span (S) 给分配器。
+- `Release(N)` 将页面堆缓存的 >= *N* 个未使用页面返回给操作系统。
 
 ## 4 TEMERAIRE’s approach
 
-TEMERAIRE, this paper’s contribution to TCMALLOC, replaces the pageheap with a design that attempts to maximally fill (and empty) hugepages. The source code is on Github (see Section [9](#availability)). We developed heuristics that pack allocations densely onto highly-used hugepages and simultaneously form entirely unused hugepages for return to the OS.
-
-We refer to several definitions. *Slack* is the gap between an allocation’s requested size and the next whole hugepage. Virtual address space allocated from the OS is *unbacked* without reserving physical memory. On use, it is *backed*, mapped by the OS with physical memory. We may release memory to the OS once again making it *unbacked*. We primarily pack within hugepage boundaries, but use *regions* of hugepages for packing allocations *across* hugepage boundaries.
-
-From our telemetry of `malloc` usage and TCMALLOC internals, and knowledge of the kernel implementation, we developed several key principles that motivate TEMERAIRE’s choices.
+> TEMERAIRE, this paper’s contribution to TCMALLOC, replaces the pageheap with a design that attempts to maximally fill (and empty) hugepages. The source code is on Github (see Section [9](#availability)). We developed heuristics that pack allocations densely onto highly-used hugepages and simultaneously form entirely unused hugepages for return to the OS.
+>
+> We refer to several definitions. *Slack* is the gap between an allocation’s requested size and the next whole hugepage. Virtual address space allocated from the OS is *unbacked* without reserving physical memory. On use, it is *backed*, mapped by the OS with physical memory. We may release memory to the OS once again making it *unbacked*. We primarily pack within hugepage boundaries, but use *regions* of hugepages for packing allocations *across* hugepage boundaries.
+>
+> From our **telemetry** of `malloc` usage and TCMALLOC internals, and knowledge of the kernel implementation, we developed several key principles that motivate TEMERAIRE’s choices.
 
 1. **Total memory demand varies unpredictably with time, but not every allocation is released**. We have no control over the calling code, and it may rapidly (and repeatedly) modulate its usage; we must be hardened to this. But many allocations on the pageheap are immortal (and it is difficult to predict which they are [[30](#_bookmark66)]); any particular allocation might disappear instantly or live forever, and we must deal well with both cases.
 
@@ -162,6 +166,14 @@ While the particular implementation of TEMERAIRE is tied to TCMALLOC internals, 
 
 > Figure 6: TEMERAIRE’s components. Arrows represent the flow of requests to interior components.
 
+---
+
+TEMERAIRE，本文对 TCMALLOC 的贡献，用一种尝试最大限度填充（和清空）大页面的设计取代了页面堆（**PageHeap**）。源代码在 Github 上（参见第 [9](#availability)）。**我们开发了启发式方法**，将内存分配密集地<u>==打包==</u>到使用率较高的大页面上，同时形成完全未使用的大页面以返回给操作系统。
+
+我们参考了几个定义。 **Slack** 是内存分配请求的大小与下一个整个大页面之间的差距。 从操作系统分配的虚拟地址空间是 **==unbacked==** 的，没有分配（或者映射）物理内存。使用时，它是 **backed** 的，由操作系统分配（或映射）物理内存。我们可能会再次向操作系统释放内存，使之 **unbacked**。 我们主要在大页面边界内打包，但使用大页面的**区域**来**跨**大页面边界打包分配。
+
+根据我们对`malloc`用法和 **TCMALLOC** 内部的**监控**，以及对内核实现的了解，我们制定了几个关键原则，这些原则促使我们对 TEMERAIRE 的设计做出了如下选择：
+
 ### 4.1 The overall algorithm
 
 We will briefly sketch the overall approach and each component’s role, then describe each component in detail. Our goal is to minimize generated slack, and if we do generate slack, to reuse it for other allocations (as with any page-level fragmentation.)
@@ -174,33 +186,30 @@ TEMERAIRE directs allocation decisions to its subcomponents based on request siz
 
 ```c++
 Span New(N) {
-
-// Slack is too small to matter
-
-if (N \>= 1 GiB) return HugeCache.New(N);
-
-// Help bin-pack a single hugepage
-
-if (N \<= 1 MiB) return HugeFiller.New(N);
-
-if (N \< 2 MiB) {
-
-// If we can reuse empty space, do so Span s = HugeFiller.TryAllocate(N); if (s != NULL) return s;
-
+    // Slack is too small to matter
+    if (N >= 1 GiB) return HugeCache.New(N);
+    // Help bin-pack a single hugepage
+    if (N <= 1 MiB)  return HugeFiller.New(N);
+    
+    if (N < 2 MiB) {
+        // If we can reuse empty space, do so 
+        Span s = HugeFiller.TryAllocate(N); 
+        if (s != NULL) return s;
+    }
+    // If we have a region, use it 
+    Span s = HugeRegion.TryAllocate(N);
+    if (s != NULL) return s;
+    
+    // We need a new hugepage. 
+    s = HugeCache.New(N); 
+    HugeFiller.DonateTail(s);
+    
+    return s;
 }
-
-// If we have a region, use it Span s = HugeRegion.TryAllocate(N); if (s != NULL) return s;
-
-// We need a new hugepage. s = HugeCache.New(N); HugeFiller.DonateTail(s);
-
-return s;
-
-}
-
 // Figure 7: Allocation flow for subcomponents. Hugepage size is 2 MiB.
 ```
 
-Allocations for an exact multiple of hugepage size, or those sufficiently large that slack is immaterial, we forward directly to the HugeCache.
+Allocations for an exact multiple of hugepage size, or those sufficiently large that slack is immaterial, we forward directly to the `HugeCache`.
 
 Intermediate sized allocations (between 1MiB and 1GiB) are typically also allocated from the `HugeCache`, with a final step of *donation* for slack. For example, a 4.5 MiB allocation from the `HugeCache` produces 1.5 MiB of slack, an unacceptably high overhead ratio. TEMERAIRE donates that slack to the `HugeFiller` by pretending that the last hugepage of the request has a single “leading” allocation on it (Figure [8](#_bookmark15)).
 
@@ -210,7 +219,7 @@ When such a large span is deallocated, the allocator also marks the fictitious l
 
 For certain allocation patterns, intermediate-size allocations produce more slack than we can fill with smaller allocations in strict 2MiB bins. For example, many 1.1MiB allocations will produce 0.9MiB of slack per hugepage (see Figure [12](#_bookmark20)). When we detect this pattern, the HugeRegion allocator places allocations across hugepage boundaries to minimize this overhead.
 
-Small requests (\<= 1MiB) are always served from the `HugeFiller`. For allocations between 1MiB and a hugepage, we evaluate several options:
+Small requests (<= 1MiB) are always served from the `HugeFiller`. For allocations between 1MiB and a hugepage, we evaluate several options:
 
 1. We *try* the `HugeFiller`: if we have available space there we use it and are happy to fill a mostly-empty page.
 2. If the HugeFiller can’t serve these requests, we next consider HugeRegion; if we have regions allocated which can serve the request, we do so. If no region exists (or they’re all too full) we consider allocating one, but only, as discussed below, if we’ve measured high ratios of slack to small allocations.
@@ -229,26 +238,23 @@ The `HugeCache` tracks *backed* ranges of memory at full hugepage granularity. A
 Consider the artificial program in Figure [9](#_bookmark14) with no additional heap allocations. On each iteration of the loop, ‘New‘ requires a new hugepage and places it with the HugeFiller. ‘Delete‘ removes the allocation and the hugepage is now completely free. Returning eagerly would require a syscall every iteration for this simple, but pathological program.
 
 ```c++
-while (true) { Delete(New(512KB))
-
+while (true) { 
+    Delete(New(512KB))
 }
-Figure 9: Program which repeatedly drains a single hugepage.
+// Figure 9: Program which repeatedly drains a single hugepage.
 ```
-
 
 We track periodicity in the demand over a 2-second sliding window and calculate the minimum and maximum seen (*demand~min~*, *demand~max~*). Whenever memory is returned to the `HugeCache`, we return hugepages to the OS if the cache would be larger than *demand~max~* − *demand~min~*. We also tried other algorithms, but this one is simple and suffices to capture the empirical dynamics we’ve seen. The cache is allowed to grow as long as our windowed demand has seen a need for the new size. In oscillating usage, this will (incorrectly) free memory once, then (correctly) keep it from then on. Figure [10](#_bookmark17) shows our cache size for a Tensorflow workload which rapidly oscillates usage by a large fraction; we track the actually needed memory tightly.
 
-### 4.4 HugeFiller
-
-The `HugeFiller` satisfies smaller allocations that each fit within a single hugepage. This satisfies the majority of allocations (78% of the pageheap is backed by the `HugeFiller`
-
 > Figure 10: Tensorflow’s demand on the `HugeCache` over time, plotted with the cache limit (+demand). Notice that we tightly track their saw-toothed demand the first time it drops. After that, we recognize the pattern and keep the peak demand in cache.
 
-on average across the fleet) and is the most important–and most optimized–component of our system. *Within* a given hugepage, we use a simple (and fast) best-fit algorithm to place an allocation; the challenging part is deciding *which* hugepage to place an allocation on.
+### 4.4 HugeFiller
+
+The `HugeFiller` satisfies smaller allocations that each fit within a single hugepage. This satisfies the majority of allocations (78% of the pageheap is backed by the `HugeFiller` on average across the fleet) and is the most important–and most optimized–component of our system. *Within* a given hugepage, we use a simple (and fast) best-fit algorithm to place an allocation; the challenging part is deciding *which* hugepage to place an allocation on.
 
 This component solves our binpacking problem: our goal is to segment hugepages into some that are kept maximally full, and others that are empty or nearly so. The emptiest hugepages can be reclaimed (possibly breaking up a hugepage as needed) while minimizing the impact on hugepage coverage as the densely-filled pages cover most used memory with hugepages. But it is challenging to empty out hugepages, since we cannot rely on any particular allocation disappearing.
 
-A secondary goal is to minimize fragmentation *within* each hugepage, to make new requests more likely to be served. If the system needs a new *K*-page span and no free ranges of ≥ *K* pages are available, we require a hugepage from the HugeCache. This creates slack of (2*MiB* − *K* ∗ *pagesize*), wasting space.
+A secondary goal is to minimize fragmentation *within* each hugepage, to make new requests more likely to be served. If the system needs a new *K*-page span and no free ranges of ≥ *K* pages are available, we require a hugepage from the `HugeCache`. This creates slack of (2*MiB* − *K* ∗ *pagesize*), wasting space.
 
 These give us two goals to prioritize. Since we want to maximize the probability of hugepages becoming totally free, nearly-empty hugepages are precious. Since we need to minimize fragmentation, hugepages with long free ranges are also precious. Both priorities are satisfied by preserving hugepages with the longest free range, as longer free ranges must have fewer in-use blocks. We organize our hugepages into ranked lists correspondingly, leveraging per-hugepage statistics.
 
@@ -260,13 +266,13 @@ Inside each hugepage, we track a bitmap of used pages; to fill a request from so
 
 These three statistics determine a *priority order* of hugepages to place allocations. We choose the hugepage with the lowest sufficient *L* and the highest *A*. For an allocation of *K* pages, we first consider only hugepages whose longest free range is sufficient (*L* ≥ *K*). This determines whether a hugepage is a *possible* allocation target. Among hugepages with the minimum *L* ≥ *K*, we prioritize by fullness. Substantial experimentation led us to choose *A*, rather than *U* .
 
-This choice is motivated by a *radioactive decay-type allocation model* [[16](#_bookmark52)] where each allocation, of any size, is equally likely to become free (with some probability *p*). In this model a hugepage with 5 allocations has a probability of becoming free of *p*^5^ \<\< *p*; so we should very strongly avoid allocating from hugepages with very few allocations. In particular, this model predicts *A* is a much better model of "emptiness" than *U* : one allocation of size *M* is more likely to be deallocated than *M* allocations of size 1.
+This choice is motivated by a *radioactive decay-type allocation model* [[16](#_bookmark52)] where each allocation, of any size, is equally likely to become free (with some probability *p*). In this model a hugepage with 5 allocations has a probability of becoming free of *p*^5^ << *p*; so we should very strongly avoid allocating from hugepages with very few allocations. In particular, this model predicts *A* is a much better model of "emptiness" than *U* : one allocation of size *M* is more likely to be deallocated than *M* allocations of size 1.
 
 The decay model isn’t perfectly true in real applications, but it is an effective approximation, and experimentation backs up its primary claim: prioritizing by *A* empties substantially more pages than prioritizing by *U* . (In practice, using *U* produces acceptable results, but meaningfully worse ones.)
 
 In some more detail, *A* is used to compute a *chunk index C*, given by *min*(0,*C*max − *log*2(*A*)). We compute our chunk index so that our fullest pages have *C* = 0 and the emptiest have *C* = *C*max −1. In practice, we have found that *C*max = 8 chunks are sufficient to avoid allocation from almost-empty pages. Distinguishing hugepages with large counts is less important: For example, we predict a hugepage with 200 allocations and one with 150 as both very unlikely to completely drain. This scheme prioritizes distinguishing gradations among pages that might become empty.
 
-We store hugepages in an array of lists, where each hugepage is stored on the list at index *I* = *C*max ∗ *L* + *C*. Since a *K*-page allocation is satisfiable from any hugepage with *L* \>= *K*, the hugepages which can satisfy an allocation are exactly those in lists with *I* \>= *C*max ∗ *K*. We pick an (arbitrary) hugepage from the least such nonempty list, accelerating that to constant time with a bitmap of nonempty lists.
+We store hugepages in an array of lists, where each hugepage is stored on the list at index *I* = *C*max ∗ *L* + *C*. Since a *K*-page allocation is satisfiable from any hugepage with *L* >= *K*, the hugepages which can satisfy an allocation are exactly those in lists with *I* >= *C*max ∗ *K*. We pick an (arbitrary) hugepage from the least such nonempty list, accelerating that to constant time with a bitmap of nonempty lists.
 
 Our strategy differs from best fit. Consider a hugepage *X* with a 3 page gap and a 10 page gap and another hugepage *Y* with a 5 page gap. Best fit would prefer *X* . Our strategy prefers *Y* . This strategy works since we are looking to allocate on the most fragmented page, since fragmented pages are less likely to become entirely free. If we need, say, 3 pages, then pages which contain at most a gap of 3 available pages are more likely to be fragmented and therefore good candidates for allocation. Under the radioactive-decay model, allocations near large gaps are as likely as any other to become free, which can cause those gaps to substantially grow; they can then be used for large allocations. We treat that 10-page gap as precious and avoid allocating near it unless nothing else works, which allows it to grow.
 
@@ -280,14 +286,12 @@ A last important detail is that donated hugepages are less desirable allocation 
 
 ``` c++
 while (true) {
-
-// Reserve 51 hugepages + donate tail of last 
-L = New(100 MiB + 1 page);
-// Make a small allocation 
-S = New(1);
-// Delete large allocation 
-Delete(L);
-
+    // Reserve 51 hugepages + donate tail of last 
+    L = New(100 MiB + 1 page);
+    // Make a small allocation 
+    S = New(1);
+    // Delete large allocation 
+    Delete(L);
 }
 ```
 
@@ -297,7 +301,7 @@ Each iteration only allocates 1 (net) page, but if we always use the slack from 
 
 HugeCache (and HugeAllocator behind it) suffices for large allocations, where rounding to a full hugepage is a small cost. HugeFiller works well for small allocations that can be packed into single hugepages. HugeRegion helps those between.
 
-Consider a request for 1.1 MiB of memory. We serve it from the HugeFiller, leaving 0.9 MiB of unused memory from the 2MiB hugepage: the *slack* space. The HugeFiller assumes that slack will be filled by future small (\<1MiB) allocations, and typically it is: our observed byte ratio of fleetwide small allocations to slack is 15:1. In the limit we can imagine a binary that requests literally nothing but 1.1 MiB spans in Figure [12](#_bookmark20).
+Consider a request for 1.1 MiB of memory. We serve it from the HugeFiller, leaving 0.9 MiB of unused memory from the 2MiB hugepage: the *slack* space. The HugeFiller assumes that slack will be filled by future small (<1MiB) allocations, and typically it is: our observed byte ratio of fleetwide small allocations to slack is 15:1. In the limit we can imagine a binary that requests literally nothing but 1.1 MiB spans in Figure [12](#_bookmark20).
 
 > Figure 12: Slack (“s”) can accumulate when many allocations (“a”) are placed on single hugepages. No single slack region is large enough to accommodate a subsequent allocation of size “a.”
 
@@ -318,7 +322,7 @@ If the HugeCache cannot release *N* pages of memory, the HugeFiller will subrele
 
 Returning small pages from partially filled hugepages (“subreleasing” them) is the last resort for reducing memory footprints as the process is largely irreversible^6^. By returning some but not all small pages on a hugepage, we cause the OS to replace the single page table entry spanning the hugepage with small entries for the remaining pages. This one-way operation, through increased TLB misses, slows down accesses to the remaining memory. The Linux kernel will use small pagetable entries for the still-used pages, even if we re-use the released address space later. We make these return decisions in the HugeFiller, where we manage partially filled hugepages.
 
-> 6While the THP machinery may reassemble hugepages, it is nondeterministic and dependent on system utilization. There is a negative feedback loop here where high-utilization scenarios actually compete with and impede THP progress that might benefit them the most.
+> ^6^While the THP machinery may reassemble hugepages, it is nondeterministic and dependent on system utilization. There is a negative feedback loop here where high-utilization scenarios actually compete with and impede THP progress that might benefit them the most.
 
 The `HugeFiller` treats the subreleased hugepages separately: we do not allocate from them unless no other hugepage is usable. Allocations placed on this memory will not benefit from hugepages, so this helps performance and allows these partially released hugepages to become completely empty.
 
