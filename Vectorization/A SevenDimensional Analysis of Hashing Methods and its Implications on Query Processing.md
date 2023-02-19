@@ -174,7 +174,7 @@ In WORM we are interested in build and probe times (read-only structure) under s
 
 >^7^WORM is a static workload. This means that the hash tables *never* rehash during the workload.
 
-| ![](D:\baibaichen\Blog2\Vectorization\SevenDimsensionalHash\F1.png) |
+| ![](SevenDimsensionalHash/F1.png) |
 | :----------------------------------------------------------: |
 |**Figure 1**: *Subset of results for WORM presented in this paper*. |
 
@@ -184,13 +184,13 @@ The main reason for presenting only the large capacity is that “big” dataset
 
 ### 5.1 Low load factors: 25%, 35%, 45%
 
-| ![](D:\baibaichen\Blog2\Vectorization\SevenDimsensionalHash\F2.png) |
+| ![](SevenDimsensionalHash/F2.png) |
 | :----------------------------------------------------------: |
 | **Figure 2**: *Insertion and lookup throughputs, comparing two different variants of chained hashing with linear probing, under three different distributions at load factors* 25%*,* 35%*,* 45% *from* 230 *for linear probing. Higher is better*. |
 
 In our very first set of experiments we are interested in understanding (*1*) the fundamental difference between chained hashing and open-addressing and (*2*) the trade-offs offer by the two different variants of chained hashing. The results can be seen in Figure [2](#_bookmark17). **Discussion.** We start by discussing the memory footprints of all structures, see Figure [3](#_bookmark18). For linear probing, the footprint is constant (16 GB), independent of the load factor, and easily determined only be the size of the directory, i.e., 230 slots of 16 B each. In ChainedH8, the footprint is calculated as size of directory, i.e. 230 or 229 slots, times the pointer size — 8 B. In addition to that come 24 B for each entry in the table. The footprint of ChainedH24 is computed as directory size, 229, times 24 B, plus 24 B for each collision. From this data we can obtain the amount of collisions for ChainedH24. For example, at load factor 35%, ChainedH24 requires 12 GB for the directory, and all that goes beyond that is due to collisions. Thus, for the sparse distribution for example, ChainedH24 deals with ≈ 28% rate of collisions. But under the dense distribution, it deals only with ≈ 3% collision rate using Mult as hash function.
 
-| ![](D:\baibaichen\Blog2\Vectorization\SevenDimsensionalHash\F3.png)  |
+| ![](SevenDimsensionalHash/F3.png)  |
 | :----------------------------------------------------------: |
 |**Figure 3**: *Memory usage under the dense distribution of the hash tables presented in Figure* [*2.*](#_bookmark17) *This distribution produces the largest differences in memory usage among hash tables. For the sparse and grid distributions, memory of ChainedH24Mult matches that of ChainedH24Murmur, and the rest remain the same. Lower is better*. |
 
@@ -202,7 +202,7 @@ In terms of lookup performance, we can also find a clear ranking among the chain
 
 In our second set of experiments we study the performance of hash tables when space efficiency is required, and thus we are not able to use hash tables at low load factors. That is, we stress the hash tables to occupy up to 90% of the space assigned to them (chained hashing is allowed up to 10% more). We decided to use Cuckoo hashing on four tables, rather than on two or three tables, because this version of Cuckoo hashing is known to achieve load factors as high as 96*.*7% [[9](#_bookmark38), [12](#_bookmark41)] with high probability. In contrast, Cuckoo hashing on two and three tables have stable load factors of *<* 50 and up to 88% respectively [[18](#_bookmark47)]. This means that if in practice we want to consider *very* high load factors ( 90%), then Cuckoo hashing on four tables is the best candidate. An overview of the absolute best performers w.r.t. the other two capacities (small and medium) is given as a table in Figure [6](#_bookmark26).
 
-|![](D:\baibaichen\Blog2\Vectorization\SevenDimsensionalHash\F4.png) |
+|![](SevenDimsensionalHash/F4.png) |
 | :----------------------------------------------------------: |
 |**Figure 4**: *Insertion and lookup throughputs, open-addressing variants and chained hashing, under three different distributions at load factors* 50%*,* 70%*,* 90% *from* 230*. Higher is better. Memory consumption for all open-addressing schemes is* 16 *GB, and* 16*.*4 *GB for ChainedH24*.|
 
@@ -222,7 +222,7 @@ As expected, the more complex re-organization that RH performs on the keys durin
 
 **Across the whole set of experiments, RH is always among the top performers, and even the best method for most cases. This observation holds for all data set sizes we tested**. In this regard, Figure [6](#_bookmark26) gives an overview and summarizes the absolute best methods we tested in this experiment under all capacities (small, medium, and large). Methods are color-coded as in the curves in the plots. Observe that patterns are nicely recognizable. For lookups in general, RH seems to be an excellent all-rounder unless the hash table is expected to be very full, or the amount of unsuccessful queries is rather large. In such cases, CuckooH4 and ChainedH24 would be better options, respectively, if their slow insertion times are acceptable. With respect to insertions, it is natural not to see RH appearing more often, and certainly CuckooH4 and ChainedH24 not at all, due to their complicated insertion procedures. For insertions, QP seems to be the best option in general. Even when LP or RH are sometimes better, the difference is rather small, less than 10%.
 
-|![](D:\baibaichen\Blog2\Vectorization\SevenDimsensionalHash\F6.png) |
+|![](SevenDimsensionalHash/F6.png) |
 | :----------------------------------------------------------: |
 |**Figure 6**: *Absolute best performers for the WORM workload (Section* [*5.2)*](#_bookmark20) *across distributions, different load factors, and different capacities: Small (S), Medium (M) and Large (L). Throughput of the corresponding hash table is shown inside its cell in millions of operations per second*. |
 
@@ -232,7 +232,7 @@ In RW we are interested in analyzing how growing (rehashing) over a long sequenc
 
 > ^11^In the beginning (no updates), the hash tables have a load factor of roughly 47%.
 
-|![](D:\baibaichen\Blog2\Vectorization\SevenDimsensionalHash\F5.png) |
+|![](SevenDimsensionalHash/F5.png) |
 | :----------------------------------------------------------: |
 | **Figure 5**: *1000M operations of RW workload under different load factors and update-to-lookup ratios. For updates, the insertion-to-deletion ratio is 4:1. For lookups, the successful-to-unsuccessful-lookup is ratio 3:1. The key distribution is sparse. Higher is better in performance, lower is better for memory*. |
 
@@ -248,7 +248,7 @@ In the following, we present a micro-benchmark to illustrate the effect of diffe
 
 We compare LPMult in AoS layout against LPMult in SoA layout with and without SIMD on a sparse data set. Similar to the indexing experiment of Section [5.2](#_bookmark20), we measure the throughput for insertions and lookups for load factors 50*,* 70*,* 90%. Due to the limited memory available on the laptop, we use the medium table capacity of 227 slots — 2 GB. This still allows us to study the performance outside of caches, where we expect layout effects to matter most, because touching different cache lines typically triggers expensive cache misses. Figure [7](#_bookmark28) shows the results of the experiment. **Discussion.** Let us start by discussing the impact of layout *without* using SIMD instructions, methods LPAoSMult and LPSoAMult in Figure [7](#_bookmark28). For inserts (Figure [7(a](#_bookmark28))), AoS performs up to 50% better than SoA, on the lowest load factor (50%). This gap is slowly closing with higher load factors, leaving AoS only 10% faster than SoA on load factor 90%. This result can be explained as follows. When collisions are rare (as on load factor 50), SoA touches two times more cache lines than AoS — it has to place key and value in different locations. In contrast to that, SoA can fit up to two times more keys in one cache line than AoS, which improves throughput for longer probes sequences when searching empty slots under high load factors. However, when beginning inserting into an empty hash table, we can often place the entry into its hash bucket without any further probing. Only over time we will require more and more probes. Thus, in the beginning, there is a high number of insertions where the advantage of AoS has higher impact. This is also the reason why the gap in insertion throughput between AoS and SoA significantly narrows as the load factor increases.
 
-|![](D:\baibaichen\Blog2\Vectorization\SevenDimsensionalHash\F7.png)|
+|![](SevenDimsensionalHash/F7.png)|
 | :----------------------------------------------------------: |
 |**Figure 7**: *Effect of layout and SIMD in performance of LPMult at load factors* 50*,* 70*,* 90*% w.r.t.* 227 *under a sparse distribution of keys. Higher is better*.  |
 
@@ -264,7 +264,7 @@ In general, we could observe in this experiment that AoS is significantly superi
 
 Due to the lack of space, we stated our conclusions in an inline fashion throughout the paper. All the knowledg	e we gathered leads us to propose a decision graph, Figure [8](#_bookmark29), that we hope can help practitioners to decide more easily what hash table to use in practice under different circumstances. Obviously, no experiment can be complete enough to fully capture the true nature of each hash table in *every* situation. Our suggestions are, nevertheless, educated as a result of our large set of experiments, and we are confident that they represent very well the behavior of the hash tables. We also hope that our study makes practitioners more aware about trade-offs and consequences of not carefully choosing a hash table.
 
-|![](D:\baibaichen\Blog2\Vectorization\SevenDimsensionalHash\F8.png) |
+|![](SevenDimsensionalHash/F8.png) |
 | :----------------------------------------------------------: |
 | **Figure 8**: Suggested decision graph for practitioners.  |
 
