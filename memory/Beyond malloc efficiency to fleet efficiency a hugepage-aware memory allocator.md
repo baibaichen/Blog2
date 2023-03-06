@@ -93,24 +93,25 @@ We refer to several definitions. *Slack* is the gap between an allocation’s re
 
 From our **telemetry** of `malloc` usage and TCMALLOC internals, and knowledge of the kernel implementation, we developed several key principles that motivate TEMERAIRE’s choices.
 
-1. **Total memory demand varies unpredictably with time, but not every allocation is released**. We have no control over the calling code, and it may rapidly (and repeatedly) modulate its usage; we must be hardened to this. But many allocations on the pageheap are immortal (and it is difficult to predict which they are [[30](#_bookmark66)]); any particular allocation might disappear instantly or live forever, and we must deal well with both cases.
+1. **Total memory demand varies unpredictably with time, but not every allocation is released**. We have no control over the calling code, and it may rapidly (and repeatedly) modulate its usage; **==we must be hardened to this==**. But many allocations on the pageheap are **==immortal==** (and it is difficult to predict which they are [[30](#_bookmark66)]); any particular allocation might disappear instantly or live forever, and we must deal well with both cases.
 
-2. **Completely draining hugepages implies packing memory at hugepage granularity**. Returning hugepages that aren’t nearly-empty to the OS is costly (see section [2](#_bookmark2)). Generating empty/nearly-empty hugepages implies densely packing the *other* hugepages in our binary. Our design must enable densely packing allocations into as few, saturated, bins as possible.
+2. **Completely draining hugepages implies packing memory at hugepage granularity**. Returning hugepages that aren’t nearly-empty to the OS is costly (see section [2](#_bookmark2)). Generating empty/nearly-empty hugepages implies densely packing the *other* hugepages in our binary. Our design must enable densely packing allocations into as few, saturated, **bins** as possible.
 
-   While we aim to use exclusively hugepage-sized bins, malloc must support allocation sizes larger than a single hugepage. These can be allocated normally, but we place smaller allocations into the *slack* of the allocation to achieve high allocation density. Only when small allocations are dominated by *slack* do we need to place large allocations end on end in *regions*.
+   While we aim to use exclusively hugepage-sized bins, `malloc` must support allocation sizes larger than a single hugepage. These can be allocated normally, but we place smaller allocations into the *slack* of the allocation to achieve high allocation density. Only when small allocations are dominated by *==slack==* do we need to place large allocations end on end in *==regions==*.
 
-3. Draining hugepages gives us new release decision points. When a hugepage becomes completely empty, we can choose whether to retain it for future memory allocations or return it to the OS. Retaining it until released by TCMALLOC’s background thread carries a higher memory cost. Returning it reduces memory usage, but comes at a cost of system calls and page faults if reused. Adaptively making this decision allows us to return memory to the OS faster than the background thread while simultaneously avoiding extra system calls.
+3. **Draining hugepages gives us new release decision points**. When a hugepage becomes completely empty, we can choose whether to retain it for future memory allocations or return it to the OS. Retaining it until released by TCMALLOC’s background thread carries a higher memory cost. Returning it reduces memory usage, but comes at a cost of system calls and page faults if reused. Adaptively making this decision allows us to return memory to the OS faster than the background thread while simultaneously avoiding extra system calls.
 
 4. **Mistakes are costly, but work is not**. Very few allocations directly touch the pageheap, but *all* allocations are backed via the pageheap. We must only pay the cost of allocation once; if we make a bad placement and fragment a hugepage, we pay either that space or the time-cost of breaking up a hugepage for a long time. It is worth slowing down the allocator, if doing so lets it make better decisions.
 
-Our allocator implements its interface by delegating to several subcomponents, mapped in [Figure 6](#_bookmark11). Each component is built with the above principles in mind, and each specializes its approximation for the type of allocation it handles best. As per principle \#4, we emphasize smart placement over speed^4^. 
+> Figure 6: TEMERAIRE’s components. Arrows represent the flow of requests to interior components.
+
+Our allocator implements its interface by delegating to several subcomponents, mapped in [Figure 6](#_bookmark11). Each component is built with the above principles in mind, and each specializes its approximation for the type of allocation it handles best. As per principle #4, we emphasize smart placement over speed^4^. 
+
+> 4. As each operation holds an often-contended mutex, we do maintain reasonable efficiency: most operations are *O*(1), with care taken to optimize constant factors.
 
 While the particular implementation of TEMERAIRE is tied to TCMALLOC internals, most modern allocators share similar large backing allocations of page (or higher) granularity, like TCMALLOC’s spans: compare jemalloc’s “extents” [[20](#_bookmark56)], Hoard’s “superblocks” [[9](#_bookmark45)], and mimalloc’s “pages” [[29](#_bookmark65)]. Hoard’s 8KB superblocks are directly allocated with ‘mmap‘, preventing hugepage contiguity. Those superblocks could instead be densely packed onto hugepages. mimalloc places its 64KiB+ “pages” within “segments,” but these are maintained per-thread which hampers dense packing across the segments of the process. Eagerly returning pages to the OS minimizes the RAM cost here, but breaks up hugepages. These allocators could also benefit from a TEMERAIRE-like hugepage aware allocator^5^.
 
-> 4. As each operation holds an often-contended mutex, we do maintain reasonable efficiency: most operations are *O*(1), with care taken to optimize constant factors.
 > 5. Indeed, jemalloc is doing so, based on TEMERAIRE.
-
-> Figure 6: TEMERAIRE’s components. Arrows represent the flow of requests to interior components.
 
 ### 4.1 The overall algorithm
 
@@ -151,17 +152,19 @@ Allocations for an exact multiple of hugepage size, or those sufficiently large 
 
 Intermediate sized allocations (between 1MiB and 1GiB) are typically also allocated from the `HugeCache`, with a final step of *donation* for slack. For example, a 4.5 MiB allocation from the `HugeCache` produces 1.5 MiB of slack, an unacceptably high overhead ratio. TEMERAIRE donates that slack to the `HugeFiller` by pretending that the last hugepage of the request has a single “leading” allocation on it (Figure [8](#_bookmark15)).
 
-> Figure 8: The slack from a large allocation spanning 3 hugepages is “donated” to the HugeFiller. The larger allocation’s tail is treated as a fictitious allocation.
+|Figure 8: The slack from a large allocation spanning 3 hugepages is “donated” to the HugeFiller. The larger allocation’s tail is treated as a fictitious allocation. |
+| :----------------------------------------------------------: |
+|       ![](tcmalloc/F8.png)        |
 
 When such a large span is deallocated, the allocator also marks the fictitious leading allocation as free. If the slack is unused, it is returned to the tail hugepage along with the rest. Otherwise the tail hugepage is left behind in the `HugeFiller` and only the first *N* − 1 hugepages are returned to the `HugeCache`. 
 
-For certain allocation patterns, intermediate-size allocations produce more slack than we can fill with smaller allocations in strict 2MiB bins. For example, many 1.1MiB allocations will produce 0.9MiB of slack per hugepage (see Figure [12](#_bookmark20)). When we detect this pattern, the HugeRegion allocator places allocations across hugepage boundaries to minimize this overhead.
+<u>==For certain allocation patterns, intermediate-size allocations produce more slack than we can fill with smaller allocations in strict 2MiB bins==</u>. For example, many 1.1MiB allocations will produce 0.9MiB of slack per hugepage (see Figure [12](#_bookmark20)). When we detect this pattern, the `HugeRegion` allocator places allocations across hugepage boundaries to minimize this overhead.
 
 Small requests (<= 1MiB) are always served from the `HugeFiller`. For allocations between 1MiB and a hugepage, we evaluate several options:
 
 1. We *try* the `HugeFiller`: if we have available space there we use it and are happy to fill a mostly-empty page.
-2. If the HugeFiller can’t serve these requests, we next consider HugeRegion; if we have regions allocated which can serve the request, we do so. If no region exists (or they’re all too full) we consider allocating one, but only, as discussed below, if we’ve measured high ratios of slack to small allocations.
-3. Otherwise, we allocate a full hugepage from the HugeCache. This generates *slack*, but we anticipate that it will be filled by future allocations.
+2. If the `HugeFiller` can’t serve these requests, we next consider `HugeRegion`; if we have regions allocated which can serve the request, we do so. If no region exists (or they’re all too full) we consider allocating one, but only, as discussed below, if we’ve measured high ratios of slack to small allocations.
+3. Otherwise, we allocate a full hugepage from the `HugeCache`. This generates *slack*, but we anticipate that it will be filled by future allocations.
 
 We make a design choice in TEMERAIRE to care about external fragmentation up to the level of a hugepage, but essentially not at all past it (but see Section [4.5](#_bookmark19) for an exception.) For example, a system with a single 1 GiB free range and one with 512 discontiguous free hugepages is handled equally well by TEMERAIRE. In either case, the allocator will (typically) return all of the unused space to the OS; a fresh allocation of 1 GiB will require faulting in memory in either case. In the fragmented scenario, we will need to do so on fresh virtual memory. Waste of virtual address range unoccupied by live allocations and not consuming physical memory is not a concern, since with 64-bit address spaces, virtual memory is practically free.
 
