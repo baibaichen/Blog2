@@ -249,7 +249,7 @@ while (true) {
 
 ### 4.5 HugeRegion
 
-`HugeCache`（及其背后的 `HugeAllocator`）足以进行大型内存分配，其中四舍五入到完整大页面的成本很小。 `HugeFiller` 适用于可以打包到单个大页的小分配。 `HugeRegion` 服务那些介于两者之间的分配。
+`HugeCache`（及其背后的 `HugeAllocator`）足以进行大型内存分配，其中四舍五入到完整大页面的成本很小。`HugeFiller` 适用于可以打包到单个大页的小分配。`HugeRegion` 服务那些介于两者之间的分配。
 
 考虑一个分配 1.1 MiB 内存的请求。我们通过 `HugeFiller` 分配，从 2MiB 的大页面留下 0.9 MiB 未使用的内存：*slack* 空间。`HugeFiller` 假定 slack 将由未来的小 (<1MiB) 分配来填充，通常情况是这样：我们观察到整体小分配与 slack 的字节比为 15:1。假设一种极端情况，即一个二进制文件只是请求 1.1 MiB 的内存空间，如图 [12](#_bookmark20) ：
 
@@ -257,7 +257,7 @@ while (true) {
 | :----------------------------------------------------------: |
 |                     ![](tcmalloc/F12.png)                     |
 
-`HugeRegion` 处理这个问题，在某种程度上，是由我们自己的**选择**造成的：我们非常关注使用 `HugeFiller` 将分配打包到大页大小的容器中，而我们想通过**捐赠**的 slack 来做到这一点，对于某些分配模式来说是灾难性的。 没有它，大多数普通二进制文件当然也很好，但是通用内存分配器需要处理不同的工作负载，即使是那些以 slack 分配为主的工作负载。显然，我们必须能够跨大页边界分配这些。`HugeRegion` 巧妙地消除了这种病态情况。
+`HugeRegion` 处理这个问题，在某种程度上，是由我们自己的**选择**造成的：我们非常关注使用 `HugeFiller` 将分配打包到大页大小的容器中，而我们想通过**捐赠**的 slack 来做到这一点，对于某些分配模式来说是灾难性的。没有它，大多数普通二进制文件当然也很好，但是通用内存分配器需要处理不同的工作负载，即使是那些以 slack 分配为主的工作负载。显然，我们必须能够跨大页边界分配这些。`HugeRegion` 巧妙地消除了这种病态情况。
 
 `HugeRegion` 是一个大的固定大小分配（目前为 1 GiB），以小页面粒度跟踪，与 `HugeFiller` 中单个大页使用的位图类型相同。与单个大页一样，我们在该区域的所有页面上，使用最佳匹配分配内存。出于与 `HugeFiller` 相同的原因，我们持有这些区域的列表，按最长的空闲范围排序。从这些较大的容器中立即分配可以节省大量浪费的空间，而不是在我们的悲观负载中每个大页损失 0.9 MiB，不过是每个 `HugeRegion` 损失 0.9 MiB，只有大约 0.1%。（这促使每个区域的规模都很大。）
 
@@ -267,7 +267,7 @@ while (true) {
 
 如上所述，`Release(N)` 由支持线程以稳定的方式定期调用。
 
-为了实现我们的 `Release(N)` 接口，TEMERAIR 通常只从 `HugeCache` 中释放大页，并可能如上所述缩小其限制。 释放超过提示的 *N* 页不是问题； 支持线程使用实际释放量作为反馈，并调整未来的调用以达到正确的总体速率。
+为了实现我们的 `Release(N)` 接口，TEMERAIR 通常只从 `HugeCache` 中释放大页，并可能如上所述缩小其限制。释放超过提示的 *N* 页不是问题； 支持线程使用实际释放量作为反馈，并调整未来的调用以达到正确的总体速率。
 
 如果 `HugeCache` 无法释放 *N* 页内存，则 `HugeFiller` 将只**==释放==**空大页上的空闲(小)页。从部分填充的大页面返回（**==释放==**）小页面是减少内存占用的最后手段，因为该过程在很大程度上是不可逆的^6^。通过返回大页上的部分小页，我们使得操作系统将横跨大页的**单个页表项**替换为剩余小页的**多个页表项**。这种**单向操作**，增加了 TLB 未命中，拖慢了对剩余内存的访问。<u>Linux 内核将为仍在使用的小页使用页表条目</u>，即使我们稍后重新使用已释放的地址空间也是如此。我们在 `HugeFiller` 管理部分填充的大页，所以在此决定是否释放。
 
@@ -277,7 +277,7 @@ while (true) {
 
 ## 5 评估 TEMERIRE
 
-我们在 Google 的 WSC 工作负载上评估了 TEMERAIRE。评估涉及多个指标，包括 CPU 和节省的内存。我们在几个关键服务上对 TEMERAIRE 进行了评估，<u>==测量了我们 WSC 中 10% 的周期和 15% 的 RAM 使用情况==</u>。在 [6.4](#_bookmark34) 节中，我们讨论了工作负载的多样性；在此评估中，使用我们的实验框架和 <u>fleetwide-profiler</u> **==监控==**技术来检查所有工作负载的数据。我们认为应该优先考虑**工作负载效率**而不是 **malloc 的归因成本**；因此，我们检查（作为用户吞吐量代理的） IPC 指标，在可能的情况下，我们获得应用程序级别的性能指标，来衡量我们服务器上工作负载的生产力（例如，每个核心每秒的请求数）。 我们向我们团队中的所有 TCMALLOC 用户展示了 TEMERAIRE 推出的<u>**纵向**</u>数据。
+我们在 Google 的 WSC 工作负载上评估了 TEMERAIRE。评估涉及多个指标，包括 CPU 和节省的内存。我们在几个关键服务上对 TEMERAIRE 进行了评估，<u>==测量了我们 WSC 中 10% 的周期和 15% 的 RAM 使用情况==</u>。在 [6.4](#_bookmark34) 节中，我们讨论了工作负载的多样性；在此评估中，使用我们的实验框架和 <u>fleetwide-profiler</u> **==监控==**技术来检查所有工作负载的数据。我们认为应该优先考虑**工作负载效率**而不是 **malloc 的归因成本**；因此，我们检查（作为用户吞吐量代理的） IPC 指标，在可能的情况下，我们获得应用程序级别的性能指标，来衡量我们服务器上工作负载的生产力（例如，每个核心每秒的请求数）。我们向我们团队中的所有 TCMALLOC 用户展示了 TEMERAIRE 推出的<u>**纵向**</u>数据。
 
 总的来说，TEMERAIR 在 CPU 和内存方面取得了重大胜利。
 
@@ -289,7 +289,7 @@ while (true) {
 
 其中四个应用（search1、search2、search3 和 loadbalancer）之前关闭了 TCMALLOC 定期释放内存的功能。这使得他们以内存为代价，即使是在原始大页无关的页堆实现上，也有很好的大页覆盖率。我们没有更改 TEMERAIRE 的配置。这些应用程序保持了其高水平的 CPU 性能，同时减少了总内存的占用。
 
-除了 Redis 之外，所有这些应用程序都是多线程的。 除了 search3 之外，这些工作负载都在具有本地数据的单个 NUMA 域上运行。
+除了 Redis 之外，所有这些应用程序都是多线程的。除了 search3 之外，这些工作负载都在具有本地数据的单个 NUMA 域上运行。
 
 - Tensorflow [[1](#_bookmark37)] 是一种常用的机器学习应用程序。它以前以大页和页面错误为代价，使用高周期性释放率来最小化内存压力。
 
@@ -303,11 +303,11 @@ while (true) {
 
 - Redis 是一种流行的开源键值存储。我们使用 TEMERAIRE 评估了 Redis 6.0.9 [[42](#_bookmark78)] 的性能，使用 TCMALLOC **==遗留==**的页面堆作为基线。这些实验在配备 Intel Skylake Xeon 处理器的服务器上运行。Redis 和 TCMALLOC 是使用 LLVM 编译，LLVM 使用 **-O3** 从 [Git commit cd442157cf](https://github.com/llvm/llvm-project/commit/cd442157cf) 构建。针对不同的配置，我们运行 2000 次 **redis-benchmark** 试验，每次试验发出 1000000 个请求，**==推送==** 5 个元素并读取这 5 个元素。
 
-对于定期释放的 8 个应用程序，我们观察到平均 CPU 提高了 7.7%，平均 RAM 减少了 2.4%。 其中两个工作负载没有看到内存减少。 TEMERAIRE 的 `HugeCache` 设计很好地处理了 Tensorflow 的分配模式，但不能影响其突发性需求。 Spanner 将其缓存最大化到一定的内存限制，因此减少 TCMALLOC 的开销意味着，可以在相同的内存占用中缓存更多的应用程序数据。
+对于定期释放的 8 个应用程序，我们观察到平均 CPU 提高了 7.7%，平均 RAM 减少了 2.4%。其中两个工作负载没有看到内存减少。TEMERAIRE 的 `HugeCache` 设计很好地处理了 Tensorflow 的分配模式，但不能影响其突发性需求。Spanner 将其缓存最大化到一定的内存限制，因此减少 TCMALLOC 的开销意味着，可以在相同的内存占用中缓存更多的应用程序数据。
 
 ### 5.2 Fleet experiment
 
-随机选择分布在我们 WSC 中 1% 的机器作为实验组，另外 1% 作为对照组（参见 [6.4](#_bookmark34) 节）。 我们在实验机器上运行的所有应用程序上启用了 TEMERAIRE。 在控制机器（对照组）上运行的应用程序继续使用 TCMALLOC 中的**==库存页面堆==**。
+随机选择分布在我们 WSC 中 1% 的机器作为实验组，另外 1% 作为对照组（参见 [6.4](#_bookmark34) 节）。我们在实验机器上运行的所有应用程序上启用了 TEMERAIRE。在控制机器（对照组）上运行的应用程序继续使用 TCMALLOC 中的**==库存页面堆==**。
 
 我们的 **Fleetwide  Profiler**（全局分析工具）  可以将性能指标与上述分组相关联。我们收集了有关内存使用、大页覆盖率、整体 IPC 和 TLB 未命中的数据。在实验时，未收集应用程序级性能指标（每 CPU 的吞吐量、延迟）。在我们的分析中，区分了两类应用程序：定期向操作系统释放内存的应用；和为了保留大页，关闭了此功能，使用 TCMALLOC 之前无大页感知页面堆的应用。图 [13](#_bookmark25) 显示 TEMERAIRE 提高了大页覆盖率，对于定期释放内存的应用程序，大页支持的堆内存百分比从 11.8% 增加到 23%，对于不定期释放内存的应用程序，从 44.3% 增加到 67.3%。
 
@@ -321,7 +321,7 @@ while (true) {
 
 > ^7^更准确地说，周期花费在页面遍历上，而不是访问 L2 TLB。
 
-我们看到页面遍历未命中周期减少了 4.5-5%（表 [2](#_bookmark26)）。我们在实验数据中看到，不释放内存的应用程序（具有更好的大页覆盖率）具有更高的 dTLB 停顿成本，这有点令人惊讶。我们与管理这些应用程序的团队的讨论是，他们关闭内存释放，因为他们**需要**保证性能：平均而言，他们具有更具挑战性的内存访问模式，因此对微架构差异的担忧更大。 通过在之前的实施中禁用释放，他们观察到更好的应用程序性能和更少的 TLB 停顿。 有了 TEMERAIRE，我们看到我们改进的大页覆盖率将大大降低**两类**应用程序的dTLB成本。
+我们看到页面遍历未命中周期减少了 4.5-5%（表 [2](#_bookmark26)）。我们在实验数据中看到，不释放内存的应用程序（具有更好的大页覆盖率）具有更高的 dTLB 停顿成本，这有点令人惊讶。我们与管理这些应用程序的团队的讨论是，他们关闭内存释放，因为他们**需要**保证性能：平均而言，他们具有更具挑战性的内存访问模式，因此对微架构差异的担忧更大。通过在之前的实施中禁用释放，他们观察到更好的应用程序性能和更少的 TLB 停顿。有了 TEMERAIRE，我们看到我们改进的大页覆盖率将大大降低**两类**应用程序的dTLB成本。
 
 > Table 2: dTLB load miss page walk cycles as percentage of application usage and dTLB misses per thousand instructions (MPKI) without TEMERAIRE (Control) TEMERAIRE enabled 15 (Exp.)
 
@@ -333,44 +333,44 @@ while (true) {
 
 ### 5.3 Full rollout trajectories
 
-根据从单个应用程序和 1% 实验中获得的数据，将默认^9^ 行为改为使用 TEMERAIRE。 这逐渐扩展到我们 100% 的工作负载 [[10](#_bookmark46), [38](#_bookmark74)]。
+根据从单个应用程序和 1% 实验中获得的数据，将默认^9^ 行为改为使用 TEMERAIRE。这逐渐扩展到我们 100% 的工作负载 [[10](#_bookmark46), [38](#_bookmark74)]。
 
-> ^9^这并不意味着每个二进制文件都使用它。 我们允许针对各种运维需求选择退出。
+> ^9^这并不意味着每个二进制文件都使用它。我们允许针对各种运维需求选择退出。
 
-在此部署中，我们观察到因 TLB 未命中（L2 TLB 和页面遍历）而停顿的周期从 21.6% 减少到 20.3%（减少 6%），页面堆开销从 14.3% 减少到 10.6%（减少 26%）。 [图 14](#_bookmark30) 显示了随时间推移对 TLB 未命中的影响：在每个点，我们显示归因于 TLB 停顿（加载和存储）的周期的总百分比，按页面堆的实现分组。 随着整体使用 TEMERAIRE ，产生了明显的下降趋势。
+在此部署中，我们观察到因 TLB 未命中（L2 TLB 和页面遍历）而停顿的周期从 21.6% 减少到 20.3%（减少 6%），页面堆开销从 14.3% 减少到 10.6%（减少 26%）。[图 14](#_bookmark30) 显示了随时间推移对 TLB 未命中的影响：在每个点，我们显示归因于 TLB 停顿（加载和存储）的周期的总百分比，按页面堆的实现分组。随着整体使用 TEMERAIRE ，产生了明显的下降趋势。
 
 
 | 图 14：堆叠线显示了 TEMERAIRE 的部署对 TLB 未命中周期的影响。随着 TEMERAIRE 在 WSC 中所占的比例越来越大，我们看到了从 21.6% 下降到 20.3% 的整体下降趋势。 | 图 15：堆叠线图显示了 TEMERAIRE 的部署对页面堆开销的影响。随着 TEMERAIRE 从少数应用（第 [5.1](#_bookmark23) 节）增长到几乎所有应用，在我们 WSC 中观察到的使用量中所占比例越来越大，总内存开销从 14.3% 增加到 10.6%， |
 | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | ![](tcmalloc/F14.png)                                        | ![](tcmalloc/F15.png)                                        |
 
-[图 15](#_bookmark31) 显示了类似的页面堆开销图。 我们看到了另一个显着的改进。大页优化在空间和时间之间有一个自然的权衡； 尽可能节省最大内存需要分解大页，这将消耗 CPU 周期。 但是 TEMERAIRE 在空间和时间上**都**优于以前的设计。 根据我们的数据，强调几个结论：
+[图 15](#_bookmark31) 显示了类似的页面堆开销图。我们看到了另一个显着的改进。大页优化在空间和时间之间有一个自然的权衡； 尽可能节省最大内存需要分解大页，这将消耗 CPU 周期。但是 TEMERAIRE 在空间和时间上**都**优于以前的设计。根据我们的数据，强调几个结论：
 
-**应用程序==生产力==超过 IPC**。 如上所述，Alameldeen 等人 [[3](#_bookmark39)] 指出，简单的硬件指标并不总能准确反映应用程序层的收益。 所有迹象表明，与 IPC 相比，TEMERAIRE 对应用程序的**性能指标**（RPS、延迟等）提升更多。
+**应用程序==生产力==超过 IPC**。如上所述，Alameldeen 等人 [[3](#_bookmark39)] 指出，简单的硬件指标并不总能准确反映应用程序层的收益。所有迹象表明，与 IPC 相比，TEMERAIRE 对应用程序的**性能指标**（RPS、延迟等）提升更多。
 
-**收益并非来自 malloc 开销的减少**。收益来自于加速用户代码，有时在两个方向上都是剧烈的。 一个应用程序 (ads2) 的 malloc 周期从 2.7% 增加到 3.5%，这是一个明显的倒退，但他们获得了 3.42% RPS、1.7% 延迟和 6.5% 内存使用峰值的**改进**。
+**收益并非来自 malloc 开销的减少**。收益来自于加速用户代码，有时在两个方向上都是剧烈的。一个应用程序 (ads2) 的 malloc 周期从 2.7% 增加到 3.5%，这是一个明显的倒退，但他们获得了 3.42% RPS、1.7% 延迟和 6.5% 内存使用峰值的**改进**。
 
-**仍有相当大的上升空间，而且小比例很重要**。 尽管 TEMERAIRE 已经成功，但由于物理内存连续性限制，在没有<u>==子释放==</u>的情况下使用 TEMERAIRE 时，大页覆盖率仍然只有 67%。 增加到 100% 将显着提高应用程序性能。
+**仍有相当大的上升空间，而且小比例很重要**。尽管 TEMERAIRE 已经成功，但由于物理内存连续性限制，在没有<u>==子释放==</u>的情况下使用 TEMERAIRE 时，大页覆盖率仍然只有 67%。增加到 100% 将显着提高应用程序性能。
 
 ## 6 构建 TEMERAIRE 的策略
 
-**==很难先验地预测复杂系统的最佳方法==**。 迭代设计和改进系统是一种常用的技术。 军事飞行员创造了术语 **OODA**（观察、定向、决定、行动）循环 [[13](#_bookmark49)]  来衡量一种特殊的反应时间：看到传入的数据、分析数据、做出选择并根据这些数据采取行动（产生新数据并继续循环）。 **较短的 OODA 循环对飞行员来说是一个巨大的战术优势，也可以提高我们的生产力**。 **优化我们自己的 OODA 循环**——我们能够多快地洞察设计选择、评估其有效性并迭代以获得更好的选择——是构建TEMERAIRE的关键步骤。
+**==很难先验地预测复杂系统的最佳方法==**。迭代设计和改进系统是一种常用的技术。军事飞行员创造了术语 **OODA**（观察、定向、决定、行动）循环 [[13](#_bookmark49)]  来衡量一种特殊的反应时间：看到传入的数据、分析数据、做出选择并根据这些数据采取行动（产生新数据并继续循环）。**较短的 OODA 循环对飞行员来说是一个巨大的战术优势，也可以提高我们的生产力**。**优化我们自己的 OODA 循环**——我们能够多快地洞察设计选择、评估其有效性并迭代以获得更好的选择——是构建TEMERAIRE的关键步骤。
 
 虽然我们最终的评估是由生产服务器上的<u>==执行应用==</u>驱动，但这对于测试中间想法来说太具有破坏性和风险了； malloc 的微基准测试在页面级别也不是特别有效。为了应对这些挑战，我们有两种方法，生成驱动 TCMALLOC 开发的 trace 日志。
 
-### 6.1 **经验**分布抽样
+### 6.1 **经验**分布抽样<a id="_bookmark32"></a>
 
-由于我们实现了全局范围的分析器 [[35](#_bookmark71)]。 在这个分析器采集的数据中，有标有请求大小和其他有用属性的 malloc 样本。 我们在堆中收集当前活动数据的样本，并调用 malloc。从这些样本中，我们可以推断出活动对象和 malloc 调用大小的**经验分布**。我们有一个**基于经验生成分布的程序**以任意（平均）堆大小为目标，生成对 malloc 和 free 的调用，作为复制这些分布的泊松进程^10^。堆的大小可以随着模拟时间的变化而改变，重现诸如**昼夜循环**、瞬态使用或高启动成本等因素。 我们在 Github 上提供该程序及其输入（请参阅第 [9](#availability) 节）。
+由于我们实现了全局范围的分析器 [[35](#_bookmark71)]。在这个分析器采集的数据中，有标有请求大小和其他有用属性的 malloc 样本。我们在堆中收集当前活动数据的样本，并调用 malloc。从这些样本中，我们可以推断出活动对象和 malloc 调用大小的**经验分布**。我们有一个**基于经验生成分布的程序**以任意（平均）堆大小为目标，生成对 malloc 和 free 的调用，作为复制这些分布的泊松进程^10^。堆的大小可以随着模拟时间的变化而改变，重现诸如**昼夜循环**、瞬态使用或高启动成本等因素。我们在 Github 上提供该程序及其输入（请参阅第 [9](#availability) 节）。
 
-> ^10^利特尔定律告诉我们，平均存活对象数 *L* 等于到达率 λ 与平均寿命 *W* 的乘积。 要复制活动/分配对象大小的给定分布，用 *p~a~* 表示大小为 *a* 的活动对象，我们设置 $W_{a}=\frac{c \cdot p_{a}}{\lambda_{a}} $。 （*c* 是确定总堆大小的缩放参数）
+> ^10^利特尔定律告诉我们，平均存活对象数 *L* 等于到达率 λ 与平均寿命 *W* 的乘积。要复制活动/分配对象大小的给定分布，用 *p~a~* 表示大小为 *a* 的活动对象，我们设置 $W_{a}=\frac{c \cdot p_{a}}{\lambda_{a}} $。（*c* 是确定总堆大小的缩放参数）
 
-尽管是**基于经验的程序**，但这仍然是一个**高度**不切实际的工作负载：每个（给定的大小）分配在任何时间步都有同等可能被释放，并且连续分配的大小之间没有相关性。 它也不会重现每个线程或每个 CPU 的动态。 然而，这是一种快速、有效的方法，可以将 malloc 置于极具挑战性的负载下，成功复制实际工作的许多宏观特征。
+尽管是**基于经验的程序**，但这仍然是一个**高度**不切实际的工作负载：每个（给定的大小）分配在任何时间步都有同等可能被释放，并且连续分配的大小之间没有相关性。它也不会重现每个线程或每个 CPU 的动态。然而，这是一种快速、有效的方法，可以将 malloc 置于极具挑战性的负载下，成功复制实际工作的许多宏观特征。
 
 ### 6.2 Heap tracing
 
 在不影响工作负载本身的情况下（无成本）跟踪对 malloc 的每次调用非常困难，甚至在长时间内是不可行的。典型的应用程序每秒可以对 malloc 进行数百万次调用。即使跟踪是在无中断的情况下完成的，实时或**更快**将这些跟踪准确地重放回内存分配器也同样难以处理：很难强制正确的线程组合，在正确的（相对）时间点、在正确的 CPU 上分配、访问和释放正确的缓冲区。
 
-幸运的是，跟踪**页堆**要容易得多。 它是一个单线程分配器，仅由一小部分请求调用。 回放也很简单——我们的抽象允许直接实例化和操作我们的页面堆实例，而不是通过 malloc() 本身。**在开发 TEMERAIRE 的过程中，从真实应用和基于经验生成分布程序本身（这个令人惊讶）获取的跟踪数据发挥了重要作用**。
+幸运的是，跟踪**页堆**要容易得多。它是一个单线程分配器，仅由一小部分请求调用。回放也很简单——我们的抽象允许直接实例化和操作我们的页面堆实例，而不是通过 malloc() 本身。**在开发 TEMERAIRE 的过程中，从真实应用和基于经验生成分布程序本身（这个令人惊讶）获取的跟踪数据发挥了重要作用**。
 
 TEMERAIRE 的组件服务于这样的请求：分配地址 [*p*, *p* + *K*) 的 *K* 页，但从不读取或写入该内存范围。我们构建它是为了单元测试——允许测试极端情况，例如 64 GiB 的分配，而实际上不需要 64 GiB 的内存——但这对于加速模拟过程也至关重要。对于经验分布生成程序来说，可能需要几个小时的事情可以在几分钟内回放。
 
@@ -382,4 +382,103 @@ TEMERAIRE 的组件服务于这样的请求：分配地址 [*p*, *p* + *K*) 的 
 
 ### 6.4 实验框架<a id="_bookmark34"></a>
 
-我们还开发了一个实验框架，允许我们大规模地 A/B 测试整体实现或调参。可以在**一小部分**机器上启用或禁用实验组，而无需在这些机器上运营这些服务的产品团队采取任何行动。 A/B 测试不是一种新方法，但在我们 WSC 范围内启用它是一种强大的开发工具。
+我们还开发了一个实验框架，允许我们大规模地 A/B 测试整体实现或调参。可以在**一小部分**机器上启用或禁用实验组，而无需在这些机器上运营这些服务的产品团队采取任何行动。A/B 测试不是一种新方法，**但在我们 WSC 范围内启用它是一种强大的开发工具**。
+
+如上所述，TEMERAIRE 的 A/B 实验证明了大页覆盖率的改进，即使对于从未释放内存的应用也是如此。<u>==这是一个影响的例子——针对相邻的、并置的服务——在单个服务的测试期间可能不会被注意到==</u>。
+
+我们观察到 A/B 实验有两个值得注意的优点：
+
+- 降低与主要行为变化相关的成本和不确定性。1% 的小实验可以在我们推出新的默认值之前发现潜在问题，成本要低得多 [[10](#_bookmark46)，附录 B]。
+- 降低**过度适配**易于测试的工作负载的可能性。针对生产实际负载测试进行调整，虽然对它们所代表的应用程序来说很好，但对其他工作负载来说可能会导致不理想的结果。相反，平均来说，我们可以确信我们的优化对每个应用都很好，并检测（和修复）出现问题的应用。
+
+实验让我们能够评估不同工作负载的变化。Kanev 等人 [[24](#_bookmark60)] 建议在 `malloc` 从其空闲列表返回对象 *i* 时预取下一个对象 *i* + 1。有效的预取需要**及时** [[28](#_bookmark64)]。太早，数据可能会在使用前从缓存中被逐出。太晚，程序就会等待，此时，在返回时预取对象 *i* 被证明为时已晚：用户代码将在几个周期内写入该对象，**远远早于**预取对主内存的访问可以完成的时间。预取对象 *i* + 1 提供了在下一次分配发生之前将对象加载到缓存中的时间。独立于开发 TEMERAIRE 的实验，我们在 WSC 中为 TCMALLOC 使用添加了这个 *next* 对象预取，尽管相反的证据表明它似乎会减慢微基准测试并明显增加 `malloc` 的成本。由于此处描述的**==内省技术==**，我们仍然能够确定这种好处，使我们能够证明应用程序性能在我们的 WSC 中得到了大规模改进； 既获得了重要的性能增益，又证明了这些宏观方法的普遍性。
+
+## 7 未来的工作
+
+**峰值与均值**。一个在需求峰值和低谷之间快速波动的应用，不能根据其平均需求高效分配内存。即使分配器可以立即返回未使用的内存，**==应用调度器==**也无法在再次需要它之前使用它。因此瞬时开销不是一个实际的机会 [[43](#_bookmark79)]。这指导我们测量开销如何随时间变化，这可能会导致较慢的释放速度 [[31](#_bookmark67)] 或应用（像 Mesh [[34](#_bookmark70)]这样的）压缩（compaction）技术。
+
+**中间缓存/暴露的空闲 span**。TCMALLOC 的堆栈缓存设计有利于直接优化和高度扩展，但隐藏了有用的跨层信息。一个很好的例子来自 Google [[14](#_bookmark50)] 的 Bigtable。缓存范围是 8 KiB 用 malloc 分配的段（即一个 TCMALLOC 页面）以避免碎片。这意味着，大多数释放的缓冲区不会通过本地缓存或中央空闲列表； 只有当一个完整的 span 被同时被释放（并以某种方式从 TCMALLOC 的本地缓存中推出）时，这些释放的缓冲区才会返回到页面堆。 如果这些块的每个分配/释放对页面堆都是可见的，就能够减少碎片——我们会对每个大页内的可用空间有一个更精确的估计。当然，如果每个 `malloc(8192)`/`free` 都进入页面堆，我们也会消除所有可伸缩性！必须有一个中间立场。 我们能否将**==前线缓存==**的内容暴露给页面堆并减少碎片？
+
+**前期成本/摊销/预测**。事实上，我们无法预测将来何时会调用 `Delete()` ，这是构建大页友好算法最难的部分。我们尝试通过启发式方法生成空的大页面，并希望：我们的目标是让大部分空页保持这种状态，并希望最终的分配将很快得到释放。但是有些分配可能是永久存在的——在整个程序运行过程中使用的通用数据结构，或者会在本地缓存中频繁进出使用的页面。
+
+当我们知道页面（无论是否永久存在）会很热并且访问频繁时，我们可以改进分配决策，确保将这些分配放在大页上可提供更大的边际性能优势。TLB 未命中发生在访问的时候，因此更可取的做法是节省内存，而不是提高较冷分配的访问延迟。
+
+**==远内存==合作**。 **远内存**[[27](#_bookmark63)] 允许我们将数据移动到速度较慢但更便宜的内存，从而降低 DRAM 成本。 集群很少访问的分配可以使远内存更有效。 这些决定可以承担更多的开销，因为它们不会经常发生。 机器学习 [[30](#_bookmark66)] 或通过分析的定向优化 [[15](#_bookmark51), [37](#_bookmark73)] 等途径有望识别这些分配。
+
+**用户空间-内核合作** TEMERAIRE 将内存放在与内核大页策略（第 [2](#_bookmark2)节）兼容的布局中，但这只是一种隐式合作。内核 API 在地址空间内或跨进程优先分配大页，与当前尽力而为的反应式实现相比，将能够主动管理哪些区域该由大页支持。
+
+在开发 TEMERAIRE 时，我们考虑但没有部署接口来请求立即用大页面新填充内存区域。 TEMERAIRE 主要试图避免完全分解大页，因为现有的 THP 机器重新组装它们的速度很慢（第 [4.6](#_bookmark21)节）。能够启动按需重新填充将，允许应用程序在该地址空间范围内**恢复分配**，而不会出现性能差距。
+
+今天的一个常见问题是，在机器上执行的第一个应用程序能够占用大部分大页，即使随后分配了更高优先级的应用。我们最终的设想是，有这样一个管理系统，可能作为独立的用户守护程序执行，与各个应用程序协作。内核 API 能允许根据更详细的优先级、收益和价值梯度更智能地分配大页。
+
+## 8 相关工作
+
+一些工作优化 malloc，以提高用户级应用程序的缓存效率。为了最小化 L1 冲突，Dice [[19](#_bookmark55)] 提出了抖动分配大小。同样，缓存索引感知分配器 [[2](#_bookmark38)] 通过更改页面内对象的相对位置来减少冲突未命中。 mimalloc [[29](#_bookmark65)] 尝试为用户提供来自同一页面的对象，从而增加局部性。
+
+只在内核解决这个问题将同样面临碎片化挑战，而且更难处理，因为对应用程序内存使用的控制较少。内核可以用大页返回（物理）内存区域，但如果应用程序不从大页密集分配，内存就会因碎片而浪费。先前的工作已经研究了这个问题：Kwon 等人 [[26](#_bookmark62)] 建议在内核将内存连续性作为一种资源进行管理。Panwar 等人  [[32](#_bookmark68)] 观察到由于在用户空间将**分配打包到大页的不足**，使用 Linux 的透明大页导致内存膨胀。
+
+TLB 使用的优化已被广泛讨论；Basu [[7](#_bookmark43)] 建议**恢复段**以完全避免它，在体系结构级解决 TLB 使用问题。CoLT [[33](#_bookmark69)] 提出了可变大小的大页来最小化碎片的影响。Illuminator [[5](#_bookmark41)] 改进了内核中的页面决策，以减少物理内存碎片。Ingens [[26](#_bookmark62)] 尝试公平分配有限的内核级大页，而 HawkEye [[32](#_bookmark68)] 管理大页的内核分配以控制内存膨胀。基于内核的解决方案可能会被不管大页的用户态分配器搞坏，这些分配器将部分大页返回给操作系统，并且不能将分配密集地打包到大页上。
+
+在 `malloc` 级别，SuperMalloc [[25](#_bookmark61)] 考虑了大页，但仅适用于非常大的分配。 MallocPool [[22](#_bookmark58)] 使用与 CoLT [[33](#_bookmark69)] 类似的可变大小 TLB，但不尝试使用固定大小的大页。 LLAMA [[30](#_bookmark66)] 研究了一种使用生命周期预测的可能解决方案，但具有实际成本的解决方案仍然是悬而未决的问题。
+
+## 9 结论
+
+在仓库规模的计算机中，TLB 查找惩罚是大型应用程序面临的最重要的计算成本之一。 TEMERAIRE 通过更改内存分配器来优化整个 WSC，有意识的做出大页放置决策，同时最大限度地减少碎片。 谷歌 WSC 关键工作负载的应用案例研究表明，RPS/CPU 增加了 7.7%，RAM 使用率下降了 2.4%。在谷歌部署期间，整体上和**==纵向数据==**的实验表明，TLB 未命中所花费的周期减少了 6%，由于碎片而浪费的内存减少了 26%。 由于内存系统是 WSC 应用程序中的最大瓶颈，因此通过改进分配器组织内存和与操作系统交互的方式，可以进一步提高应用程序的性能。
+
+## 10 感谢
+
+...
+
+## Availability
+
+<https://github.com/google/tcmalloc> 包括了 TEMERAIRE。还包括基于经验生成分布的程序 ([6.1](#_bookmark32)) 及其输入参数（分配大小的 CDF）。
+
+## 参考
+
+1. <a id="_bookmark37"></a>Martin Abadi, Paul Barham, Jianmin Chen, Zhifeng Chen, Andy Davis, Jeffrey Dean, Matthieu Devin, Sanjay Ghemawat, Geoffrey Irving, Michael Isard, Manjunath Kudlur, Josh Levenberg, Rajat Monga, Sherry Moore, Derek G. Murray, Benoit Steiner, Paul Tucker, Vijay Vasudevan, Pete Warden, Martin Wicke, Yuan Yu, and Xiaoqiang Zheng. Tensorflow: A system for largescale machine learning. In *12th USENIX Symposium on Operating Systems Design and Implementation (OSDI 16)*, pages 265–283, 2016.
+2. <a id="_bookmark38"></a>Yehuda Afek, Dave Dice, and Adam Morrison. Cache Index-Aware Memory Allocation. *SIGPLAN Not.*, 46(11):55–64, June 2011.
+3. <a id="_bookmark39"></a>A. R. Alameldeen and D. A. Wood. **IPC Considered Harmful for Multiprocessor Workloads**. *IEEE Micro*, 26(4):8–17, 2006.
+4. <a id="_bookmark40"></a>Andrea Arcangeli. Transparent hugepage support. 2010.
+5. <a id="_bookmark41"></a>Aravinda Prasad Ashish Panwar and K. Gopinath. **Making Huge Pages Actually Usefu**l. In *Proceedings of the Twenty-Third International Conference on Architectural Support for Programming Languages and Operating Systems (ASPLOS ’18)*, 2018.
+6. <a id="_bookmark42"></a>Luiz Andre Barroso, Jeffrey Dean, and Urs Hölzle. Web search for a planet: The google cluster architecture. *IEEE Micro*, 23:22–28, 2003.
+7. <a id="_bookmark43"></a>Arkaprava Basu, Jayneel Gandhi, Jichuan Chang, Mark D. Hill, and Michael M. Swift. **Efficient Virtual Memory for Big Memory Servers**. In *Proceedings of the 40th Annual International Symposium on Computer Architecture*, ISCA ’13, page 237–248, New York, NY, USA, 2013. Association for Computing Machinery.
+8. Jon Bentley. Tiny Experiments for Algorithms and Life. In *Experimental Algorithms*, pages 182–182, Berlin, Heidelberg, 2006. Springer Berlin Heidelberg.
+9. <a id="_bookmark45"></a>Emery D. Berger, Kathryn S. McKinley, Robert D. Blumofe, and Paul R. Wilson. Hoard: **A Scalable Memory Allocator for Multithreaded Applications**. *SIGPLAN Not.*, 35(11):117–128, November 2000.
+10. <a id="_bookmark46"></a>Jennifer Petoff Betsy Beyer, Chris Jones and Niall Richard Murphy. ***Site Reliability Engineering: How Google Runs Production Systems***. O’Reilly Media, Inc, 2016.
+11. <a id="_bookmark47"></a>Stephen M. Blackburn, Perry Cheng, and Kathryn S. McKinley. Myths and Realities: **The Performance Impact of Garbage Collection**. In *Proceedings of the Joint*
+
+    *International Conference on Measurement and Modeling of Computer Systems*, SIGMETRICS ’04/Performance ’04, page 25–36, New York, NY, USA, 2004. Association for Computing Machinery.
+
+12. <a id="_bookmark48"></a>Jeff Bonwick and Jonathan Adams. **Magazines and Vmem: Extending the Slab Allocator to Many CPUs and Arbitrary Resources**. In *Proceedings of the General Track: 2001 USENIX Annual Technical Conference*, page 15–33, USA, 2001. USENIX Association.
+13. <a id="_bookmark49"></a>John R. Boyd. Patterns of Conflict. 1981.
+14. <a id="_bookmark50"></a>Fay Chang, Jeffrey Dean, Sanjay Ghemawat, Wilson C. Hsieh, Deborah A. Wallach, Mike Burrows, Tushar Chandra, Andrew Fikes, and Robert E. Gruber. Bigtable: A Distributed Storage System for Structured Data. In *7th USENIX Symposium on Operating Systems Design and Implementation (OSDI)*, pages 205–218, 2006.
+15. <a id="_bookmark51"></a>Dehao Chen, David Xinliang Li, and Tipp Moseley. Autofdo: Automatic Feedback-Directed Optimization for Warehouse-Scale Applications. In *CGO 2016 Proceedings of the 2016 International Symposium on Code Generation and Optimization*, pages 12–23, New York, NY, USA, 2016.
+16. <a id="_bookmark52"></a>William D. Clinger and Lars T. Hansen. **Generational Garbage Collection and the Radioactive Decay Model**. *SIGPLAN Not.*, 32(5):97–108, May 1997.
+17. <a id="_bookmark53"></a>James C. Corbett, Jeffrey Dean, Michael Epstein, Andrew Fikes, Christopher Frost, JJ Furman, Sanjay Ghemawat, Andrey Gubarev, Christopher Heiser, Peter Hochschild, Wilson Hsieh, Sebastian Kanthak, Eugene Kogan, Hongyi Li, Alexander Lloyd, Sergey Melnik, David Mwaura, David Nagle, Sean Quinlan, Rajesh Rao, Lindsay Rolig, Yasushi Saito, Michal Szymaniak, Christopher Taylor, Ruth Wang, and Dale Woodford. Spanner: Google’s Globally-Distributed Database. In *10th USENIX Symposium on Operating Systems Design and Implementation (OSDI 12)*, Hollywood, CA, 2012.
+18. <a id="_bookmark54"></a>Jeffrey Dean. Challenges in building large-scale information retrieval systems: invited talk. In *WSDM ’09: Proceedings of the Second ACM International Conference on Web Search and Data Mining*, pages 1–1, New York, NY, USA, 2009.
+19. <a id="_bookmark55"></a>Dave Dice, Tim Harris, Alex Kogan, and Yossi Lev. The Influence of Malloc Placement on TSX Hardware Transactional Memory. *CoRR*, abs/1504.04640, 2015.
+20. <a id="_bookmark56"></a>Jason Evans. A scalable concurrent malloc (3) implementation for FreeBSD. In *Proceedings of the BSDCan Conference*, 2006.
+21. <a id="_bookmark57"></a>T. B. Ferreira, R. Matias, A. Macedo, and L. B. Araujo. **An Experimental Study on Memory Allocators in Multicore and Multithreaded Applications**. In *2011 12th International Conference on Parallel and Distributed Computing, Applications and Technologies*, pages 92– 98, 2011.
+22. <a id="_bookmark58"></a>M. Jägemar. Mallocpool: Improving Memory Performance Through Contiguously TLB Mapped Memory. In *2018 IEEE 23rd International Conference on Emerging Technologies and Factory Automation (ETFA)*, volume 1, pages 1127–1130, 2018.
+23. <a id="_bookmark59"></a>Svilen Kanev, Juan Darago, Kim Hazelwood, Parthasarathy Ranganathan, Tipp Moseley, Gu-Yeon Wei, and David Brooks. **Profiling a warehouse-scale computer**. In *ISCA ’15 Proceedings of the 42nd Annual International Symposium on Computer Architecture*, pages 158–169, 2014.
+24. <a id="_bookmark60"></a>Svilen Kanev, Sam Likun Xi, Gu-Yeon Wei, and David Brooks. **Mallacc: Accelerating Memory Allocation**. *SIGARCH Comput. Archit. News*, 45(1):33–45, April 2017.
+25. <a id="_bookmark61"></a>Bradley C. Kuszmaul. Supermalloc: A Super Fast Multithreaded Malloc for 64-Bit Machines. *SIGPLAN Not.*, 50(11):41–55, June 2015.
+26. <a id="_bookmark62"></a>Youngjin Kwon, Hangchen Yu, Simon Peter, Christopher J. Rossbach, and Emmett Witchel. **Coordinated and Efficient Huge Page Management with Ingens**. In *Proceedings of the 12th USENIX Conference on Operating Systems Design and Implementation*, OSDI’16, page 705–721, USA, 2016. USENIX Association.
+27. <a id="_bookmark63"></a>Andres Lagar-Cavilla, Junwhan Ahn, Suleiman Souhlal, Neha Agarwal, Radoslaw Burny, Shakeel Butt, Jichuan Chang, Ashwin Chaugule, Nan Deng, Junaid Shahid, Greg Thelen, Kamil Adam Yurtsever, Yu Zhao, and Parthasarathy Ranganathan. **Software-Defined Far Memory in Warehouse-Scale Computers**. In *Proceedings of the Twenty-Fourth International Conference on Architectural Support for Programming Languages and Operating Systems*, ASPLOS ’19, page 317–330, New York, NY, USA, 2019. Association for Computing Machinery.
+28. <a id="_bookmark64"></a>Jaekyu Lee, Hyesoon Kim, and Richard Vuduc. **When Prefetching Works, When It Doesn’t, and Why**. *ACM Transactions on Architecture and Code Optimization TACO*, 9:1–29, 03 2012.
+29. <a id="_bookmark65"></a>Daan Leijen, Ben Zorn, and Leonardo de Moura. Mimalloc: Free List Sharding in Action. Technical Report MSR-TR-2019-18, Microsoft, June 2019.
+30. <a id="_bookmark66"></a>Martin Maas, David G. Andersen, Michael Isard, Mohammad Mahdi Javanmard, Kathryn S. McKinley, and Colin Raffel. Learning-based Memory Allocation for C++ Server Workloads. In *25th ACM International Conference on Architectural Support for Programming Languages and Operating Systems (ASPLOS)*, 2020.
+31. <a id="_bookmark67"></a>Martin Maas, Chris Kennelly, Khanh Nguyen, Darryl Gove, Kathryn S. McKinley, and Paul Turner. **Adaptive huge-page subrelease for non-moving memory allocators in warehouse-scale computers**. In *Proceedings of the 2021 ACM SIGPLAN International Symposium on Memory Management*, ISMM 2021, New York, NY, USA, 2021. Association for Computing Machinery.
+32. <a id="_bookmark68"></a>Ashish Panwar, Sorav Bansal, and K. Gopinath. HawkEye: Efficient Fine-Grained OS Support for Huge Pages. In *Proceedings of the Twenty-Fourth International Conference on Architectural Support for Programming Languages and Operating Systems*, ASPLOS ’19, page 347–360, New York, NY, USA, 2019. Association for Computing Machinery.
+33. <a id="_bookmark69"></a>Binh Pham, Viswanathan Vaidyanathan, Aamer Jaleel, and Abhishek Bhattacharjee. CoLT: Coalesced LargeReach TLBs. In *Proceedings of the 2012 45th Annual IEEE/ACM International Symposium on Microarchitecture*, MICRO-45, page 258–269, USA, 2012. IEEE Computer Society.
+34. <a id="_bookmark70"></a>Bobby Powers, David Tench, Emery D. Berger, and Andrew McGregor. **Mesh: Compacting Memory Management for C/C++ Applications**. In *Proceedings of the 40th ACM SIGPLAN Conference on Programming Language Design and Implementation*, PLDI 2019, page 333–346, New York, NY, USA, 2019. Association for Computing Machinery.
+35. <a id="_bookmark71"></a>Gang Ren, Eric Tune, Tipp Moseley, Yixin Shi, Silvius Rus, and Robert Hundt. **Google-Wide Profiling: A Continuous Profiling Infrastructure for Data Centers**. *IEEE Micro*, pages 65–79, 2010.
+36. <a id="_bookmark72"></a>John Robson. Worst Case Fragmentation of First Fit and Best Fit Storage Allocation Strategies. *Comput. J.*, 20:242–244, 08 1977.
+37. <a id="_bookmark73"></a>Joe Savage and Timothy M. Jones. HALO: Post-Link Heap-Layout Optimisation. In *Proceedings of the 18th ACM/IEEE International Symposium on Code Generation and Optimization*, CGO 2020, page 94–106, New York, NY, USA, 2020. Association for Computing Machinery.
+38. <a id="_bookmark74"></a>T. Savor, M. Douglas, M. Gentili, L. Williams, K. Beck, and M. Stumm. **Continuous Deployment at Facebook and OANDA**. In *2016 IEEE/ACM 38th International Conference on Software Engineering Companion (ICSEC)*, pages 21–30, 2016.
+39. <a id="_bookmark75"></a>Scott Schneider, Christos D. Antonopoulos, and Dimitrios S. Nikolopoulos. **Scalable Locality-Conscious Multithreaded Memory Allocation**. In *Proceedings of the 5th International Symposium on Memory Management*, ISMM ’06, page 84–94, New York, NY, USA, 2006. Association for Computing Machinery.
+40. <a id="_bookmark76"></a>Raimund Seidel and Cecilia R Aragon. **Randomized search trees**. *Algorithmica*, 16(4-5):464–497, 1996. 
+41. <a id="_bookmark77"></a>Akshitha Sriraman and Abhishek Dhanotia. Accelerometer: **Understanding Acceleration Opportunities for Data Center Overheads at Hyperscale**. In *Proceedings of the Twenty-Fifth International Conference on Architectural Support for Programming Languages and Operating Systems*, ASPLOS ’20, page 733–750, New York, NY, USA, 2020. Association for Computing Machinery.
+42. <a id="_bookmark78"></a>Redis Team. Redis 6.0.9 and 5.0.10 are out.
+43. <a id="_bookmark79"></a>Abhishek Verma, Luis Pedrosa, Madhukar R. Korupolu, David Oppenheimer, Eric Tune, and John Wilkes. Largescale cluster management at Google with Borg. In *Proceedings of the European Conference on Computer Systems (EuroSys)*, Bordeaux, France, 2015.
+44. <a id="_bookmark80"></a>Wm. A. Wulf and Sally A. McKee. **Hitting the Memory Wall: Implications of the Obvious**. *SIGARCH Comput. Archit. News*, 23(1):20–24, March 1995.
