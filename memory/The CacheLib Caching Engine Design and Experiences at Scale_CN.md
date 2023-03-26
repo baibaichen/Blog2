@@ -68,7 +68,7 @@ Web 服务几乎在系统架构的每一层都依赖于缓存。每个缓存通�
 
 **数据库页缓冲区**。数据结构和小对象存储在各种数据库系统中。数据库系统使用页面缓存来增加吞吐量并减少访问延迟。为了支持一致性和事务性操作，页面缓存与数据库逻辑紧密集成。
 
-在 Facebook ，我们发现了数百种不同的服务，它们实现了缓存，或者它们的效率可以从缓存层中获益。这些用例**跨越数据中心堆栈和管理域的所有层**。缓存研究跨越操作系统 [16,52]、存储系统 [20, 58]、分布式系统 [8, 22, 66]、网络系统 [9, 65]、数据库 [30] 和计算机体系结构 [7, 56] , 91]。
+在 Facebook ，我们发现有数百种不同的服务实现了缓存，或者它们的效率可以从缓存层中获益。这些用例**跨越数据中心堆栈和管理域的所有层**。缓存研究跨越操作系统 [16,52]、存储系统 [20, 58]、分布式系统 [8, 22, 66]、网络系统 [9, 65]、数据库 [30] 和计算机体系结构 [7, 56] , 91]。
 
 CacheLib 通过提供一个组件**库**来处理这些不同的用例，从而可以轻松地快速构建高性能缓存。在许多情况下，CacheLib 缓存已经取代了 Facebook 高度专业化的缓存系统。CacheLib 目前用于数十个生产系统，涵盖上述六个示例中的五个。值得注意的是，CacheLib 当前不用作数据库页面缓冲区（请参阅第 6 节）。因此，虽然 CacheLib 不会取代所有专门的缓存系统，但我们已经看到 Facebook 广泛采用通用缓存引擎。
 
@@ -388,6 +388,14 @@ LOC 使用 FIFO 而不是 LRU 淘汰策略，使得 CacheLib 按顺序写入闪�
 
 CacheLib 的查找顺序 1) DRAM 缓存，2) LOC，3) SOC。 请注意，事先不知道对象的大小。 因此，在 DRAM 缓存未命中后，CacheLib 不知道对象是存储在 LOC 还是 SOC 中。 因此，它必须首先查询其中一个，如果未命中，则查询另一个。
 
+CacheLib 的查找顺序是由以下对平均查找惩罚（也称为平均内存访问时间，AMAT [46]）的分析所驱动的。 <u>我们将每个缓存组件的查找惩罚视为确定某个对象未缓存在该组件中的时间</u>。 **我们的关键假设**是从 DRAM 读取比闪存读取快几个数量级（例如，100ns 与 16us [25] 相比）。 因此，DRAM 缓存的查找惩罚是一些内存引用（比如 500ns）。
+
+要计算 LOC 的惩罚，**回想一下，LOC 为了减少 DRAM 元数据开销，既不在内存中存储对象的Key，也不存储对象的确切大小**。 LOC 通过 4 字节哈希分区 B 树进行索引，每个 B 树使用 4 字节哈希来标识对象的偏移量。 如果整个 8 字节哈希值没有哈希冲突，那么 LOC 的查找惩罚由一些内存引用组成（比如 1us，由于哈希操作）。 如果存在哈希冲突，则 LOC 需要 (16us) 从闪存读取数据，来比较对象 Key，并确定**未命中状态**。 假设最小的 LOC 对象大小 (2KB) 和 1TB 闪存，LOC 中最多存储 5.36 亿个对象。 因此，可以计算出 8 字节哈希冲突的概率小于百万分之一，LOC 的平均查找惩罚略高于 1us。
+
+要计算 SOC 的惩罚，**请记住 SOC 不使用内存中索引**。 SOC 利用每页的 Bloom 过滤器（例如 1us）来<u>投机地</u>确定**未命中状态**。 然而，由于这些布隆过滤器很小，它们的错误率为 10%。 如果出现布隆过滤器错误，SOC 需要 (16us) 从闪存读取数据来比较对象 Key。 因此，SOC 的平均查找惩罚为 2.6us。
+
+默认顺序为（1）DRAM缓存，（2）LOC，（3）SOC，CacheLib 的平均延迟（AMAT）如下，其中*L*表示查找延迟，*H*命中率：*L（DRAM） + (1 - H(DRAM)) × (L(LOC) + (1 − H(LOC)) × L(SOC))* 。 随着 SOC 和 LOC 的顺序颠倒，平均延迟将增加几微秒，具体取决于 LOC 和 SOC 命中率。 因此 CacheLib 最后查询 SOC。
+
 ### B. DRAM 开销的明细
 
 **DRAM 缓存**。 我们将 CacheLib 的 DRAM 缓存开销定义为**其总内存占用量**与**缓存的键和值大小之和**之间的比率。 我们进一步将开销分解为 slab 碎片和元数据。 在 *Lookaside*、*Storage* 和 *SocialGraph* 中，我们发现总体开销在 2.6% 到 7% 之间，并且平均分配给碎片和元数据。
@@ -403,3 +411,112 @@ CacheLib 的查找顺序 1) DRAM 缓存，2) LOC，3) SOC。 请注意，事先�
 ### C. Flash 高级准入策略
 
 使用闪存进行缓存的一项重大挑战是闪存设备的写入耐久性有限。 如果混合缓存中所有从 DRAM 淘汰的对象都被允许进入闪存，我们将观察到写入速率比闪存设备实现其目标寿命的写入速率高出 50%。 因此，闪存准入策略在 CacheLib 的性能中起着重要作用。
+
+Flashield [32] 是最近提出的闪存准入策略。 Flashield 依赖于观察对象遍历混合缓存的 DRAM 部分。 当对象从 DRAM 中淘汰时，Flashield 根据对象在 DRAM 中被访问的频率做出闪存准入决定。
+
+不幸的是，Facebook 的场景中，缓存对象在 DRAM 的生命周期太短，Flashield 无法发挥作用。 如果存储在闪存中，相当数量的对象足够热门，足以产生命中，但不会收到 DRAM 缓存命中。 事实上，对于 L2 *Lookaside* 缓存，只有 14% 被考虑用于闪存准入的对象，在 DRAM 中接收到读取或写入。
+
+为了使 Flashield 背后的主要思想适应 Facebook 的环境，CacheLib 明确地收集了关于对象的 DRAM 缓存生命周期之外的特征。 我们使用布隆过滤器记录过去六个小时的访问^4^。 此外，我们将准入策略的预测指标从 **flashiness** 的抽象概念更改为直接预测对象未来预期接收的读取次数。
+
+> ^4^具体来说，我们使用 6 个 Bloom 过滤器，每个设置为容纳 1 小时的访问。 每小时重置最旧的 Bloom 过滤器，并用于跟踪即将到来的一小时。 这些 Bloom 过滤器配置为，在观察到的最大查询率时**假阳性为 0.02%**。 Bloom 过滤器的空间效率对于避免使用过多的 DRAM 是必要的，每个存储的 Key 使用 8 个字节来存储历史有太多的空间开销。
+
+我们的高级准入政策已在 *SocialGraph* 的生产环境中进行了培训和部署。 CacheLib 闪存缓存的默认准入策略是以固定概率接纳对象，从而使闪存写入速率低于预期的目标速率。 与此默认准入策略相比，高级准入策略在不降低缓存命中率的情况下，向闪存设备写入的字节数减少了 44%。 因此，虽然**==训练高级准入策略==**所需的模型可能很麻烦，但该策略的收益显着延长了闪存设备在生产中的使用寿命。
+
+## 感谢
+
+## 参考
+
+1. Companies using apache traffic server. https://trafficserver.apache.org/users.html. Accessed: 2019-04-22.
+2. Lior Abraham, John Allen, Oleksandr Barykin, Vinayak Borkar, Bhuwan Chopra, Ciprian Gerea, Daniel Merl, Josh Metzler, David Reiss, Subbu Subramanian, et al. Scuba: diving into data at facebook. *VLDB*, 6(11):1057– 1067, 2013.
+3. Apache. Traffic Server, 2019. Available at https:// trafficserver.apache.org/, accessed 04/13/19.
+4. Timothy G Armstrong, Vamsi Ponnekanti, Dhruba Borthakur, and Mark Callaghan. Linkbench: a database benchmark based on the facebook social graph. In *ACM SIGMOD*, pages 1185–1196, 2013.
+5. Berk Atikoglu, Yuehai Xu, Eitan Frachtenberg, Song Jiang, and Mike Paleczny. Workload analysis of a large-scale key-value store. In *ACM SIGMETRICS*, volume 40, pages 53–64, 2012.
+6. Nathan Beckmann, Haoxian Chen, and Asaf Cidon. Lhd: Improving hit rate by maximizing hit density. In *USENIX NSDI*., pages 1–14, 2018.
+7. Nathan Beckmann and Daniel Sanchez. Talus: A simple way to remove cliffs in cache performance. In *IEEE HPCA*., pages 64–75, 2015.
+8. Daniel S. Berger, Benjamin Berg, Timothy Zhu, Mor Harchol-Balter, and Siddhartha Sen. RobinHood: Tail latency-aware caching dynamically reallocating from cache-rich to cache-poor. In *USENIX OSDI*, 2018.
+9. Daniel S. Berger, Ramesh Sitaraman, and Mor HarcholBalter. Adaptsize: Orchestrating the hot object memory cache in a cdn. In *USENIX NSDI*, pages 483–498, March 2017.
+10. Aaron Blankstein, Siddhartha Sen, and Michael J Freedman. Hyperbolic caching: Flexible caching for web applications. In *USENIX ATC*, pages 499–511, 2017.
+11. Burton H Bloom. Space/time trade-offs in hash coding with allowable errors. *Communications of the ACM*, 13(7):422–426, 1970.
+12. Flavio Bonomi, Michael Mitzenmacher, Rina Panigrahy, Sushil Singh, and George Varghese. An improved construction for counting bloom filters. In *European Symposium on Algorithms*, pages 684–695, 2006.
+13. Dhruba Borthakur. Under the hood: Building and open-sourcing rocksdb, 2013. Facebook Engineering Notes, available at [http://bit.ly/2m02DGV,](http://bit.ly/2m02DGV) accessed 09/02/19.
+14. Lee Breslau, Pei Cao, Li Fan, Graham Phillips, and Scott Shenker. Web caching and Zipf-like distributions: Evidence and implications. In *IEEE INFOCOM*, pages 126–134, 1999.
+15. Jack Brimberg and Abraham Mehrez. Location and sizing of facilities on a line. *Top*, 9(2):271–280, 2001.
+16. Tanya Brokhman, Pavel Lifshits, and Mark Silberstein. GAIA: An OS page cache for heterogeneous systems. In *USENIX ATC*, pages 661–674, 2019.
+17. Nathan Bronson, Zach Amsden, George Cabrera, Prasad Chakka, Peter Dimov, Hui Ding, Jack Ferris, Anthony Giardullo, Sachin Kulkarni, Harry Li, et al. TAO: Facebook’s distributed data store for the social graph. In *USENIX ATC*, pages 49–60, 2013.
+18. Brad Calder, Chandra Krintz, Simmi John, and Todd Austin. Cache-conscious data placement. In *ACM SIGPLAN Notices*, volume 33, pages 139–149, 1998.
+19. Badrish Chandramouli, Guna Prasaad, Donald Kossmann, Justin Levandoski, James Hunter, and Mike Barnett. Faster: A concurrent key-value store with in-place updates. In *ACM SIGMOD*, pages 275–290, 2018.
+20. Zhifeng Chen, Yan Zhang, Yuanyuan Zhou, Heidi Scott, and Berni Schiefer. Empirical evaluation of multi-level buffer cache collaboration for storage systems. In *ACM SIGMETRICS*, pages 145–156, 2005.
+21. Ludmila Cherkasova. Improving WWW proxies performance with greedy-dual-size-frequency caching policy. Technical report, Hewlett-Packard Laboratories, 1998.
+22. Asaf Cidon, Assaf Eisenman, Mohammad Alizadeh, and Sachin Katti. Cliffhanger: Scaling performance cliffs in web memory caches. In *USENIX NSDI*, pages 379–392, 2016.
+23. Douglas Comer. Ubiquitous b-tree. *ACM Computing Surveys (CSUR)*, 11(2):121–137, 1979.
+24. Brian F Cooper, Adam Silberstein, Erwin Tam, Raghu Ramakrishnan, and Russell Sears. Benchmarking cloud serving systems with ycsb. In *ACM SoCC*, pages 143– 154, 2010.
+25. Jeff Dean and P Norvig. Latency numbers every programmer should know, 2012.
+26. Giuseppe DeCandia, Deniz Hastorun, Madan Jampani, Gunavardhan Kakulapati, Avinash Lakshman, Alex Pilchin, Swaminathan Sivasubramanian, Peter Vosshall, and Werner Vogels. Dynamo: amazon’s highly available key-value store. In *ACM SOSP*, volume 41, pages 205–220, 2007.
+27. Diego Didona and Willy Zwaenepoel. Size-aware sharding for improving tail latencies in in-memory key-value stores. In *USENIX NSDI*, pages 79–94, 2019.
+28. John Dilley, Bruce M. Maggs, Jay Parikh, Harald Prokop, Ramesh K. Sitaraman, and William E. Weihl. Globally distributed content delivery. *IEEE Internet Computing*, 6(5):50–58, 2002.
+29. Ulrich Drepper. What every programmer should know about memory. Technical report, Red Hat, Inc., November 2007.
+30. Gil Einziger, Ohad Eytan, Roy Friedman, and Ben Manes. Adaptive software cache management. In *ACM Middleware*, pages 94–106, 2018.
+31. Gil Einziger and Roy Friedman. Tinylfu: A highly efficient cache admission policy. In *IEEE Euromicro PDP*, pages 146–153, 2014.
+32. Assaf Eisenman, Asaf Cidon, Evgenya Pergament, Or Haimovich, Ryan Stutsman, Mohammad Alizadeh, and Sachin Katti. Flashield: a hybrid key-value cache that controls flash write amplification. In *USENIX NSDI*, pages 65–78, 2019.
+33. Daniel Ellis. Caching at reddit, January 2017. Available at https://redditblog.com/2017/01/17/caching-at-reddit/, accessed 09/02/19.
+34. Ramez Elmasri and Sham Navathe. *Fundamentals of database systems*. 7 edition, 2015.
+35. Bin Fan, David G Andersen, and Michael Kaminsky. MemC3: Compact and concurrent memcache with dumber caching and smarter hashing. In *USENIX NSDI*, pages 371–384, 2013.
+36. Bin Fan, Hyeontaek Lim, David G Andersen, and Michael Kaminsky. Small cache, big effect: Provable load balancing for randomly partitioned cluster services. In *ACM SoCC*, page 23, 2011.
+37. Brad Fitzpatrick. Distributed caching with memcached. *Linux journal*, 2004(124):5, 2004.
+38. Phillipa Gill, Martin Arlitt, Zongpeng Li, and Anirban Mahanti. Youtube traffic characterization: a view from the edge. In *ACM IMC*, pages 15–28, 2007.
+39. David Gillman, Yin Lin, Bruce Maggs, and Ramesh K Sitaraman. Protecting websites from attack with secure delivery networks. *IEEE Computer*, 48(4):26–34, 2015.
+40. Lei Guo, Enhua Tan, Songqing Chen, Zhen Xiao, and Xiaodong Zhang. The stretched exponential distribution of internet media access patterns. In *ACM PODC*, pages 283–294, 2008.
+41. Syed Hasan, Sergey Gorinsky, Constantine Dovrolis, and Ramesh K Sitaraman. Trade-offs in optimizing the cache deployments of cdns. In *IEEE INFOCOM*, pages 460–468, 2014.
+42. Mazdak Hashemi. The infrastructure behind twitter: Scale, January 2017. Available at https://blog.twitter.com/engineering/en_us/topics/infrastructure/2017/the-infrastructure-behind-twitter-scale.html, accessed 09/02/19.
+43. Jun He, Sudarsun Kannan, Andrea C Arpaci-Dusseau, and Remzi H Arpaci-Dusseau. The unwritten contract of solid state drives. In *ACM EuroSys*, pages 127–144, 2017.
+44. Leif Hedstrom. Deploying apache traffic server, 2011. Oscon.
+45. Danny Hendler, Itai Incze, Nir Shavit, and Moran Tzafrir. Flat combining and the synchronization-parallelism tradeoff. In *Proceedings of the twenty-second annual ACM symposium on Parallelism in algorithms and architectures*, pages 355–364, 2010.
+46. John L Hennessy and David A Patterson. *Computer architecture: a quantitative approach*. Elsevier, 4 edition, 2011.
+47. Maurice P Herlihy and Jeannette M Wing. Linearizability: **A correctness condition for concurrent objects**. *ACM Transactions on Programming Languages and Systems*, 12(3):463–492, 1990.
+48. Qi Huang, Ken Birman, Robbert van Renesse, Wyatt Lloyd, Sanjeev Kumar, and Harry C Li. An analysis of Facebook photo caching. In *ACM SOSP*, pages 167–181, 2013.
+49. Sai Huang, Qingsong Wei, Dan Feng, Jianxi Chen, and Cheng Chen. **Improving flash-based disk cache with lazy adaptive replacement**. *ACM Transactions on Storage*, 12(2):1–24, 2016.
+50. Akanksha Jain and Calvin Lin. Back to the future: leveraging belady’s algorithm for improved cache replacement. In *ACM/IEEE ISCA*, pages 78–89, 2016.
+51. Jaeheon Jeong and Michel Dubois. Cache replacement algorithms with nonuniform miss costs. *IEEE Transactions on Computers*, 55(4):353–365, 2006.
+52. Song Jiang, Xiaoning Ding, Feng Chen, Enhua Tan, and Xiaodong Zhang. **Dulo: an effective buffer cache management scheme to exploit both temporal and spatial locality**. In *USENIX FAST*, volume 4, pages 8–8, 2005.
+53. Xin Jin, Xiaozhou Li, Haoyu Zhang, Robert Soulé, Jeongkeun Lee, Nate Foster, Changhoon Kim, and Ion Stoica. **Netcache: Balancing key-value stores with fast in-network caching**. In *ACM SOSP*, pages 121–136, 2017.
+54. Theodore Johnson and Dennis Shasha. 2Q: A low overhead high performance buffer management replacement algorithm. In *VLDB*, pages 439–450, 1994.
+55. Poul-Henning Kamp. Varnish notes from the architect, 2006. Available at https://www.varnish-cache. org/docs/trunk/phk/notes.html, accessed 09/12/16.
+56. Svilen Kanev, Juan Pablo Darago, Kim Hazelwood, Parthasarathy Ranganathan, Tipp Moseley, Gu-Yeon Wei, and David Brooks. Profiling a warehouse-scale computer. In *ACM/IEEE ISCA*, pages 158–169, 2015.
+57. Eunji Lee and Hyokyung Bahn. Preventing fast wear-out of flash cache with an admission control policy. *Journal of Semiconductor technology and science*, 15(5):546– 553, 2015.
+58. Baptiste Lepers, Oana Balmau, Karan Gupta, and Willy Zwaenepoel. Kvell: the design and implementation of a fast persistent key-value store. In *ACM SOSP*, pages 447–461, 2019.
+59. Jacob Leverich. The mutilate memcached load generator, August 2012. Available at https://github.com/ leverich/mutilate, accessed 08/20/19.
+60. Cheng Li, Philip Shilane, Fred Douglis, and Grant Wallace. Pannier: Design and analysis of a container-based flash cache for compound objects. *ACM Transactions on Storage*, 13(3):24, 2017.
+61. Conglong Li and Alan L Cox. Gd-wheel: a cost-aware replacement policy for key-value stores. In *EUROSYS*, pages 1–15, 2015.
+62. Sheng Li, Hyeontaek Lim, Victor W Lee, Jung Ho Ahn, Anuj Kalia, Michael Kaminsky, David G Andersen, O Seongil, Sukhan Lee, and Pradeep Dubey. Architecting to achieve a billion requests per second throughput on a single key-value store server platform. In *ACM ISCA*, pages 476–488, 2015.
+63. Yinan Li, Bingsheng He, Robin Jun Yang, Qiong Luo, and Ke Yi. Tree indexing on solid state drives. *Proceedings of the VLDB Endowment*, 3(1-2):1195–1206, 2010.
+64. Hyeontaek Lim, Dongsu Han, David G Andersen, and Michael Kaminsky. MICA: A holistic approach to fast in-memory key-value storage. In *USENIX NSDI*, pages 429–444, 2014.
+65. Ming Liu, Liang Luo, Jacob Nelson, Luis Ceze, Arvind Krishnamurthy, and Kishore Atreya. Incbricks: Toward in-network computation with an in-network cache. In *ACM ASPLOS*, pages 795–809, 2017.
+66. Zaoxing Liu, Zhihao Bai, Zhenming Liu, Xiaozhou Li, Changhoon Kim, Vladimir Braverman, Xin Jin, and Ion Stoica. Distcache: Provable load balancing for large-scale storage systems with distributed caching. In *USENIX FAST*, pages 143–157, 2019.
+67. Bruce M Maggs and Ramesh K Sitaraman. Algorithmic nuggets in content delivery. *ACM SIGCOMM CCR*, 45:52–66, 2015.
+68. Yandong Mao, Eddie Kohler, and Robert Tappan Morris. Cache craftiness for fast multicore key-value storage. In *ACM EuroSys*, pages 183–196, 2012.
+69. Tony Mauro. Why netflix chose nginx as the heart of its cdn. [https://www.nginx.com/blog/](http://www.nginx.com/blog/)why-netflix-chose-nginx-as-the-heart-of-its-cdn. Accessed: 2020-04-22.
+70. Domas Mituzas. Flashcache at facebook: From 2010 to 2013 and beyond, October 2013. Facebook Engineering, available at https://bit.ly/3cMXfvT, accessed 04/23/20.
+71. Subramanian Muralidhar, Wyatt Lloyd, Sabyasachi Roy, Cory Hill, Ernest Lin, Weiwen Liu, Satadru Pan, Shiva Shankar, Viswanath Sivakumar, Linpeng Tang, et al. f4: Facebook’s warm BLOB storage system. In *USENIX OSDI*, pages 383–398, 2014.
+72. Rajesh Nishtala, Hans Fugal, Steven Grimm, Marc Kwiatkowski, Herman Lee, Harry C Li, Ryan McElroy, Mike Paleczny, Daniel Peek, Paul Saab, et al. Scaling memcache at facebook. In *USENIX NSDI*, pages 385– 398, 2013.
+73. Henry Qin, Qian Li, Jacqueline Speiser, Peter Kraft, and John Ousterhout. Arachne: core-aware thread management. In *USENIX OSDI*, pages 145–160, 2018.
+74. KV Rashmi, Mosharaf Chowdhury, Jack Kosaian, Ion Stoica, and Kannan Ramchandran. Ec-cache: Loadbalanced, low-latency cluster caching with online erasure coding. In *USENIX OSDI*, pages 401–417, 2016.
+75. Redis, 2019. https://redis.io/, accessed 04/23/20.
+76. Kay A. Robbins and Steven Robbins. *Practical UNIX Programming: A Guide to Concurrency, Communication, and Multithreading*. Prentice-Hall, 2003.
+77. Emanuele Rocca. Running Wikipedia.org, June 2016. Available at [https://www.mediawiki.org/](http://www.mediawiki.org/wiki/File:WMF_Traffic_Varnishcon_2016.pdf), accessed 09/12/16.
+78. Goldwyn Rodrigues. Taming the oom killer. *LWN*, February 2009.
+79. Mohit Saxena, Michael M. Swift, and Yiying Zhang. Flashtier: A lightweight, consistent and durable storage cache. In *ACM EuroSys*, page 267–280, 2012.
+80. Chris Sears. The elements of cache programming style. In *USENIX ALS*, pages 283–298, October 2000.
+81. Ramesh K. Sitaraman, Mangesh Kasbekar, Woody Lichtenstein, and Manish Jain. Overlay networks: An Akamai perspective. In *Advanced Content Delivery, Streaming, and Cloud Services*. John Wiley & Sons, 2014.
+82. Zhenyu Song, Daniel S Berger, Kai Li, and Wyatt Lloyd. Learning relaxed belady for content distribution network caching. In *USENIX NSDI*, pages 529–544, 2020.
+83. Kunwadee Sripanidkulchai, Bruce Maggs, and Hui Zhang. An analysis of live streaming workloads on the internet. In *ACM IMC*, pages 41–54, 2004.
+84. Akshitha Sriraman and Thomas F Wenisch. *µ*tune: Autotuned threading for OLDI microservices. In *USENIX OSDI*, pages 177–194, 2018.
+85. Aditya Sundarrajan, Mingdong Feng, Mangesh Kasbekar, and Ramesh K Sitaraman. Footprint descriptors: Theory and practice of cache provisioning in a global cdn. In *ACM CoNEXT*, pages 55–67, 2017.
+86. Linpeng Tang, Qi Huang, Wyatt Lloyd, Sanjeev Kumar, and Kai Li. RIPQ: advanced photo caching on flash for facebook. In *USENIX FAST*, pages 373–386, 2015.
+87. Francisco Velázquez, Kristian Lyngstøl, Tollef Fog Heen, and Jérôme Renard. *The Varnish Book for Varnish 4.0*. Varnish Software AS, March 2016.
+88. Carl Waldspurger, Trausti Saemundsson, Irfan Ahmad, and Nohhyun Park. Cache modeling and optimization using miniature simulations. In *USENIX*, pages 487– 498), 2017.
+89. Neil Williams. Reddit’s architecture, November 2017. QCon SF slide set, available at https://qconsf.com/sf2017/system/files/presentation-slides/qconsf-20171113-reddits-architecture.pdf, accessed 09/02/19.
+90. Xingbo Wu, Fan Ni, Li Zhang, Yandong Wang, Yufei Ren, Michel Hack, Zili Shao, and Song Jiang. Nvmcached: An nvm-based key-value cache. In *ACM SIGOPS Asia-Pacific Workshop on Systems*, pages 1– 7, 2016.
+91. Yuejian Xie and Gabriel H Loh. Pipp: promotion/insertion pseudo-partitioning of multi-core shared caches. *ACM SIGARCH Computer Architecture News*, 37(3):174–183, 2009.
+92. Yao Yue. **Cache à la carte: a framework for inmemory caching**, September 2015. Strange Loop slide set, available at [https://www.youtube.com/watch?](http://www.youtube.com/watch?v=pLRztKYvMLk) , accessed 09/02/19.
+93. Yuanyuan Zhou, James Philbin, and Kai Li. The multiqueue replacement algorithm for second level buffer caches. In *USENIX ATC*, pages 91–104, 2001.
+94. Timothy Zhu, Anshul Gandhi, Mor Harchol-Balter, and Michael A Kozuch. Saving cash by using less cache. In *USENIX HOTCLOUD*, 2012.
