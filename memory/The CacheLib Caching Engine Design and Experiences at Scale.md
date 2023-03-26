@@ -92,21 +92,27 @@ Figure 3 shows the popularity distributions on log-log scale for four workloads 
 
 In Facebook production workloads, we find a high degree of churn. We define an object to be *popular* if it is among the 10% of objects that receive the most requests. Figure 4 shows how the set of popular objects changes over time. For example, the blue bar at *x* = 3 shows the probability that an object which was popular 3 hours ago is still in the top 10%most-requested objects. Across all workloads, over two-thirds of popular objects in a given hour fall out of the top 10% after just one hour. Such high churn applies independent of which hour we use as the baseline, for different percentiles (e.g., top 25%), and with different time granularities (e.g., after 10 minutes, 50% of popular objects are no longer popular). This high churn rate increases the importance of temporal locality and makes it harder for caching policies to estimate object popularity based on past access patterns.
 
-> **Figure 4: Object popularity changes rapidly over time**. *Each graph plots the probability that the top 10%-most-requested objects remain popular after x hours. Across all workloads, there is a significant drop off in popularity after even a single hour*.
+|**Figure 4: Object popularity changes rapidly over time**. Each graph plots the probability that the top 10%-most-requested objects remain popular after x hours. Across all workloads, there is a significant drop off in popularity after even a single hour. |
+| :----------------------------------------------------------: |
+|                     ![](cachelib/F4.png)                     |
 
 ### 3.2 Size Variability
 
 In addition to popularity and churn, object sizes play a key role in cache performance. Figure 5 shows the object size distribution for four large use case. For *Storage* and *CDN* , we find that 64KB and 128KB chunks, respectively, are very common, which result from dividing large objects into chunks. For *Lookaside* and *SocialGraph* , we find object sizes spanning more than seven orders of magnitude. Note the preponderance of small objects, which arise from graph edges/nodes, RPC computation results, and negative caching (see Section 4.3).
 
-> **Figure 5: Object sizes vary widely and small objects are common**. *Distribution of value sizes for all four workloads. Object size is shown on the X-axis on a log scale. The Y-axis shows a complimentary CDF – the fraction of requests for objects which are less than a given size. Object sizes are small in the Lookaside and SocialGraph workloads. Storage and CDN split objects greater than 64 KB and 128 KB, respectively, across multiple keys*.
+| **Figure 5: Object sizes vary widely and small objects are common**. Distribution of value sizes for all four workloads. Object size is shown on the X-axis on a log scale. The Y-axis shows a complimentary CDF – the fraction of requests for objects which are less than a given size. Object sizes are small in the Lookaside and SocialGraph workloads. Storage and CDN split objects greater than 64 KB and 128 KB, respectively, across multiple keys. |
+| :----------------------------------------------------------: |
+|                     ![](cachelib/F5.png)                     |
 
-These findings restrict the design space for a general caching system. For example, many existing caching systems [3, 32, 35, 37, 70, 75, 79, 87] store at most a single object per cache line (64B). For a system such as *SocialGraph* , where a significant fraction of objects are between 10B and 20B, this approach wastes space. Another challenge is in-memory data structures which are used as an index for objects on flash. The per-object overhead differs across existing systems between 8B and 100B [32, 37, 70, 79, 86, 87]. For a system with a median object size of 100B, such as *Lookaside*, this means that 80GB 1TB of DRAM is needed to index objects on a 1TB flash drive. It is imperative to handle highly variable object sizes while limiting memory and storage overhead.
+These findings restrict the design space for a general caching system. For example, many existing caching systems [3, 32, 35, 37, 70, 75, 79, 87] store at most a single object per cache line (64B). For a system such as *SocialGraph* , where a significant fraction of objects are between 10B and 20B, this approach wastes space. Another challenge is in-memory data structures which are used as an index for objects on flash. The per-object overhead differs across existing systems between 8B and 100B [32, 37, 70, 79, 86, 87]. For a system with a median object size of 100B, such as *Lookaside*, this means that 80GB - 1TB of DRAM is needed to index objects on a 1TB flash drive. It is imperative to handle highly variable object sizes while limiting memory and storage overhead.
 
 ### 3.3 Bursty Traffic
 
-Another common theme is that Facebook’s traffic is quite bursty. Figure 6 shows the actual request arrival rate compared to a Poisson arrival sequence, which is often assumed in system evaluations [53, 66, 73, 74, 84]. Figure 6 shows that the actual arrival rate varies much more than Poisson suggests.
+Another common theme is that Facebook’s traffic is quite bursty. Figure 6 shows the actual **request arrival rate** compared to a **Poisson arrival sequence**, which is often assumed in system evaluations [53, 66, 73, 74, 84]. Figure 6 shows that the actual arrival rate varies much more than Poisson suggests.
 
-> **Figure 6: Requests are very bursty**. *Number of requests (blue) for every two minutes over the 2 hour horizon compared to a Poisson arrival sequence (orange) with the same mean number of arrivals. The two hour window covers the peak traffic time within a day for each service. CDN has particularly high short-term bursts.*
+| **Figure 6: Requests are very bursty**. Number of requests (blue) for every two minutes over the 2 hour horizon compared to a Poisson arrival sequence (orange) with the same mean number of arrivals. The two hour window covers the peak traffic time within a day for each service. CDN has particularly high short-term bursts. |
+| :----------------------------------------------------------: |
+|                     ![](cachelib/F6.png)                     |
 
 This is particularly apparent for *CDN* , which has sharp bursts of traffic on top of a fairly steady request rate. Variable arrival rates make it hard to provision caching systems with sufficient resources to maintain low latencies during a load spike.
 
@@ -136,9 +142,7 @@ CacheLib enables the construction of fast, stable caches for a broad set of use 
 
 **Thread-safe cache primitives**: To simplify programming for applications that handle highly bursty traffic, CacheLib provides a thread-safe API for reads, writes, and deletes. In addition, thread-safety simplifies the implementation of consistency and invalidation protocols. Concurrent calls to the CacheLib API leave the cache in a valid state, respect linearizablility [47] if referencing a common key, and incur minimal resource contention.
 
-**Transparent hybrid caching**: To achieve high hit ratios while caching large working sets, CacheLib supports caches composed of both DRAM and flash, known as *hybrid caches*.
-
-Hybrid caches enable large-scale deployment of caches with terabytes of cache capacity per node. CacheLib hides the intricacies of the flash caching system from application programmers by providing the same byte-addressable interface (Section 4.1) regardless of the underlying storage media. This transparency allows application programmers to ignore when and where objects get written across different storage media. It also increases the portability of caching applications, allowing applications to easily run on a new hardware configurations as they become available.
+**Transparent hybrid caching**: To achieve high hit ratios while caching large working sets, CacheLib supports caches composed of both DRAM and flash, known as *hybrid caches*. Hybrid caches enable large-scale deployment of caches with terabytes of cache capacity per node. CacheLib hides the intricacies of the flash caching system from application programmers by providing the same byte-addressable interface (Section 4.1) regardless of the underlying storage media. This transparency allows application programmers to ignore when and where objects get written across different storage media. It also increases the portability of caching applications, allowing applications to easily run on a new hardware configurations as they become available.
 
 **Low resource overhead**: CacheLib achieves high throughput and low memory and CPU usage for a broad range of workloads (Section 2). This makes CacheLib suitable for inprocess use cases where the cache must share resources with an application. Low resource overheads allow CacheLib to support use cases with many small objects.
 
@@ -152,39 +156,50 @@ Hybrid caches enable large-scale deployment of caches with terabytes of cache ca
 
 The CacheLib API is designed to be simple enough to allow application programmers to quickly build in-process caching layers with little need for cache tuning and configuration. At the same time, CacheLib must scale to support complex application-level consistency protocols, as well as zero-copy access to data for high performance. Choosing an API which is both simple and powerful was an important concern in the design of CacheLib.
 
-The API centers around the concept of an Item, an abstract representation of a cached object. The Item enables byte-addressable access to an underlying object, independent of whether the object is stored in DRAM or flash. Access to cached Items is controlled via an ItemHandle which enables reference counting for cached Items. When an ItemHandle object is constructed or destroyed, a reference counter for the corresponding Item is incremented or decremented, respectively. An Item cannot be evicted from the cache unless its reference count is 0. If an Item with a non-zero reference count expires or is deleted, existing ItemHandles will remain valid, but no new ItemHandles will be issued for the Item.
+The API centers around the concept of an `Item`, an abstract representation of a cached object. The `Item` enables byte-addressable access to an underlying object, independent of whether the object is stored in DRAM or flash. Access to cached `Items` is controlled via an `ItemHandle` which enables reference counting for cached `Items`. When an `ItemHandle` object is constructed or destroyed, a reference counter for the corresponding `Item` is incremented or decremented, respectively. An `Item` cannot be evicted from the cache unless its reference count is 0. If an `Item` with a non-zero reference count expires or is deleted, existing `ItemHandles` will remain valid, but no new `ItemHandles` will be **==issued==** for the `Item`.
 
-Figure 7 shows the basic CacheLib API. To insert a new object into the cache, allocate may first evict another Item (according to an eviction policy) as long as there are no outstanding ItemHandles that reference it. The new Item can be configured with an expiration time (TTL). It is created within the given memory “pool” (see below), which can be individually configured to provide strong isolation guarantees. Any new Items only become visible after an insertOrReplace operation completes on a corresponding ItemHandle.
+Figure 7 shows the basic CacheLib API. To insert a new object into the cache, `allocate` may first evict another `Item` (according to an eviction policy) as long as there are no **outstanding** `ItemHandles` that reference it. The new `Item` can be configured with an expiration time (TTL). It is created within the given memory “pool” (see below), which can be individually configured to provide **==strong isolation guarantees==**. Any new `Items` only become visible after an `insertOrReplace` operation completes on a corresponding `ItemHandle`.
 
-> **Figure 7**: *The CacheLib API uses an Item to represent a cached object, independent of whether it is cached in DRAM or on flash.*
+| **Figure 7**: The CacheLib API uses an `Item` to represent a cached object, independent of whether it is cached in DRAM or on flash. |
+| :----------------------------------------------------------- |
+| ![](cachelib/F7.png)                                         |
 
-To access cached `Items`, find creates an ItemHandle from a key, after which getMemory allows unsynchronized, zero-copy access to the memory associated with an Item. To atomically update an Item, one would allocate a new ItemHandle for the key they wish to update, perform the update using getMemory, and then make the update visible calling insertOrReplace with the new ItemHandle. Because CacheLib clients access raw memory for performance, CacheLib trusts users to faithfully indicate any mutations using the method markNvmUnclean. Finally, remove deletes the Item identified by a key, indicating invalidation or deletion of the underlying object.
+To access cached `Items`, `find` creates an `ItemHandle` from a key, after which `getMemory` allows unsynchronized, zero-copy access to the memory associated with an `Item`. To atomically update an `Item`, one would `allocate` a new `ItemHandle` for the key they wish to update, perform the update using `getMemory`, and then make the update visible calling `insertOrReplace` with the new `ItemHandle`. Because CacheLib clients access raw memory for performance, CacheLib **trusts** users to faithfully indicate any mutations using the method `markNvmUnclean`. Finally, `remove` deletes the `Item` identified by a key, indicating invalidation or deletion of the underlying object.
 
-> **Figure 8**: *Typed ItemHandles allow CacheLib to natively store structured objects. In addition to statically sized Items, CacheLib also supports variably sized Items. For example, CacheLib implements a hashmap that can dynamically grow, offer zero-copy access to its entries, and is treated as an evictable cache Item.*
+| **Figure 8**: Typed `ItemHandles` allow CacheLib to natively store structured objects. In addition to statically sized `Items`, CacheLib also supports variably sized `Items`. For example, CacheLib implements a hashmap that can dynamically grow, offer zero-copy access to its entries, and is treated as an evictable cache `Item`. |
+| :----------------------------------------------------------- |
+| ![](cachelib/F8.png)                                         |
 
-Figure 8 shows a simple example of CacheLib’s native support for structured data. Structured `Items` are accessed through a `TypedHandle`, which offers the same methods as an `ItemHandle`. `TypedHandles` enable low-overhead access to user-defined data structures which can be cached and evicted just like normal Items. In addition to statically sized data structures, CacheLib also supports variably-sized data structures; for example, CacheLib implements a simple hashmap that supports range queries, arrays, and iterable buffers.
+Figure 8 shows a simple example of CacheLib’s native support for structured data. Structured `Items` are accessed through a `TypedHandle`, which offers the same methods as an `ItemHandle`. `TypedHandles` enable low-overhead access to user-defined data structures which can be cached and evicted just like normal `Items`. In addition to statically sized data structures, <u>CacheLib also supports variably-sized data structures; for example, CacheLib implements a simple hashmap that supports range queries, arrays, and iterable buffers</u>.
 
 CacheLib implements these APIs in C++, with binding to other languages such as Rust.
 
 ### 4.2 Architecture Overview
 
-CacheLib is designed to be scalable enough to accommodate massive working sets (Section 3.1) with highly variable sizes (Section 3.2). To achieve low per-object overhead, a single CacheLib cache is composed of several subsystems, each of which is tailored to a particular storage medium and object size. Specifically, CacheLib consists of a DRAM cache and a flash cache. The flash cache is composed of two caches: the Large Object Cache (LOC) for Items 2KB in size and Small Object Cache (SOC) for Items *\<*2KB in size.
+CacheLib is designed to be scalable enough to accommodate massive working sets (Section 3.1) with highly variable sizes (Section 3.2). To achieve low per-object overhead, a single CacheLib cache is composed of several subsystems, each of which is tailored to a particular storage medium and object size. Specifically, CacheLib consists of a DRAM cache and a flash cache. The flash cache is composed of two caches: the Large Object Cache (LOC) for `Items` ≥ 2KB in size and Small Object Cache (SOC) for `Items` < 2KB in size.
 
 An `allocate` request is fulfilled by allocating space in DRAM, evicting `Items` from DRAM if necessary. Evicted `Items` are either admitted to a flash cache (potentially causing another eviction) or discarded. A `find` request successively checks for an object in DRAM, then LOC, then SOC. This lookup order minimizes the average memory access time [46] of the cache (see Appendix A). A `find` call returns an `ItemHandle` immediately. If the requested object is located on DRAM, this `ItemHandle` is ready to use. If the requested object is located on flash, it is fetched asynchronously and the `ItemHandle` becomes ready to use once the object is in DRAM. An empty `ItemHandle` is returned to signify a cache miss. These data paths are summarized in Figure 9.
 
-> **Figure 9**: *The find and allocate paths for a hybrid cache constructed using CacheLib.*
+| **Figure 9**: The find and allocate paths for a hybrid cache constructed using CacheLib. |
+| :----------------------------------------------------------- |
+| ![](cachelib/F9.png)                                         |
 
-We now describe CacheLib’s subsystems in more detail. **DRAM cache**. CacheLib’s DRAM cache uses a chained hash table to perform lookups. The DRAM cache can be partitioned into separate *pools*, each with its own eviction policy. Programmers select a particular PoolId when calling allocate (see Figure 7), allowing the isolation of different types of traffic within a single cache instance.
+We now describe CacheLib’s subsystems in more detail. 
+
+**DRAM cache**. CacheLib’s DRAM cache uses a <u>chained hash table</u> to perform lookups. The DRAM cache can be partitioned into separate *pools*, each with its own eviction policy. Programmers select a particular `PoolId` when calling `allocate` (see Figure 7), allowing the isolation of different types of traffic within a single cache instance.
 
 For performance, cache memory is allocated using slab classes [6, 22, 37] which store objects of similar sizes. CacheLib uses 4MB slabs and implements a custom slab allocator. Each slab requires 7B of DRAM (3B of internal metadata + 4B to identify the size of objects in the slab). Because CacheLib workloads often include many objects of a specific size (e.g., 80B), the sizes corresponding to each slab class are configured on a per-workload basis to minimize fragmentation. Further optimizations for objects smaller than 64B or larger than 4MB are described in Section 4.3.
 
 Each slab class maintains its own eviction policy state. CacheLib is designed to support the continual development of new eviction policies, and currently supports LRU, LRU with multiple insertion points, 2Q [54, 93], and TinyLFU [31]. These eviction policies differ in their overheads and their biases towards either recency or frequency, and are thus configured on a per-workload basis as well. To approximate a global eviction policy, memory is rebalanced between slab classes using known rebalancing algorithms [72]. To support these policies, among other features, CacheLib dedicates 31B of DRAM overhead per item. Table 1 describes the metadata which comprises this DRAM overhead.
 
-> **Table 1**: *CacheLib’s DRAM cache uses 31B of metadata per Item.*
+<p align="center">
+ <img src="cachelib/T1.png" />
+<div align="center"><B>Table 1</B>: CacheLib’s DRAM cache uses 31B of metadata per Item.</div>
+</p>
 
-To guarantee atomic metadata operations, CacheLib relies on a variety of known optimization techniques [35, 62, 64], including fine-grained locking, user-space mutexes, and C++ atomics. This is particularly important for eviction policies, where naive implementations lead to lock contention and limit throughput [6, 9, 10, 61]. For example, under LRU, popular Items frequently compete to be reset to the most-recentlyused (MRU) position. This is particularly common at Facebook due to our high request rates (see Figure 6). CacheLib adopts a simple solution to reduce contention: Items that were recently reset to the MRU position are not reset again for some time *T* [9, 87]. As long as *T* is much shorter than the time it takes an object to percolate through the LRU list (i.e., eviction age), this simplification does not affect hit ratios in practice. CacheLib also uses advanced locking mechanisms such as flat combining [45] to reduce resource contention.
+To guarantee atomic metadata operations, CacheLib relies on a variety of known optimization techniques [35, 62, 64], including fine-grained locking, user-space mutexes, and C++ atomics. This is particularly important for eviction policies, where naive implementations lead to lock contention and limit throughput [6, 9, 10, 61]. For example, under LRU, popular `Items` frequently compete to be reset to the most-recentlyused (MRU) position. This is particularly common at Facebook due to our high request rates (see Figure 6). CacheLib adopts a simple solution to reduce contention: `Items` that were recently reset to the MRU position are not reset again for some time *T* [9, 87]. As long as *T* is much shorter than the time it takes an object to percolate through the LRU list (i.e., eviction age), this simplification does not affect hit ratios in practice. CacheLib also uses advanced locking mechanisms such as flat combining [45] to reduce resource contention.
 
-**Flash cache**. When Items are evicted from the DRAM cache, they can optionally be written to a flash cache. Due to high popularity churn (Section 3), the content cached on flash changes continually. Hence, in addition to maintaining low per-object overhead, CacheLib must contend with the limited write endurance of flash cells.
+**Flash cache**. When `Items` are evicted from the DRAM cache, they can optionally be written to a flash cache. Due to high popularity churn (Section 3), the content cached on flash changes continually. Hence, in addition to maintaining low per-object overhead, CacheLib must contend with the limited write endurance of flash cells.
 
 To reduce the rate of writes to flash, CacheLib selectively writes objects to the flash cache. If an object exists on flash and was not changed while in DRAM, it is not written back to flash. Otherwise, CacheLib admits objects to flash according to a configurable admission policy. CacheLib’s default admission policy is to admit objects to the flash cache with a fixed probability *p* [57]. Adjusting the probability *p* allows finegrained control over write rate to flash. Section 5 describes our experience with more complex admission policies.
 
@@ -198,13 +213,17 @@ To amortize the computational cost of flash erasures, the LOC’s caching policy
 
 The *Small Object Cache* (SOC) is used to store objects smaller than 2KB on flash. Because billions of small objects can fit on a single 1TB flash device, an exact lookup index (with associated per-object metadata) would use an unreasonably large amount of DRAM [32]. Hence, SOC uses an approximate index that scales with the number of flash pages. 
 
->  **Figure 10**: *SOC alloc proceeds by hashing into sets (I). CacheLib then rewrites the page (II), possibly evicting an object (following FIFO order). Finally, CacheLib recalculates the bloom filter with the Items currently stored in this set’s 4KB page (III)*.
+| **Figure 10**: SOC alloc proceeds by hashing into sets (I). CacheLib then rewrites the page (II), possibly evicting an object (following FIFO order). Finally, CacheLib recalculates the bloom filter with the Items currently stored in this set’s 4KB page (III). |
+| :----------------------------------------------------------- |
+| ![](cachelib/F10.png)                                         |
 
-SOC hashes keys into sets.Each set identifies a 4KB flash page which is used to store multiple objects. Objects are evicted from sets in FIFO order. A naive implementation of this design would always read a set’s page off flash to determine whether it contains a particular object. As an optimization, CacheLib maintains an 8B Bloom filter in DRAM for each set, each with 4 probes. This filter contains the keys stored on the set’s flash page and prevents unnecessary reads more than 90% of the time [11, 12]. Figure 10 shows the alloc path, and Figure 11 shows the `find` path.
+SOC hashes keys into sets.Each set identifies a 4KB flash page which is used to store multiple objects. Objects are evicted from sets in FIFO order. A naive implementation of this design would always read a set’s page off flash to determine whether it contains a particular object. As an optimization, CacheLib maintains an 8B Bloom filter in DRAM for each set, each with 4 probes. This filter contains the keys stored on the set’s flash page and prevents unnecessary reads more than 90% of the time [11, 12]. Figure 10 shows the `alloc` path, and Figure 11 shows the `find` path.
 
-> **Figure 11**: *SOC find proceeds by hashing into sets (I) and then checking a bloom filter, which indicates whether an object is likely to be stored on flash (II). If the bloom filter does not contain the key, the object is definitely not present on flash. Otherwise, CacheLib reads the 4KB flash cache and searches for the key (III)*.
+| **Figure 11**: SOC find proceeds by hashing into sets (I) and then checking a bloom filter, which indicates whether an object is likely to be stored on flash (II). If the bloom filter does not contain the key, the object is definitely not present on flash. Otherwise, CacheLib reads the 4KB flash cache and searches for the key (III). |
+| :----------------------------------------------------------- |
+| ![](cachelib/F11.png)                                         |
 
-Controlling write amplification in the SOC is particularly challenging. Admitting an object to the SOC requires writing an entire 4KB flash page, and is thus a significant source of application-level write amplification. This also applies to the remove operation, which removes an object from flash. Similarly, because keys are hashed to sets, admitting a stream of objects to the SOC causes random writes that result in higher device-level write amplification. Furthermore, the SOC only supports eviction policies that do not require state updates on hits, such as FIFO, since updating a set on a hit would require a 4KB page write. These challenges highlight the importance of advanced admission policies (see Section 5.2).
+Controlling write amplification in the SOC is particularly challenging. Admitting an object to the SOC requires writing an entire 4KB flash page, and is thus a significant source of application-level write amplification. This also applies to the remove operation, which removes an object from flash. Similarly, because keys are hashed to sets, admitting a stream of objects to the SOC causes random writes that result in higher device-level write amplification. Furthermore, the SOC only supports eviction policies that do not require state updates on hits, such as FIFO, since updating a set on a hit would require a 4KB page write. These challenges highlight the importance of **advanced admission policies** (see Section 5.2).
 
 ### 4.3 Implementation of Advanced Features
 
@@ -212,7 +231,7 @@ CacheLib supports many applications with demanding requirements. To support thes
 
 **Structured items**. Because CacheLib provides raw access to cached memory, flat data structures can be easily cached using the CacheLib API. In addition, CacheLib natively supports arrays and maps. CacheLib supports an Array type for fixedsize objects at no additional overhead for each entry in the array. The Map type supports variable object sizes, and comes in ordered and unordered variants. The overhead for each Map entry is 4B to store its size.
 
-**Caching large and small objects in DRAM**. To store objects larger than 4MB in size, CacheLib chains multiple DRAM Items together into one logical large item. This chaining requires an additional 4B next pointer per object in the chain. The most common use case for large objects is the storage of structured items. While it is uncommon for a single, logical object to be larger than 4MB, we frequently see Arrays or Maps that comprise more than 4MB in aggregate.
+**Caching large and small objects in DRAM**. To store objects larger than 4MB in size, CacheLib chains multiple DRAM `Items` together into one logical large item. This chaining requires an additional 4B next pointer per object in the chain. The most common use case for large objects is the storage of structured items. While it is uncommon for a single, logical object to be larger than 4MB, we frequently see `Arrays` or `Maps` that comprise more than 4MB in aggregate.
 
 CacheLib also features *compact caches*, DRAM caches designed to cache objects smaller than a cache line (typically 64B or 128B). Compact caches store objects with the same key size and object size in a single cache line [18, 29, 46, 80]. Compact caches are set-associative caches, where each cache line is a set which is indexed by a key’s hash. LRU eviction is done within each set by repositioning objects within a cache line. Compact caches have no per-object overhead.
 
@@ -238,11 +257,13 @@ CacheBench provides a modular request generator by sampling from configurable po
 
 We evaluate CacheLib and Memcached on a range of cache sizes using 32 threads each. When the cache is small, the hit ratio is low, which stresses the eviction code paths (set operations). When the cache is large, the hit ratio is high, which stresses the LRU-head update code paths (get operations).
 
-> **Figure 12**: *A comparison of CacheLib to Memcached for a range of cache sizes. CacheLib and Memcached achieve similar hit ratios, but CacheLib achieves much higher throughput*.
+| **Figure 12**: A comparison of CacheLib to Memcached for a range of cache sizes. CacheLib and Memcached achieve similar hit ratios, but CacheLib achieves much higher throughput.|
+| :----------------------------------------------------------- |
+| ![](cachelib/F12.png)                                         |
 
 Figure 12 shows the hit ratios and throughputs for cache sizes between 8 and 144GB and a typical working set of 100 million objects. Memcached and CacheLib achieve similar hit ratios, with Memcached slightly higher at small cache sizes and slightly lower at large cache sizes. Across all cache sizes, CacheLib achieves higher throughputs than Memcached, processing up to 60% more requests per second than Memcached.
 
-CacheLib’s higher throughput is largely due to optimizations that reduce lock contention. For example, CacheLib uses flat combining (see Section 4.2) to reduce contention on the LRU list head. Also, CacheLib uses *T* = 60 seconds (see Section 4.2) in this experiment. For *T* = 10 seconds, CacheLib consistently outperforms Memcached’s hit ratio, at the cost of lower throughput. In production, most deployments use the default *T* = 60 seconds.
+CacheLib’s higher throughput is largely due to optimizations that reduce lock contention. For example, CacheLib uses **flat combining** (see Section 4.2) to reduce contention on the LRU list head. Also, CacheLib uses *T* = 60 seconds (see Section 4.2) in this experiment. For *T* = 10 seconds, CacheLib consistently outperforms Memcached’s hit ratio, at the cost of lower throughput. In production, most deployments use the default *T* = 60 seconds.
 
 **HTTP server cache**. Hybrid DRAM-flash caches are prevalent at Facebook. For example, hybrid caches are used as CDN proxy caches. We compare a CacheLib-based HTTP server cache to NGINX and Apache Traffic Server (ATS), which are widely used to build flash-based CDNs [1, 44, 69, 82]. The CacheLib implementation is a FastCGI server with an NGINX frontend. Each system uses its default configuration for a 512GB flash cache. The systems fetch misses from a high-performance origin backend that is never the bottleneck.
 
@@ -250,13 +271,15 @@ To illustrate the effect of object size on flash cache performance, we configure
 
 Figure 13 shows that CacheLib’s explicit handling of small objects for flash caching provides a sizable advantage over NGINX and ATS. As the object size becomes larger, this advantage wanes. Eventually object sizes become large enough that all three systems become network-bound and their throughputs drop precipitously.
 
-> **Figure 13**: *Comparison of CacheLib to ATS and NGINX HTTP flash caching systems for different object sizes. CacheLib significantly improves throughput for most object sizes*.
+| **Figure 13**: Comparison of CacheLib to ATS and NGINX HTTP flash caching systems for different object sizes. CacheLib significantly improves throughput for most object sizes. |
+| :----------------------------------------------------------- |
+| ![](cachelib/F13.png)                                        |
 
 We observe that NGINX performs particularly well when object sizes are between 4KB and 16KB, outperforming CacheLib slightly when objects sizes are 8KB. We were unable to pinpoint the cause of this trend. Nonetheless, CacheLib compares favorably to both NGINX and ATS across a wide range of object sizes.
 
 **LSM tree-based stores**. It is natural to ask whether existing storage systems that target flash devices could be used as flash caching systems. In particular, Facebook’s RocksDB [13] key value store provides hybrid DRAM and flash storage by using a Log-Structured Merge-Tree (LSM Tree). We investigated whether RocksDB could be used as a hybrid look-aside cache for application data by deploying RocksDB in production to cache data from the *SocialGraph* workload.
 
-RocksDB trades off higher space usage in favor of lower write and delete latencies, using tombstones to defer deletes operations until compaction time [13]. However, most compaction methods are computationally expensive and must be done sparingly. It is therefore infeasible to use RocksDB’s `Delete` method to perform targeted evictions of objects, since compaction does not happen frequently enough for deletes to control the flash footprint of the cache. If RocksDB fills a flash device, it begins failing write and delete operations. This is particularly problematic in the *SocialGraph* system, which relies on deletes to maintain cache consistency. If a *SocialGraph* cache fails a certain number of deletes, the policy is to perform a cold restart (see Figure 15) to restore consistency. 
+RocksDB trades off higher space usage in favor of lower write and delete latencies, using **tombstones** to defer deletes operations until compaction time [13]. However, most compaction methods are computationally expensive and must be done sparingly. It is therefore infeasible to use RocksDB’s `Delete` method to perform targeted evictions of objects, since compaction does not happen frequently enough for deletes to control the flash footprint of the cache. If RocksDB fills a flash device, it begins failing write and delete operations. This is particularly problematic in the *SocialGraph* system, which relies on deletes to maintain cache consistency. If a *SocialGraph* cache fails a certain number of deletes, the policy is to perform a cold restart (see Figure 15) to restore consistency. 
 
 As an alternative, we tested RocksDB using FIFO compaction, which simply evicts the oldest data when the size of the store exceeds its desired size. This compaction method is lightweight enough to run constantly and effectively limit RocksDB’s flash usage. Evicting the oldest data will tend to evict the least recently *updated* objects, but these are generally not the same as the least recently *used* objects. RocksDB does not provide facilities for tracking which blocks contain recently used objects. Due to its simple eviction policy, RocksDB achieved only a 53% hit ratio compared to CacheLib’s 76% hit ratio when tested with a production *SocialGraph* workload. Additionally, RocksDB under FIFO compaction suffers from severe read amplification and thus required 50% higher CPU utilization than CacheLib in order to meet production throughput levels. Hence, although some of the principles of LSM tree-based solutions can be carried over to the design of flash caches, we conclude that RocksDB itself is not suitable for caching at Facebook.
 
@@ -264,7 +287,7 @@ As an alternative, we tested RocksDB using FIFO compaction, which simply evicts 
 
 We quantify the impact that CacheLib has had on the Facebook production environment by considering the notable caching improvements that CacheLib has introduced.
 
-**DRAM overhead**. By design, the DRAM overheads of the LOC and SOC are small; in production we measure less than 0.1% and 0.2%, respectively. The DRAM Cache has generally low (*\<* 7%) overhead. There are two main sources of DRAM overhead: slab class fragmentation and metadata overhead (Section 4.2). Tuning CacheLib’s slab classes is crucial to limit fragmentation. Tuning currently happens manually. Without tuning, fragmentation overhead would more than double in many clusters. Unfortunately, we are not aware of automated tuning algorithms for slab-class boundaries^2^. A detailed analysis of DRAM overhead appears in Appendix B.
+**DRAM overhead**. By design, the DRAM overheads of the LOC and SOC are small; in production we measure less than 0.1% and 0.2%, respectively. The DRAM Cache has generally low (*\<* 7%) overhead. There are two main sources of DRAM overhead: slab class fragmentation and metadata overhead (Section 4.2). Tuning CacheLib’s slab classes is crucial to limit fragmentation. Tuning currently happens manually. Without tuning, fragmentation overhead would more than double in many clusters. Unfortunately, we are not aware of automated tuning algorithms for **==slab-class boundaries==**^2^. A detailed analysis of DRAM overhead appears in Appendix B.
 
 > ^2^Prior work has considered how to partition cache space between fixed slab classes [22] but not how to optimally define boundaries in the first place. Conceptually, this problem resembles the facility placement problem on a line [15], but we are not aware of optimal algorithms.
 
@@ -274,7 +297,7 @@ The LOC incurs application-level write amplification due to fragmentation from t
 
 The LOC’s use of FIFO eviction instead of LRU allows CacheLib to write to flash sequentially. Writing sequentially reduced device-level write amplification from 1*.*5 to 1*.*05 at the expense of slight increase in application-level write amplification. The net effect was a 15% reduction in the number of NAND writes to the flash device per second.
 
-The SOC incurs application-level write amplification due to always writing 4KB (even as object sizes *\<* 2KB). On average, we measure this to be around 6*.*5 the number of inserted bytes. The SOC also incurs significant device-level write amplification from writing random 4KB pages [43]. We measure this overhead to be between between 1*.*1 (for *Lookaside*) and 1*.*4 (for *Storage*) depending on the workload.
+The SOC incurs application-level write amplification due to always writing 4KB (even as object sizes *\<* 2KB). <u>==On average, we measure this to be around 6*.*5 the number of inserted bytes==</u>. The SOC also incurs significant device-level write amplification from writing random 4KB pages [43]. We measure this overhead to be between between 1*.*1 (for *Lookaside*) and 1*.*4 (for *Storage*) depending on the workload.
 
 To achieve these levels of device-level write amplification, flash is typically overprovisioned by 50%. This overprovisioning is offset by the space efficiency of the SOC and the low cost of flash relative to DRAM, but reducing flash overprovisioning while maintaining the current level of performance is an open challenge at Facebook.
 
@@ -284,21 +307,25 @@ Recently, CacheLib was updated to include a more advanced admission policy, simi
 
 **Hit ratios**. CacheLib’s DRAM cache initially used a variant of the LRU eviction policy. A notable improvement in hit ratios across systems occurred when we deployed a 2Q-based eviction policy [54]. For example, the hit ratio for *SocialGraph* caches increased by 5 percentage points and the hit ratio for *CDN* caches increased by 9 percentage points.
 
-An even larger improvement in hit ratios resulted from the deployment of high-capacity hybrid DRAM-flash caches. Services requiring massive cache capacities generally consist of a two-layer hierarchy where “L1” DRAM-only cache forward misses to “L2” hybrid DRAM-flash caches. To see the improvement due to hybrid caches, we compare *SocialGraph* ’s L2 caches from a deployment which uses hybrid caches to *SocialGraph* ’s L2 caches from a deployment which still uses DRAM-only caches. The DRAM-only L2 caches for *SocialGraph* currently achieve a 25% hit ratio. The hybrid-cache L2 offers 20 more cache capacity, achieves a 60% hit ratio, and costs 25% less than the DRAM-only deployment.
+An even larger improvement in hit ratios resulted from the deployment of high-capacity hybrid DRAM-flash caches. Services requiring massive cache capacities generally consist of a two-layer hierarchy where “L1” DRAM-only cache forward misses to “L2” hybrid DRAM-flash caches. <u>==To see the improvement due to hybrid caches, we compare *SocialGraph* ’s L2 caches from a deployment which uses hybrid caches to *SocialGraph* ’s L2 caches from a deployment which still uses DRAM-only caches==</u>. The DRAM-only L2 caches for *SocialGraph* currently achieve a 25% hit ratio. The hybrid-cache L2 offers 20 more cache capacity, achieves a 60% hit ratio, and costs 25% less than the DRAM-only deployment.
 
 Figure 14 shows hit ratio distributions for L1 and L2 caches for *Lookaside*, *SocialGraph* , and *CDN* clusters, some of the largest CacheLib deployments. L1 caches achieve much higher hit ratios than L2 caches, with median hit ratios ranging from 75% (*CDN* ) to 92% (*SocialGraph* ) while median L2 cache hit ratios range from 67% (*CDN* ) to 75% (*SocialGraph* ). The combined hit ratios of these systems are very high: ranging between 95-99%.
 
-> **Figure 14**: *Distribution of hit ratios for servers in the top four CacheLib users during a typical day*.
+|**Figure 14**: Distribution of hit ratios for servers in the top four CacheLib users during a typical day. |
+| :----------------------------------------------------------- |
+| ![](cachelib/F14.png)    |
 
 **Impact of warm restarts**. Figure 15 shows the hit ratios of L1 and L2 *SocialGraph* caches restarting without performing a warm restart. Without this feature enabled, a cache restart causes a dip in hit ratio, which slowly returns to normal. This is particularly damaging in L2 hybrid caches where largecapacity caches can take several days to “warm-up”. Such a hit ratio dip can translate into temporary overload on backend systems, which assume a relatively stable arrival rate.
 
-> **Figure 15**: *SocialGraph L1 cache (left) and L2 cache (right) hit ratios during a cache restart. Hit ratios suffer when warm restarts are disabled*.
+| **Figure 15**: SocialGraph L1 cache (left) and L2 cache (right) hit ratios during a cache restart. Hit ratios suffer when warm restarts are disabled.|
+| :----------------------------------------------------------: |
+|                    ![](cachelib/F15.png)                     |
 
 ## 6 Experience and Discussion
 
 Facebook’s experience with CacheLib reveals a great deal about the trajectory of modern caching systems.
 
-**New features are adopted by many systems**. One might expect that many CacheLib features end up being suitable for only a small number of services. However, our experience shows a trend in the opposite direction: *features developed for one particular service are frequently adopted by many other CacheLib-based services*. For example, hybrid caches and efficient object expirations (TTLs), were both added after the initial deployment of CacheLib. Today, hybrid caches are used by five large CacheLib use cases. Object expirations were originally added to enforce fair sharing in look-aside caches, but were later adopted by CDN caches, which need to refresh static content periodically. Nevertheless, not every feature is used by every system. Using a general-purpose caching engine is not equivalent to developing a single, onesize-fits-all approach to caching. Instead, we aim to benefit from extracting common caching functionality while still allowing a high degree of flexibility for cache customization. 
+**New features are adopted by many systems**. One might expect that many CacheLib features end up being suitable for only a small number of services. However, our experience shows a trend in the opposite direction: *features developed for one particular service are frequently adopted by many other CacheLib-based services*. For example, hybrid caches and efficient object expirations (TTLs), were both added after the initial deployment of CacheLib. Today, hybrid caches are used by five large CacheLib use cases. Object expirations were originally added to enforce fair sharing in look-aside caches, but were later adopted by CDN caches, which need to refresh static content periodically. Nevertheless, not every feature is used by every system. Using a general-purpose caching engine is not equivalent to developing a single, onesize-fits-all approach to caching. **Instead, we aim to benefit from extracting common caching functionality while still allowing a high degree of flexibility for cache customization**. 
 
 **Performance improvements help many systems**. Even small performance improvements in CacheLib (see Section 5.2) have an outsized impact due to the broad deployment of CacheLib-based systems at Facebook. Deploying new features typically involves a simple code update or configuration change. The ability to make centralized improvements motivates a continuous effort to optimize the CacheLib code base. For example, while writing this paper, the LOC index implementation (see Section 4) changed to use a new sparse hashmap implementation, lowering CPU utilization by 0.5% with no change in memory overhead. While a 0.5% CPU decrease in a single system may not be worth the development cost, a 0.5% decrease across all of Facebook’s hybrid caches amounts to a massive resource savings. This highlights the advantage of a common engine over specialization.
 
@@ -308,19 +335,21 @@ Facebook’s experience with CacheLib reveals a great deal about the trajectory 
 
 > ^3^Not all services use hybrid caches, especially throughput-focused L1 caches.
 
-> **Figure 16**: *A wide range of Facebook services are built using CacheLib. We measure a service’s deployment size in terms of its total DRAM cache size. No service has more than 25% of the total cache space across Facebook services*.
+|    ![](cachelib/F16.png)   |
+| :----------------------------------------------------------: |
+|    **Figure 16**: A wide range of Facebook services are built using CacheLib. We measure a service’s deployment size in terms of its total DRAM cache size. No service has more than 25% of the total cache space across Facebook services.                               |
 
 **Flash caching signals a paradigm shift**. One might think that cache hit ratios are generally high, and hence expect little benefit from the additional cache capacity afforded by flash. While this is true in some cases, high hit ratios do not always imply that additional cache capacity is futile. Specifically, engineers provision caches to equalize the marginal cost of the next byte of DRAM with the marginal benefit of the ensuing increase in hit ratio. Flash caches alter this cost calculation, lowering the marginal cost of additional cache capacity by an order of magnitude. This makes it worthwhile to not only increase cache capacities dramatically, but to deploy new hybrid caches that did not make sense with DRAM alone.
 
 Additionally, the benefit of a cache hit is no longer strictly a latency proposition for most systems. While a classical view of caching suggests that caching is only worthwhile if it reduces average memory access time [46], this ignores the knock-on effects of a cache miss such as increased network congestion, backend load, and backend power usage. From this perspective, a cache hit in flash is as valuable as a DRAM hit, even though flash is several orders-of-magnitude slower than DRAM. This again tips the scales of the marginal cost calculation in favor of deploying flash caches.
 
-**CacheLib does not always lead to performance gains**. CacheLib-based systems have not always outperformed the specialized systems they replaced from the outset. For example, the first CacheLib-based implementation of the *CDN* system was not able to match the performance of the original *CDN* system, which optimized for flash caching by implementing advanced eviction policies with low flash write rates. The first CacheLib-based implementation of *CDN* achieved a 10% lower hit ratio and 20% higher flash write rate than the specialized system in testing.
+**CacheLib does not always lead to performance gains**. CacheLib-based systems have not always outperformed the specialized systems they replaced from the outset. For example, the first CacheLib-based implementation of the *CDN* system was not able to match the performance of the original *CDN* system, which optimized for flash caching by **implementing advanced eviction policies with low flash write rates**. The first CacheLib-based implementation of *CDN* achieved a 10% lower hit ratio and 20% higher flash write rate than the specialized system in testing.
 
-Before the CacheLib-based implementation of *CDN* was deployed, optimizations were added to CacheLib to improve the hybrid caching mechanism. The LOC eviction policy was expanded from pure FIFO eviction to include a readmission policy which can readmit frequently requested objects when they are evicted. Write buffers were also added between the DRAM and flash caches. These buffers reduce applicationlevel write amplification by reducing the internal fragmentation due to 4KB aligned writes. The write buffers also allow CacheLib to issue fewer, larger writes to flash, which reduces device-level write amplification.
+Before the CacheLib-based implementation of *CDN* was deployed, optimizations were added to CacheLib to improve the hybrid caching mechanism. The LOC eviction policy was expanded from pure FIFO eviction to include **a readmission policy** which can readmit frequently requested objects when they are evicted. Write buffers were also added between the DRAM and flash caches. These buffers reduce applicationlevel write amplification by reducing the internal fragmentation due to 4KB aligned writes. The write buffers also allow CacheLib to issue fewer, larger writes to flash, which reduces device-level write amplification.
 
-The improved LOC eviction policy achieved a hit ratio close to that of the specialized system while performing 10% fewer writes to flash than the specialized system. Both of these optimizations add almost no overhead if turned off, and ended up improving the performance of other CacheLib-based systems as well. *Lookaside*, for example, saw a 25% reduction in P99 flash read latency, and a 2% reduction in flash write rate after these changes.
+The improved LOC eviction policy achieved a hit ratio close to that of the specialized system while performing 10% fewer writes to flash than the specialized system. **==Both of these optimizations add almost no overhead if turned off==**, and ended up improving the performance of other CacheLib-based systems as well. *Lookaside*, for example, saw a 25% reduction in P99 flash read latency, and a 2% reduction in flash write rate after these changes.
 
-The *CDN* example illustrates the common case in balancing the generalization-versus-specialization tradeoff: CacheLib does not always address the needs of every use case from the outset. However, the features needed by specialized systems are often not fundamentally incompatible with the design of CacheLib. If one is willing to invest time into building the necessary features into CacheLib, they will gain access to CacheLib’s full feature set while exporting new optimizations to the rest of the Facebook’s caching systems.
+The *CDN* example illustrates the common case in balancing the generalization-versus-specialization tradeoff: CacheLib does not always address the needs of every use case from the outset. However, the features needed by specialized systems are often not fundamentally incompatible with the design of CacheLib. **If one is willing to invest time into building the necessary features into CacheLib**, they will gain access to CacheLib’s full feature set while exporting new optimizations to the rest of the Facebook’s caching systems.
 
 **CacheLib does not work for every use case**. Although CacheLib handles many use cases, we are aware of limitations that have prevented some from adopting CacheLib. For instance, some ad-serving systems rely on caching *nested* data structures. In order to control its memory usage and quickly serialize `Items` from DRAM into flash, CacheLib only supports data structures that map into a flat address space. These ad-serving systems were thus unable to adopt CacheLib.
 
@@ -336,7 +365,7 @@ There is vast body of research on caching systems including in-depth description
 
 While the literature mainly focuses on DRAM caching, there is some prior work on flash caching [32, 57, 60, 86]. CacheLib incorporates ideas from [86] and [60] to reduce write amplification by doing FIFO eviction on flash. Likewise, CacheLib includes the admission policy of [57] and a variant of the admission policy from [32] (see Appendix C).
 
-Although dynamic cache partitioning is possible in CacheLib, the impact of existing research on cache partitioning policies is limited at Facebook. Partitioning can be used to eliminate performance cliffs in a cache’s hit ratio as a function of size [7, 22, 88], but performance cliffs are not a major issue at Facebook. As the authors of RobinHood [8] note in their work, the RobinHood partitioning scheme is limited when infrastructure is shared between different backend systems, which is the case at Facebook. Additionally, the computational overhead of retrieving the size of objects stored on flash is too high to use size-aware sharding [27] in practice.
+Although dynamic cache partitioning is possible in CacheLib, the impact of existing research on cache partitioning policies is limited at Facebook. Partitioning can be used to eliminate performance cliffs in a cache’s hit ratio as **a function of size** [7, 22, 88], but performance cliffs are not a major issue at Facebook. As the authors of RobinHood [8] note in their work, the RobinHood partitioning scheme is limited when infrastructure is shared between different backend systems, which is the case at Facebook. Additionally, the computational overhead of retrieving the size of objects stored on flash is too high to use size-aware sharding [27] in practice.
 
 ## 8 Conclusions
 
@@ -344,7 +373,7 @@ Caching is an important component of modern data-center applications, and this p
 
 ## Appendix
 
-### A Cache Lookup Order and Latency
+### A. Cache Lookup Order and Latency
 
 CacheLib uses the lookup sequence 1) DRAM cache, 2) LOC, 3) SOC. Note that an object’s size is not known in advance. So, after a DRAM cache miss, CacheLib does not know whether the object is stored in the LOC or the SOC. Thus, it has to query one of them first, and on a miss, query the other.
 
@@ -356,19 +385,19 @@ To calculate the penalty for the SOC, recall that the SOC does not use an in-mem
 
 The average latency (AMAT) of CacheLib with the default order (1) DRAM cache, (2) LOC, (3) SOC is as follows, where *L* denotes lookup latency and *H* hit ratio: *L (DRAM) + (1 - H(DRAM)) × (L(LOC) + (1 − H(LOC)) × L(SOC))* . With the order of SOC and LOC inverted, the average latency would increase by several microseconds, depending on the LOC and SOC hit ratios. Thus CacheLib queries the SOC last.
 
-### B Details on DRAM Overheads
+### B. Details on DRAM Overheads
 
 **DRAM Cache**. We measure CacheLib’s DRAM cache overhead as the ratio between its total memory footprint and the sum of cached key and value sizes. We further break up overheads into slab-class fragmentation and metadata. Across *Lookaside*, *Storage*, and *SocialGraph* , we find that overall overheads are between 2.6 and 7% and evenly divided between fragmentation and metadata.
 
-| *Lookaside*   | *Storage* | *SocialGraph* |
-|---------------------------|-----------|---------------|
-| **Fragmentation** 3.9%| 3%| 1.6%  |
-| **Metadata** 3%   | 4%| 1%|
-| **Overall overhead** 6.9% | 7%| 2.6%  |
+|                      | *Lookaside* | *Storage* | *SocialGraph* |
+| -------------------- | ----------- | --------- | ------------- |
+| **Fragmentation**    | 3.9%        | 3%        | 1.6%          |
+| **Metadata**         | 3%          | 4%        | 1%            |
+| **Overall overhead** | 6.9%        | 7%        | 2.6%          |
 
 **Large Object Cache**. Recall that, while the LOC uses an 8-byte hash, 4-bytes are used to partition B-tree and thus do not need to be counted. So, the LOC stores 4-bytes for key hashes, 4-bytes for flash offsets, and an average of 2.5-bytes per item for B-tree pointers. For the small LOC object, this is 0.61%. In production systems, this overhead is low and ranges from to 0.01% (*Storage*) to 0.1% (*Lookaside*).
 
-###  C Advanced Admission Policies for Flash
+###  C. Advanced Admission Policies for Flash
 
 One significant challenge in using flash for caching is respecting the limited write endurance of flash devices. If all DRAM evictions in a hybrid cache were admitted to flash, we would observe write rates 50% above the rate which allows flash devices to achieve their target life span. A flash admission policy thus plays an important role in CacheLib’s performance.
 
@@ -459,7 +488,7 @@ search Award, and a Facebook Graduate Fellowship. We also thank the members and 
 44. Leif Hedstrom. Deploying apache traffic server, 2011. Oscon.
 45. Danny Hendler, Itai Incze, Nir Shavit, and Moran Tzafrir. Flat combining and the synchronization-parallelism tradeoff. In *Proceedings of the twenty-second annual ACM symposium on Parallelism in algorithms and architectures*, pages 355–364, 2010.
 46. John L Hennessy and David A Patterson. *Computer architecture: a quantitative approach*. Elsevier, 4 edition, 2011.
-47. Maurice P Herlihy and Jeannette M Wing. Linearizability: A correctness condition for concurrent objects. *ACM Transactions on Programming Languages and Systems*, 12(3):463–492, 1990.
+47. Maurice P Herlihy and Jeannette M Wing. Linearizability: **A correctness condition for concurrent objects**. *ACM Transactions on Programming Languages and Systems*, 12(3):463–492, 1990.
 48. Qi Huang, Ken Birman, Robbert van Renesse, Wyatt Lloyd, Sanjeev Kumar, and Harry C Li. An analysis of Facebook photo caching. In *ACM SOSP*, pages 167–181, 2013.
 49. Sai Huang, Qingsong Wei, Dan Feng, Jianxi Chen, and Cheng Chen. **Improving flash-based disk cache with lazy adaptive replacement**. *ACM Transactions on Storage*, 12(2):1–24, 2016.
 50. Akanksha Jain and Calvin Lin. Back to the future: leveraging belady’s algorithm for improved cache replacement. In *ACM/IEEE ISCA*, pages 78–89, 2016.
