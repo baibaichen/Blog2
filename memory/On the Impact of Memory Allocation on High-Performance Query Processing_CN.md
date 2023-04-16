@@ -1,4 +1,4 @@
-# On the Impact of Memory Allocation on High-Performance Query Processing
+# 论内存分配对高性能查询处理的影响
 
 1. Clickhouse [Using jemalloc instead of tcmalloc](https://github.com/ClickHouse/ClickHouse/pull/2773).
 2. Doris [[enhancement\](memory) jemalloc performance optimization and compatibility with MemTracker](https://github.com/apache/doris/pull/12496)
@@ -6,51 +6,52 @@
 
    1. [jemalloc "extension" for Linux](https://github.com/duckdb/duckdb/pull/4971)
 
+**摘要**
+有点令人惊讶的是，分析查询引擎的行为主要受所用**动态内存分配器**的影响。内存分配器在很大程度上影响着其他进程的**性能**、可扩展性、**内存效率**和**内存公平性**。本文首次对内存分配对高性能查询引擎的影响进行了全面的实验分析。我们测试了五个最先进的动态内存分配器，并讨论了它们在我们的 DBMS 中的优缺点。正确的分配器可以在 4 路英特尔至强服务器上将 TPC-DS (SF 100) 的性能提高 2.7 倍。
 
-**ABSTRACT**
-Somewhat surprisingly, the behavior of analytical query engines is crucially affected by the dynamic memory allocator used. Memory allocators highly influence performance, scalability, memory efficiency and memory fairness to other processes. In this work, we provide the first comprehensive experimental analysis on the impact of memory allocation for high-performance query engines. We test five state-of-the-art dynamic memory allocators and discuss their strengths and weaknesses within our DBMS. The right allocator can increase the performance of TPC-DS (SF 100) by 2.7x on a 4-socket Intel Xeon server.
+## 1. 引言
 
-## 1. INTRODUCTION
+现代高性能查询引擎比传统数据库系统快几个数量级。因此，迄今为止对性能不重要的组件可能会成为性能瓶颈。其中一个组件是内存分配。大多数现代查询引擎都是高度并行的，并且严重依赖临时哈希表进行查询处理，这会导致大量不同大小的短期内存分配。因此，内存分配器需要具有可扩展性，并且能够同时处理无数个中小型分配以及几个大型内存分配。正如我们在本文中展示的那样，**内存分配已成为影响整体查询处理性能的一个重要因素**。
 
-Modern high-performance query engines are orders of magnitude faster than traditional database systems. As a result, components that hitherto were not crucial for performance may become a performance bottleneck. One such component is memory allocation. Most modern query engines are highly parallel and heavily rely on temporary hash-tables for query processing which results in a large number of short living memory allocations of varying size. Memory allocators therefore need to be scalable and be able to handle myriads of small and medium sized allocations as well as several huge allocations simultaneously. As we show in this paper, memory allocation has become a large factor in overall query processing performance.
+新的硬件趋势加剧了分配问题。随着多核和众核服务器架构的发展，多达 100 个通用核的服务器架构对内存分配策略提出了新的挑战。由于纯计算能力的增加，可以进行更多的主动查询。此外，多线程数据结构实现导致密集和同时访问模式。**由于大多数多节点机器依赖于非统一内存访问 (NUMA) 模型，因此从远程节点请求内存特别昂贵**。
 
-New hardware trends exacerbate the allocation issues. The development of multi- and many-core server architectures with up to hundred general purpose cores is a distinct challenge for memory allocation strategies. Due to the increased number of pure computation power, more active queries are possible. Furthermore, multi-threaded data structure implementations lead to dense and simultaneous access patterns. **Because most multi-node machines rely on a non-uniform memory access (NUMA) model, requesting memory from a remote node is particularly expensive**.
+因此，动态内存分配器应该实现以下目标：
 
-Therefore, the following goals should be accomplished by a dynamic memory allocator:
+- **可扩展性**：减少多线程分配的开销。
+- **性能**：最小化 `malloc` 和 `free` 的开销。
+- **内存公平性**：将释放的内存还给操作系统。
+- **内存效率**：避免内存碎片。
 
-- **Scalability:** Reduce overhead for multi-threaded allocations.
-- **Performance:** Minimize the overhead for malloc and free.
-- **Memory Fairness:** Give freed memory back to the OS.
-- **Memory Efficiency:** Avoid memory fragmentation.
-
-In this paper, we perform the first comprehensive study of memory allocation in modern database systems. We evaluate different approaches to the aforementioned dynamic memory allocator requirements. Although memory allocation is on the critical path of query processing, no empirical study on different dynamic memory allocators for in-memory database systems has been conducted (Appuswamy et al., [2017](http://www.vldb.org/pvldb/vol11/p121-appuswamy.pdf)).
+本文首次对现代数据库系统中的内存分配问题进行了全面的研究。我们评估了各种满足上述要求的**动态内存分配器**。尽管内存分配位于查询处理的关键路径上，对于内存数据库系统中不同的动态内存分配器，还没有进行过实证研究（Appuswamy等人，[2017](http://www.vldb.org/pvldb/vol11/p121-appuswamy.pdf)）。
 
 > ![](https://media.arxiv-vanity.com/render-output/6472788/x1.png)
 > *Figure 1*. **Execution of a given query set on TPC-DS (SF 100) with different allocators**.
 
-Figure [1](https://www.arxiv-vanity.com/papers/1905.01135/#S1.F1) shows the effects of different allocation strategies on TPC-DS with scale factor 100. We measure memory consumption and execution time with our multi-threaded database system on a 4-socket Intel Xeon server. In this experiment, our DBMS executes the query set sequentially using all available cores. Even this relatively simple workload already results in significant performance and memory usage differences. Our database linked with jemalloc can reduce the execution time to 12 in comparison to linking it with the standard malloc of glibc 2.23. On the other hand, jemalloc has the highest memory consumption and does not release memory directly after execution of the query. Although the resident memory consumption seems high for `TCMalloc`, it already gives back the memory to the operating system lazily. Consequently, the allocation strategy is crucial to the performance and memory consumption behavior of in-memory database systems.
+图 [1](https://www.arxiv-vanity.com/papers/1905.01135/#S1.F1) 显示了不同分配策略对比例因子为 100 的 TPC-DS 的影响。在 4 路英特尔至强服务器上，用我们的多线程数据库系统测量内存消耗和执行时间 。在此实验中，我们的 DBMS 使用所有可用内核顺序执行查询集。即使是这种相对简单的工作负载也已经导致显着的性能和内存使用差异。使用 `jemalloc` 的数据库与使用 glibc 2.23 标准 `malloc` 的数据库相比，可以将执行时间缩短到原来的$\frac{1}{2}$。另一方面，`jemalloc` 内存消耗最高，执行完查询后不会直接释放内存。虽然 `TCMalloc` 的常驻内存消耗看起来很高，但它已经将内存缓慢地返回给操作系统。因此，分配策略对于内存数据库系统的性能和内存消耗行为至关重要。
 
-The rest of this paper is structured as follows: After discussing related work in Section [2](https://www.arxiv-vanity.com/papers/1905.01135/#S2), we describe the used allocators and their most important design details in Section [3](https://www.arxiv-vanity.com/papers/1905.01135/#S3). Section [4](https://www.arxiv-vanity.com/papers/1905.01135/#S4) highlights important properties of our DBMS and analyzes the executed workload according to its allocation pattern. Our comprehensive experimental study is evaluated in Section [5](https://www.arxiv-vanity.com/papers/1905.01135/#S5). Section [6](https://www.arxiv-vanity.com/papers/1905.01135/#S6) summarizes our findings.
+本文的其余部分结构如下：在第 [2](https://www.arxiv-vanity.com/papers/1905.01135/#S2) 节 中讨论了相关工作之后，我们将在 [3](https://www.arxiv-vanity.com/papers/1905.01135/#S3) 节中描述所使用的分配器及其最重要的设计细节。第 [4](https://www.arxiv-vanity.com/papers/1905.01135/#S4) 节重点介绍了我们的 DBMS 的重要属性，并根据其分配模式分析了执行的工作负载。我们的综合实验评估第 [5](https://www.arxiv-vanity.com/papers/1905.01135/#S5) 节。第 [6](https://www.arxiv-vanity.com/papers/1905.01135/#S6) 节总结了我们的发现。
 
-## 2. RELATED WORK
+## 2. 相关工作
 
-Although memory allocation is a major performance driver, no empirical study on the impact on in-memory database systems has been conducted. Ferreira et al. (Ferreira et al., [2011](https://www.arxiv-vanity.com/papers/1905.01135/#bib.bib8)) analyzed dynamic memory allocators for a variety of multi-threaded workloads. However, the study considers only up to 4 cores. Therefore, it is hard to predict the scalability for today’s many-core systems.
+尽管内存分配是主要的性能驱动因素，但还没人对**内存分配对内存数据库系统的影响**进行过实证研究。费雷拉等人 （Ferreira 等人，[2011](https://www.arxiv-vanity.com/papers/1905.01135/#bib.bib8)）分析了各种多线程工作负载下的动态内存分配器。但是，该研究最多只考虑了 4 个核。因此，很难预测当前众核系统的可扩展性。
 
-In-memory DBMS and analytical query processing engines, such as HyPer (Kemper and Neumann, [2011](http://www.cs.brown.edu/courses/cs227/papers/olap/hyper.pdf)), SAP HANA (May et al., [2017](https://dx.doi.org/10.1007/s13222-015-0185-2)), and Quickstep (Patel et al., [2018](https://www.arxiv-vanity.com/papers/1905.01135/#bib.bib22)) are built to utilize as many cores as possible to speed up query processing. Because these system rely on allocation-heavy operators (e.g., hash joins, aggregations), a revised experimental analysis on the scalability of the state-of-the-art allocators is needed. In-memory hash joins and aggregations can be implemented in many different ways which can influence the allocation pattern heavily (Balkesen et al., [2013](http://people.inf.ethz.ch/jteubner/publications/parallel-joins/parallel-joins.pdf); Blanas et al., [2011](http://www.cs.wisc.edu/~jignesh/publ/hashjoin.pdf); Zhang et al., [2019](https://www.arxiv-vanity.com/papers/1905.01135/#bib.bib25); Leis et al., [2014](https://www.arxiv-vanity.com/papers/1905.01135/#bib.bib16)).
+内存中 DBMS 和分析查询处理引擎，例如，HyPer [[2011](http://www.cs.brown.edu/courses/cs227/papers/olap/hyper.pdf)]）、SAP HANA [[2017](https://dx.doi.org/10.1007/s13222-015-0185-2)]、 Quickstep [[2018](https://www. arxiv-vanity.com/papers/1905.01135/#bib.bib22)] 都是为了尽可能利用众核来加速查询处理。由于这些系统依赖于大量分配内存的运算符（例如，哈希连接、聚合等），因此需要对最新分配器的可扩展性进行修改的实验分析。内存中哈希连接和聚合可以通过许多不同的方式实现，这会严重影响分配模式（Balkesen 等人 [2013](http://people.inf.ethz.ch/jteubner/publications/parallel-joins/parallel-joins.pdf)；Blanas  等人 [2011](http://www.cs.wisc.edu/~jignesh/publ/hashjoin.pdf)；Zhang 等人 [2019](https: //www.arxiv-vanity.com/papers/1905.01135/#bib.bib25); Leis 等人 [2014](https://www.arxiv-vanity.com/papers/1905.01135/#bib.bib16) )。
 
-Some online transaction processing (OLTP) systems try to reduce the allocation overhead by managing their allocated memory in chunks to increase performance for small transactional queries (Tu et al., [2013](https://dl.acm.org/ft_gateway.cfm?id=2522713&type=pdf); Stoica and Ailamaki, [2013](http://www.inf.ufpr.br/carmem/oficinaBD/artigos2s2013/a7-stoica.pdf); Durner and Neumann, [2019](https://www.arxiv-vanity.com/papers/1905.01135/#bib.bib5)). However, most database systems process both transactional and analytical queries. Therefore, the wide variety of memory allocation patterns for analytical queries needs to be considered as well. Custom chunk memory managers help to reduce memory calls for small allocations but larger chunk sizes trade memory efficiency in favor of performance. Thus, our database system uses transaction-local chunks to speed up small allocations. Despite these optimizations, allocations are still a performance issue. Hence, the allocator choice is crucial to maximize throughput.
+一些在线事务处理（OLTP）系统试图通过以块的形式管理其分配的内存，来减少分配开销，以提高小型事务查询的性能（Tu et al., [2013](https://dl.acm.org/ft_gateway.cfm?id=2522713&type=pdf); Stoica and Ailamaki, [2013](http://www.inf.ufpr.br/carmem/oficinaBD/artigos2s2013/a7-stoica.pdf); Durner and Neumann, [2019](https://www.arxiv-vanity.com/papers/1905.01135/#bib.bib5)）。
 
-With the development of non-volatile memory (NVM), new allocation requirements were introduced. **Foremost, the defragmentation and safe release of unused memory is important since all changes are persistent**. New dynamic memory allocators for these novel persistent memory systems have been developed and experimentally studied (Oukid et al., [2017](https://dl.acm.org/ft_gateway.cfm?id=3137629&type=pdf)). However, regular allocators outperform these NVM allocators in most workloads due to fewer memory constraints.
+但是，大多数数据库系统都处理事务查询和分析查询。因此，还需要考虑分析查询的各种内存分配模式。自定义**分块内存管理器**有助于减少小内存分配的内存调用，但较大的分块大小以牺牲了内存效率的代价，提高了性能。因此，我们的数据库系统使用<u>**事务本地块**</u>来加速小内存的分配。尽管有这些优化，分配仍然是一个性能问题。因此，分配器的选择对于最大化吞吐量至关重要。
 
-## 3. MEMORY ALLOCATORS
+随着非易失性存储器 (NVM) 的发展，引入了新的分配要求。**首先，碎片整理和安全释放未使用的内存是很重要的，因为所有更改都是持久的**。已经为这些新颖的持久内存系统。开发了新的动态内存分配器并进行了实验研究（Oukid 等人，[2017](https://dl.acm.org/ft_gateway.cfm?id=3137629&type=pdf)）。但是，由于内存限制较少，常规分配器在大多数工作负载中的性能优于这些 NVM 分配器。
 
-In this section, we discuss the five different allocation strategies used for our experimental study. We explain the basic properties of these algorithms according to memory allocation and freeing. The tested state-of-the-art allocators are available as Ubuntu 18.10 packages. Only the glibc malloc 2.23 implementation is part of a previous Ubuntu package. Nevertheless, this version is still used in many current distributions such as the stable Debian release.
+## 3. 内存分配器
 
-Memory allocation is strongly connected with the operating system (OS). The mapping between physical and virtual memory is handled by the kernel. Allocators need to request virtual memory from the OS. Traditionally, the user program asks for memory by calling the malloc method of the allocator. The allocator either has memory available that is unused and suitable or needs to request new memory from the OS. For example, the Linux kernel has multiple APIs for requesting and freeing memory. brk calls can increase and decrease the amount of memory allocated to the data segment by changing the program break. mmap maps files into memory and implements demand paging such that physical pages are only allocated if used. With anonymous mappings, virtual memory that is not backed by a real file can be allocated within main memory as well. The memory allocation process is visualized below.
+在本节中，我们将讨论用于实验研究的五种不同分配策略。我们根据内存分配和释放来解释这些算法的基本属性。经过测试的最先进的分配器可作为 Ubuntu 18.10 软件包使用。只有 glibc malloc 2.23 实现是以前的 Ubuntu 软件包的一部分。尽管如此，该版本仍在许多当前发行版中使用，例如稳定的 Debian 发行版。
+
+**内存分配与操作系统 (OS) 密切相关**。物理内存和虚拟内存之间的映射由内核处理。分配器需要从操作系统请求虚拟内存。传统上，用户程序通过调用分配器的 malloc 方法来请求内存。分配器要么有未使用且合适的可用内存，要么需要从操作系统请求新内存。例如，Linux 内核有多个用于请求和释放内存的 API。`brk` 调用可以通过更改程序中断来增加和减少分配给数据段的内存量。`mmap` 将文件映射到内存并实现请求分页，以便仅在使用时分配物理页面。使用匿名映射，也可以在主内存中分配不受真实文件支持的虚拟内存。内存分配过程如下图所示。
 
 ![](https://media.arxiv-vanity.com/render-output/6472788/x2.png)
 
-Besides freeing memory directly with the aforementioned calls, the memory allocator can opt to release memory with MADV_FREE (since Linux Kernel 4.5). MADV_FREE indicates that the kernel is allowed to reuse this memory region. However, the allocator can still access the virtual memory address and either receives the previous physical pages or the kernel provides new zeroed pages. Only if the kernel reassigns the physical pages, new ones need to be zeroed. Hence, MADV_FREE reduces the number of pages that require zeroing since the old pages might be reused by the same process.
+除了通过上述调用直接释放内存外，内存分配器还可以选择使用 `MADV_FREE` 释放内存（自 Linux Kernel 4.5 起）。`MADV_FREE` 表示允许内核重用该内存区域。但分配器仍然可以访问虚拟内存地址，接收先前的物理页面，要么内核提供新的归零页面。只有当内核重新分配物理页面时，新的页面才需要归零。因此，`MADV_FREE` 减少了需要归零的页面数量，因为旧页面可能会被同一进程重用。
 
 ### 3.1 MALLOC 2.23
 
@@ -68,9 +69,9 @@ A thread-local cache (tcache) was introduced with glibc v2.26 (Library, [2017](h
 
 ### 3.3 JEMALLOC 5.1
 
-jemalloc was originally developed as scalable and low fragmentation standard allocator for FreeBSD. Today, jemalloc is used for a variety of applications such as Facebook, Cassandra and Android. It differentiates between three size categories - small (<16/textKB), large (<4MB) and huge. These categories are further split into different size classes. It uses arenas that act as completely independent allocators. Arenas consist of chunks that allocate multiples of 1024 pages (4MB). jemalloc implements low address reusage for large allocations to reduce fragmentation. Low address reusage, which basically scans for the first large enough free memory region, has similar theoretical properties as more expensive strategies such as best-fit. jemalloc tries to reduce zeroing of pages by deallocating pages with MADV_FREE instead of unmapping them. Most importantly, jemalloc purges dirty pages **decay-based** with a wall-clock (since v4.1) which leads to a high reusage of recently used dirty pages. Consequently, the unused memory will be purged if not requested anymore to achieve memory fairness (Evans, [2015](https://dl.acm.org/citation.cfm?id=2742807), [2018](https://github.com/jemalloc/jemalloc/blob/dev/ChangeLog)).
-
 ![](https://media.arxiv-vanity.com/render-output/6472788/x4.png)
+
+jemalloc 最初是为 FreeBSD 开发的可扩展和低碎片标准分配器。今天，jemalloc 用于各种应用程序，例如 Facebook、Cassandra 和 Android。它区分三种大小类别 - 小 (<16/<u>==textKB==</u>)、大 (<4MB) 和巨大。这些类别进一步分为不同的尺寸等级。它使用 **Arena** 作为完全独立的分配器。Arenas 由分配 1024 页 (4MB) 的倍数的块组成。jemalloc 为**大分配**实现低地址重用以减少碎片。低地址重用，基本上是扫描第一个足够大的空闲内存区域，与更昂贵的策略（如最佳匹配）具有相似的理论属性。jemalloc 尝试通过使用 `MADV_FREE` 释放页面而不是取消映射来减少页面归零。最重要的是，jemalloc 使用**时钟**（自 v4.1 起）**基于衰减**清除脏页，这导致最近使用过的脏页的高重用率。因此，如果不再请求，未使用的内存将被清除，以实现内存公平（Evans, [2015](https://dl.acm.org/citation.cfm?id=2742807), [2018](https://github.com/jemalloc/jemalloc/blob/dev/ChangeLog)）。
 
 ### 3.4 TBBMALLOC 2017 U7
 
@@ -80,36 +81,40 @@ Memory blocks are memory mapped regions that are multiples of the requested obje
 
 ### 3.5 TCMALLOC 2.5
 
-TCMalloc is part of Google’s gperftools. Each thread has a local cache that is used to satisfy small allocations (≤256KB). Large objects are allocated in a central heap using 8KB pages.
+TCMalloc 是 Google 的 gperftools 的一部分。每个线程都有一个本地缓存，用于满足小的分配（≤256KB）。大对象使用 8KB 页分配在中央堆中。
 
-TCMalloc uses different allocatable size classes for the small objects and stores the thread cache as a singly linked list for each of the size classes. Medium sized allocations (≤1MB) use multiple pages and are handled by the central heap. If no space is available, the medium sized allocation is treated as a large allocation. For large allocations, spans of free memory pages are tracked within a red-black tree. A new allocation just searches the tree for the smallest fitting span. If no span is found the memory is allocated from the kernel (Google, [2007](https://gperftools.github.io/gperftools/tcmalloc.html)).
+TCMalloc 为小对象使用**大小不同的可分配类**，并将每个<u>大小类的单链表</u>存储在**线程本地缓存**。中型分配 (≤1MB) 使用多个页面并由中央堆处理。如果没有可用空间，则将中型分配视为大型分配。对于较大的分配，空闲内存页的范围在红黑树中跟踪。新的分配只是在树中搜索**容量最适配的页面（最小）**。如果未找到页面，则从内核分配内存（Google，[2007](https://gperftools.github.io/gperftools/tcmalloc.html)）。
 
-Unused memory is freed with the help of MADV_FREE calls. Small allocations will be garbage collected if the thread-local cache exceeds a maximum size. Freed spans are immediately released since the aggressive decommit option was enabled (starting with version 2.3) to reduce memory fragmentation (Google, [2017](https://github.com/gperftools/gperftools/tree/gperftools-2.5.93)).
+在 `MADV_FREE` 调用的帮助下释放未使用的内存。如果线程本地缓存超过最大大小，则垃圾收集**小分配**。自从启用积极的**取消提交**（decommit ）选项（从 2.3 版开始）以减少内存碎片后，立即释放页面（Google, [2017](https://github.com/gperftools/gperftools/tree/gperftools-2.5.93)）。
 
 ## 4. DBMS AND WORKLOAD ANALYSIS
 
-Decision support systems rely on analytical queries (OLAP) that gather information from a huge dataset by joining different relations for example. In in-memory query engines joins are often scheduled physically as hash joins resulting in a huge number of smaller allocations. In the following, we use a database system that uses pre-aggregation hash tables to perform multi-threaded group bys and joins (Leis et al., [2014](https://www.arxiv-vanity.com/papers/1905.01135/#bib.bib16)). Our DBMS has a custom **transaction-local chunk allocator** to speed up small allocations of less than 32KB. We store small allocations in chunks of medium sized memory blocks. Since only small allocations are stored within chunks, the memory efficiency footprint of these small object chunks is marginal. Additionally, the memory needed for tuple materialization is acquired in chunks. These chunks grow as more tuples are materialized. Thus, we already reduce the stress on the allocator significantly while preserving memory efficiency.
+决策支持系统依赖于分析查询 (OLAP)，例如通过连接不同的关系从庞大的数据集中收集信息。在内存查询引擎中，通常将 Join 物理安排为 Hash Join，从而导致大量较小的分配。在下文中，我们使用一个使用预聚合哈希表的数据库系统来执行多线程分组和 Join（Leis et al., [2014](https://www.arxiv-vanity.com/papers/1905.01135 /#bib.bib16))。我们的 DBMS 有一个**自定义事务本地分块分配器**，可以加速小于 32KB 的小分配。我们将小分配存储在中等大小的内存块中。由于只有小的分配存储在块中，因此这些小对象块的内存效率足迹是微不足道的。此外，元组具体化所需的内存以块的形式获取。这些块随着更多元组的具体化而增长。因此，我们已经在保持内存效率的同时显着降低了分配器的压力。
 
-The TPC-H and TPC-DS benchmarks were developed to standardize common decision support workloads (Nambiar and Poess, [2006](https://www.arxiv-vanity.com/papers/1905.01135/#bib.bib20)). Because TPC-DS contains a larger workload of more complex queries than TPC-H, we focus on TPC-DS in the following. As a result, we expect to see a more diverse and challenging allocation pattern. TPC-DS describes a retail product supplier with different sales channels such as stores and web sales.
+TPC-H 和 TPC-DS 基准测试旨在标准化常见的决策支持工作负载（Nambiar 和 Poess，[2006](https://www.arxiv-vanity.com/papers/1905.01135/#bib.bib20)）。由于 TPC-DS 包含比 TPC-H 更大的工作量和更复杂的查询，我们在下文中重点介绍 TPC-DS。因此，我们预计看到更加多样化和更具挑战性的分配模式。TPC-DS 描述了具有不同销售渠道（例如实体店和网络销售）的零售产品供应商。
 
-In the following, we statistically analyze the allocation pattern for TPC-DS executing all queries without rollup and window functions. Note that the specific allocation pattern depends on the discussed implementation choices of the join and group by operators.
+下面，我们统计分析 TPC-DS 执行所有查询（没有使用 Roll Up 和窗口函数）的分配模式。请注意，具体的分配模式取决于所讨论的 Join 和分组运算符的实现选择。
 
 | ![](https://media.arxiv-vanity.com/render-output/6472788/x5.png) | ![](https://media.arxiv-vanity.com/render-output/6472788/x6.png) |
 | :----------------------------------------------------------: | :----------------------------------------------------------: |
-*Figure 2.* *Allocations in TPC-DS (SF 100, serial execution).*
+*Figure 2.* *Allocations in TPC-DS (SF 100, serial execution).* 
 
-Figure [2](https://www.arxiv-vanity.com/papers/1905.01135/#S4.F2) shows the distribution of allocations in our system for TPC-DS with scale factor 100. The most frequent allocations are in the range of 32KB to 512KB. Larger memory regions are needed to create the bucket arrays of the chaining hash tables. The huge amount of medium sized allocations are requested to materialize tuples using the aforementioned chunks.
+图 [2](https://www.arxiv-vanity.com/papers/1905.01135/#S4.F2) 显示了我们系统中比例因子为 100 的 TPC-DS 的分配分布。最常见的分配范围是 32KB 到 512KB。需要更大的内存区域来创建哈希表的桶数组。使用<u>前面提到的分块分配器</u>来物化元组，需要大量的中等大小的分配。
 
-Additionally, we measure which operators require the most allocations. The two main consumer are group by and join operators. The percentage of allocations per operator for a sequential execution of queries on TPC-DS (SF 100) is shown in the table below:
+此外，我们衡量哪些运算符需要最多的内存分配。两个主要的使用者是分组和 join 操作符。在 TPC-DS (SF 100) 上顺序执行查询时，每个操作符的分配百分比如下表所示：
 
 |              | Group By | Join  | Set  | Temp | Other |
 | ------------ | -------- | ----- | ---- | ---- | ----- |
 | **By Size**  | 61.2%    | 25.7% | 4.3% | 8.4% | 0.4%  |
 | **By Count** | 77.9%    | 11.7% | 8.5% | 1.8% | 0.1%  |
 
-To simulate a realistic workload, we use an exponentially distributed workload to determine query arrival times. We sample from the exponential distribution to calculate the time between two events. An independent constant average rate λ defines the waiting time of the distribution. In comparison to a uniformly distributed allocation pattern, the number of concurrently active transactions varies. Thus, a more diverse and complex allocation pattern is created. The events happen within an expected time interval value of 1/λ and variance of 1/λ^2^. The executed queries of TPC-DS are uniformly distributed among the start events. Hence, we are able to test all allocators on the same real-world alike workloads.
+为了模拟真实的工作负载，我们使用指数分布的工作负载来确定查询到达时间。
 
-Our main-memory query engine allows up to 10 transactions to be active simultaneously. If more than 10 transactions are queried, the transaction is delayed by the scheduler of our DBMS until the active transaction count is decreased.
+我们从指数分布中取样以计算两个事件之间的时间。一个独立的常数平均率λ定义了分布的等待时间。与均匀分布的分配模式相比，并发活动事务的数量是不同的。因此，创建了一个更加多样化和复杂的分配模式。事件发生的预期时间间隔值为1/λ，方差为1/λ^2^。TPC-DS执行的查询均匀分布在启动事件中。因此，我们能够在相同的实际工作负载上测试所有分配器。
+
+==我们从指数分布中抽样来计算两个事件之间的时间。一个独立的恒定平均速率 λ 定义了分布的等待时间。与均匀分布的分配模式相比，并发活动事务的数量各不相同。因此，创建了更加多样化和复杂的分配模式。事件发生在 1/λ 的预期时间间隔值和 1/λ^2^ 的方差内。TPC-DS 执行的查询均匀分布在启动事件中。因此，我们能够在相同的真实世界工作负载上测试所有分配器==。
+
+我们的内存查询引擎最多允许同时激活 10 个事务。如果查询的事务超过 10 个，DBMS 的调度程序延迟事务 ，直到活动事务计数减少。
 
 ## 5. EVALUATION
 
