@@ -48,7 +48,7 @@ Dynamically linked binaries, in contrast, are not complete when they are loaded 
 
 This is not the last task for the dynamic linker in most cases, though. ELF allows the relocations associated with a symbol to be delayed until the symbol is needed. This lazy relocation scheme is optional, and optimizations discussed below for relocations performed at startup immediately effect the lazy relocations as well. So we ignore in the following everything after the startup is finished.
 
-## 1.4 Startup: In The Kernel
+## 1.4 Startup: In The Kernel<a id="_bookmark3"></a>
 
 Starting execution of a program begins in the kernel, normally in the `execve` system call. The currently executed code is replaced with a new program. This means the address space content is replaced by the content of the file containing the program. This does not happen by simply mapping (using `mmap`) the content of the file. ELF files are structured and there are normally at least three different kinds of regions in the file:
 
@@ -311,7 +311,7 @@ While this might sound like a good solution for handling compatibility problems 
 
 The `RTLD_DEEPBIND` flag should really only be used as a last resort. Fixing the application to not depend on the flag’s functionality is the much better solution.
 
-### 1.5.5 GOT and PLT
+### 1.5.5 GOT and PLT<a id="_bookmark27"></a>
 
 The Global Offset Table (GOT) and Procedure Linkage Table (PLT) are the two data structures central to the ELF run-time. We will introduce now the reasons why they are used and what consequences arise from that.
 
@@ -461,7 +461,7 @@ The number of relocations which are processed is stable across successive runs o
 
 It is obviously also possible to count the relocations without running the program. Running `readelf -d` on the binary shows the dynamic section in which the `DT_RELSZ`, `DT_RELENT`, `DT_RELCOUNT`, and `DT_PLTRELSZ` entries are interesting. They allow computing the number of normal and relative relocations as well as the number of PLT entries. If one does not want to do this by hand the `relinfo` script in appendix [A](#_bookmark77) can be used.
 
-# 2. Optimizations for DSOs
+# 2. Optimizations for DSOs <a id="_bookmark33"></a>
 
 In this section we describe various optimizations based on C or C++ variables or functions. The choice of variable or function, unless explicitly said, is made deliberately since many of the implementations apply to the one or the other. But there are some architectures where functions are handled like variables. This is mainly the case for embedded RISC architectures like SH-3 and SH-4 which have limitations in the addressing modes they provide which make it impossible to implement the function handling as for other architectures. In most cases it is no problem to apply the optimizations for variables and functions at the same time. This is what in fact should be done all the time to achieve best performance across all architectures.
 
@@ -507,15 +507,15 @@ If this produces any output text relocations are present and one better starts l
 
 Variables can be defined in C and C++ in several different ways. Basically there are three kinds of definitions:
 
-**Common** Common variables are more widely used FORTRAN but they got used in C and C++ as well to work around mistakes of programmers. Since in the early days people used to drop the extern keyword from variable definitions, in the same way it is possible to drop it from function declaration, the compiler often has multiple definitions of the same variable in different files. To help the poor and clueless programmer the C/C++ compiler normally generates common variables for uninitialized definitions such as
+**Common** Common variables are more widely used FORTRAN but they got used in C and C++ as well to work around mistakes of programmers. Since in the early days people used to drop the `extern` keyword from variable definitions, in the same way it is possible to drop it from function declaration, the compiler often has multiple definitions of the same variable in different files. To help the poor and clueless programmer the C/C++ compiler normally generates common variables for uninitialized definitions such as:
 
 ```c
 int foo;
 ```
 
-For common variables there can be more than one definition and they all get unified into one location in the output file. Common variables are always initialized with zero. This means their value does not have to be stored in an ELF file. Instead the file size of a segment is chosen smaller than the memory size as described in [1.4.](#_bookmark3)
+For common variables there can be more than one definition and they all get unified into one location in the output file. Common variables are always initialized with zero. This means their value does not have to be stored in an ELF file. Instead the file size of a segment is chosen smaller than the memory size as described in [1.4](#_bookmark3).
 
-**Uninitialized** If the programmer uses the compiler command line option -fno-common the generated code will contain uninitialized variables instead of common variables if a variable definition has no initializer. Alternatively, individual variables can be marked like this:
+**Uninitialized** If the programmer uses the compiler command line option `-fno-common` the generated code will contain uninitialized variables instead of common variables if a variable definition has no initializer. Alternatively, individual variables can be marked like this:
 
 ```c
 int foo _attribute ((nocommon));
@@ -546,7 +546,7 @@ const char *get_s (void) {
 }
 ```
 
-The function `get_s` uses the boolean variable is empty to decide what to do. If the variable has its initial value the variable s is not used. The initialization value of `is_empty` is stored in the file since the initialize is nonzero. But the semantics of `is_empty` is chosen arbitrarily. There is no requirement for that. The code could instead be rewritten as:
+The function `get_s` uses the boolean variable `is_empty` to decide what to do. If the variable has its initial value the variable `s` is not used. The initialization value of `is_empty` is stored in the file since the initialize is nonzero. But the semantics of `is_empty` is chosen arbitrarily. There is no requirement for that. The code could instead be rewritten as:
 
 ```c
 bool not_empty = false; 
@@ -575,7 +575,7 @@ if `val3` is the value most often used for initializations. To summarize, it is 
 
 ## 2.2 Export Control
 
-When creating a DSO from a collection of object files the dynamic symbol table will by default contain all the symbols which are globally visible in the object files. In most cases this set is far too large. Only the symbols which are actually part of the ABI should be exported. Failing to restrict the set of exported symbols are numerous drawbacks:
+When creating a DSO from a collection of object files the **dynamic symbol table** will by default contain all the symbols which are globally visible in the object files. In most cases this set is far too large. Only the symbols which are actually part of the ABI should be exported. Failing to restrict the set of exported symbols are numerous drawbacks:
 
 - Users of the DSO could use interfaces which they are not supposed to. This is problematic in revisions of the DSO which are meant to be binary compatible. The correct assumption of the DSO developer is that interfaces, which are not part of the ABI, can be changed arbitrarily. But there are always users who claim to know better or do not care about rules.
 
@@ -605,7 +605,7 @@ Compiled on a IA-32 Linux machine a DSO with only this code (plus startup code e
 movl last@GOT(%ebx), %edx 
 movl (%edx), %eax
 incl %eax
-movl %eax, (%edx
+movl %eax, (%edx)
 ```
 
 and the call of `next` is compiled to
@@ -618,9 +618,9 @@ These code fragments were explained in section [1.5.5](#_bookmark27).
 
 ### 2.2.1 Use static
 
-The easiest way to not export a variable or function is to define it with file-local scope. In C and C++ this is done by defining it with static, in C++ additionally using anonymous namespaces. This is for many people obvious but unfortunately not for all. Many consider adding static as optional. This is true when considering only the C semantics of the code.
+The easiest way to not export a variable or function is to define it with file-local scope. In C and C++ this is done by defining it with static, in C++ additionally using anonymous namespaces. This is for many people obvious but unfortunately not for all. **Many consider adding static as optional. This is true when considering only the C semantics of the code**.
 
-If in our example neither last or next are needed outside the file we can change the source to:
+If in our example neither `last` or `next` are needed outside the file we can change the source to:
 
 ```c
 static int last;
@@ -655,7 +655,7 @@ The generated code is optimal. The compiler might even consider inlining some co
 
 ### 2.2.2 Define Global Visibility <a id="_bookmark39"></a>
 
-The next best thing to using static is to explicitly define the visibility of objects in the DSO. The generic ELF ABI defines visibility of symbols. The specification defines four classes of which here only two are of interest. `STV_DEFAULT` denotes the normal visibility. The symbol is exported and can be interposed. The other interesting class is denoted by `STV_HIDDEN`. Symbols marked like this are not exported from the DSO and therefore cannot be used from other objects. There are a number of different methods to define visibility.
+The next best thing to using `static` is to explicitly define the visibility of objects in the DSO. The generic ELF ABI defines visibility of symbols. The specification defines four classes of which here only two are of interest. `STV_DEFAULT` denotes the normal visibility. The symbol is exported and can be interposed. The other interesting class is denoted by `STV_HIDDEN`. Symbols marked like this are not exported from the DSO and therefore cannot be used from other objects. There are a number of different methods to define visibility.
 
 Starting with version 4.0, gcc knows about a the command line option `-fvisibility`. It takes a parameter and the valid forms are these:
 
@@ -665,9 +665,10 @@ Starting with version 4.0, gcc knows about a the command line option `-fvisibili
 -fvisibility=internal
 -fvisibility=protected
 ```
+
 Only the first two should ever be used. The default is unsurprisingly `default` since this is the behavior of the compiler before the introduction of this option. When `-fvisibility=hidden` is specified gcc changes the default visibility of all defined symbols which have no explicit assignment of visibility: all symbols are defined with `STV_HIDDEN` unless specified otherwise. This option has to be used with caution since unless the DSO is prepared by having all APIs marked as having default visibility, the generated DSO will not have a single exported symbol. This is usually not what is wanted.
 
-In general it is the preference of the author which decides whether `-fvisibility=hidden` should be used. If it is not used, symbols which are not to be exported need to be marked in one way or another. The next section will go into details. In case the option is used all exported functions need to be declared as having visibility default which usually means the header files are significantly uglified. On the other hand it means that no symbol can accidentally be exported because an appropriate declaration etc is missing. In some situations this can prevent bad surprises[8](#_bookmark42).
+In general it is the preference of the author which decides whether `-fvisibility=hidden` should be used. If it is not used, symbols which are not to be exported need to be marked in one way or another. The next section will go into details. In case the option is used all exported functions need to be declared as having visibility default which usually means the header files are significantly uglified. On the other hand it means that no symbol can accidentally be exported because an appropriate declaration etc is missing. In some situations this can prevent bad surprises[[8](#_bookmark42)].
 
 >^8^<a id="_bookmark42"></a>Accidentally exporting symbol can mean that programs can use and get dependent on them. Then it is hard to remove the symbol again for binary compatibility reasons.
 
@@ -688,18 +689,18 @@ next (void) {
 int index (int scale) {
     return next () << scale;
 }
-
 ```
 
 This defines the variable `last` and the function `next` as hidden. All the object files which make up the DSO which contains this definition can use these symbols. I.e., while `static` restricts the visibility of a symbol to the file it is defined in, the hidden attribute limits the visibility to the DSO the definition ends up in. In the example above the definitions are marked. This does not cause any harm but it is in any case necessary to mark the declaration. In fact it is more important that the declarations are marked appropriately since it is mainly the code generated for in a reference that is influenced by the attribute.
 
-Instead of adding an visibility attribute to each declaration or definition, it is possible to change the default temporarily for all definitions and declarations the compiler sees at this time. This is mainly useful in header files since it reduces changes to a minimum but can also be useful for definitions. This compiler feature was also introduced in gcc 4.0 and is implemented using a pragma[9](#_bookmark43):
+Instead of adding an visibility attribute to each declaration or definition, it is possible to change the default temporarily for all definitions and declarations the compiler sees at this time. This is mainly useful in header files since it reduces changes to a minimum but can also be useful for definitions. This compiler feature was also introduced in gcc 4.0 and is implemented using a pragma[[9](#_bookmark43)]:
 
 
-> ^9^Note: ISO C99 introduced Pragma which allows using pragmas in macros.
+> ^9^<a id="_bookmark43"></a>Note: ISO C99 introduced Pragma which allows using pragmas in macros.
 
 ```c
-#pragma GCC visibility push(hidden) int last;
+#pragma GCC visibility push(hidden)
+int last;
 
 int next (void) {
     return ++last;
@@ -711,41 +712,44 @@ int index (int scale) {
 }
 ```
 
-As in the example using the attributes, last and next are both defined with hidden visibility while index is defined with default visibility (assuming this is the default currently in use). As the pragma syntax suggests, it is possible to nest the pragmas with the expected result.
+As in the example using the attributes, `last` and `next` are both defined with hidden visibility while `index` is defined with default visibility (assuming this is the default currently in use). As the `pragma` syntax suggests, it is possible to nest the pragmas with the expected result.
 
 In case the `-fvisibility=hidden` command line option is used, individual symbols can be marked as exportable by using the same syntax as presented in this section, except with `default` in place of `hidden`. In fact, the names of all four visibilities are allowed in the attribute or pragma.
 
 Beside telling the backend of the compiler to emit code to flag the symbol as hidden, changing the visibility has another purpose: it allows the compiler to assume the definition is local. This means the addressing of variables and function can happen as if the definitions would be locally defined in the file as `static`. Therefore the same code sequences we have seen in the previous section can be generated. Using the hidden visibility attribute is therefore almost completely equivalent to using `static`; the only difference is that the compiler cannot automatically inline the function since it need not see the definition.
 
-We can now refine the rule for using `static`: merge source files and mark as many functions `static` as far as one feels comfortable. In any case merge the files which contain functions which potentially can be inlined. In all other cases mark functions (the declarations) which are not to be exported from the DSO as hidden.
+We can now refine the rule for using `static`: merge source files and mark as many functions `static` as far as one feels comfortable. **In any case merge the files which contain functions which potentially can be inlined**. **In all other cases mark functions (the declarations) which are not to be exported from the DSO as hidden**.
 
 Note that the linker will not add hidden symbols to the dynamic symbol table. I.e., even though the symbol tables of the object files contain hidden symbols they will disappear automatically. By maximizing the number of hidden declarations we therefore reduce the size of the symbol table to the minimum.
 
-The generic ELF ABI defines another visibility mode: protected. In this scheme references to symbols defined in the same object are always satisfied locally. But the symbols are still available outside the DSO. This sounds like an ideal mechanism to optimize DSO by avoiding the use of exported symbols (see section [2.2.7](#_bookmark50)) but it isn’t. Processing references to protected symbols is even more expensive than normal lookup. The problem is a requirement in the ISO C standard. The standard requires that function pointers, pointing to the same function, can be compared for equality. This rule would be violated with a fast and simple-minded implementation of the protected visibility. Assume an application which references a protected function in a DSO. Also in the DSO is another function which references said function. The pointer in the application points to the PLT entry for the function in the application’s PLT. If a protected symbol lookup would simply return the address of the function inside the DSO the addresses would differ.
+The generic ELF ABI defines another visibility mode: `protected`. In this scheme references to symbols defined in the same object are always satisfied locally. But the symbols are still available outside the DSO. This sounds like an ideal mechanism to optimize DSO by avoiding the use of exported symbols (see section [2.2.7](#_bookmark50)) but it isn’t. Processing references to protected symbols is even more expensive than normal lookup. The problem is a requirement in the ISO C standard. The standard requires that function pointers, pointing to the same function, can be compared for equality. This rule would be violated with a fast and simple-minded implementation of the protected visibility. Assume an application which references a protected function in a DSO. Also in the DSO is another function which references said function. The pointer in the application points to the PLT entry for the function in the application’s PLT. If a protected symbol lookup would simply return the address of the function inside the DSO the addresses would differ.
 
 In programming environments without this requirement on function pointers the use of the protected visibility would be useful and fast. But since there usually is only one implementation of the dynamic linker on the system and this implementation has to handle C programs as well, the use of protected is highly discouraged.
 
-There are some exceptions to these rules. It is possible to create ELF binaries with non-standard lookup scopes. The simplest example is the use of DF SYMBOLIC (or of `DT_SYMBOLIC` in old-style ELF binaries, see page [25](#_bookmark52)). In these cases the programmer decided to create a nonstandard binary and therefore accepts the fact that the rules of the ISO C standard do not apply.
+There are some exceptions to these rules. It is possible to create ELF binaries with non-standard lookup scopes. The simplest example is the use of `DT_SYMBOLIC` (or of `DT_SYMBOLIC` in old-style ELF binaries, see page [25](#_bookmark52)). In these cases the programmer decided to create a nonstandard binary and therefore accepts the fact that the rules of the ISO C standard do not apply.
 
 ### 2.2.4 Define Visibility for C++ Classes
 
-For C++ code we can use the attributes as well but they have to be used very carefully. Normal function or variable definitions can be handled as in C. The extra name mangling performed has no influence on the visibility. The story is different when it comes to classes. The symbols and code created for class definitions are member functions and static data or function members. These variables and functions can easily be declared as hidden but one has to be careful. First an example of the syntax.
+For C++ code we can use the attributes as well but they have to be used very carefully. Normal function or variable definitions can be handled as in C. The extra name mangling performed has no influence on the visibility. The story is different when it comes to classes. <u>The symbols and code created for class definitions are member functions and static data or **function members**</u>. These variables and functions can easily be declared as hidden but one has to be careful. First an example of the syntax.
 
 ```C++
 class foo {
-    static int u __attribute__ ((visibility ("hidden"))); 
+    static int u __attribute__ 
+        ((visibility ("hidden"))); 
     int a;
   public:
     foo (int b = 1); 
     void offset (int n);
-    int val () const __attribute__ ((visibility ("hidden")));
+    int val () const __attribute__
+        ((visibility ("hidden")));
 };
 
-int foo::u __attribute__ ((visibility ("hidden")));
-foo::foo (int b) : a (b) { 
-}
+int foo::u __attribute__ 
+    ((visibility ("hidden")));
+foo::foo (int b) : a (b) { }
 void foo::offset (int n) { u = n; }
-int __attribute__ ((visibility ("hidden"))) foo::val () const { return a + u; }
+int __attribute__ ((visibility ("hidden"))) 
+    foo::val () const { return a + u; }
 
 ```
 
@@ -753,7 +757,7 @@ In this example code the static data member `u` and the member function `val` ar
 
 Things are getting more interesting when static data members or static local variables in member functions are used. In this case there must be exactly one definition used (please note: “used”, not “present”). To obey this rule it is either necessary to not restrict the export of the static data member of member function from the DSO or to make sure all accesses of the data or function are made in the DSO with the definitions. If multiple definitions are present it is very easy to make mistakes when hiding static data members or the member functions with static variables since the generated code has no way of knowing that there are multiple definitions of the variables. This leads to very hard to debug bugs.
 
-In the example code above the static data member u is declared hidden. All users of the member must be defined in the same DSO. C++ access rules restrict access only to member functions, regardless of where they are defined. To make sure all users are defined in the DSO with the definition of `u` it is usually necessary to avoid inline functions which access the hidden data since the inline generated code can be placed in any DSO which contains code using the class definition. The member function `offset` is a prime example of a function which should be inlined but since it accesses `u` it cannot be done. Instead `offset` is exported as an interface from the DSO which contains the definition of `u`.
+In the example code above the static data member `u` is declared hidden. All users of the member must be defined in the same DSO. C++ access rules restrict access only to member functions, regardless of where they are defined. To make sure all users are defined in the DSO with the definition of `u` it is usually necessary to avoid inline functions which access the hidden data since the inline generated code can be placed in any DSO which contains code using the class definition. The member function `offset` is a prime example of a function which should be inlined but since it accesses `u` it cannot be done. Instead `offset` is exported as an interface from the DSO which contains the definition of `u`.
 
 If a member function is marked as hidden, as `val` is in the example, it cannot be called from outside the DSO. Note that in the example the compiler allows global access to the member function since it is defined as a public member. The linker, not the compiler, will complain if this member function is used outside the DSO with the instantiation. Inexperienced or not fully informed users might interpret this problem as a lack of instantiation which then leads to problems due to multiple definitions.
 
@@ -803,10 +807,11 @@ One sort of function which can safely be kept local and not exported are inline 
 
 If a C++ class is used only for the implementation and not used in any interface of a DSO using the code, then it would be possible to mark each member function and static data element as hidden. This is cumbersome, errorprone, and incomplete, though. There is perhaps a large number of members which need to be marked and when a new member is added it is easy to forget about adding the necessary attributes. The incompleteness stems from the fact that the C++ compiler automatically generates a few members functions such are constructors and destructors. These member functions would not be affected by the attributes.
 
-The solution to these problems is to explicitly determine the visibility of the entire class. Since version 4.0 does gcc have support for this. There are two ways to achieve the goal. First, the already mentioned pragma can be used.
+The solution to these problems is to explicitly determine the visibility of the entire class. Since version 4.0 does gcc have support for this. There are two ways to achieve the goal. First, the already mentioned `pragma` can be used.
 
-```
-#pragma GCC visibility push(hidden) class foo {
+```c++
+#pragma GCC visibility push(hidden) 
+class foo {
 ...
 };
 #pragma GCC visibility pop
@@ -817,31 +822,29 @@ All member functions and static data members of foo are automatically defined as
 The second possibility is to use yet another extension in gcc 4.0. It is possible to mark a function as hidden when it is defined. The syntax is this:
 
 ```c++
-class __attribute__ ((visibility ("hidden"))) foo {
-
+class __attribute__ ((visibility ("hidden"))) 
+foo {
 ...
-
 };
 ```
 
-Just as with the pragma, all defined functions are defined as hidden symbols. Explicitly using attributes should be preferred since the effect of the pragmas is not always obvious. If the push and pop lines are far enough from each other a programmer might accidentally add a new declaration in the range even though the visibility of this new declaration is not meant to be affected. Both, the pragma and the class attribute, should only be used in internal headers. In the headers which are used to expose the API of the DSO it makes no sense to have them since the whole point is to hide the implementation details. This means it is always a good idea to differentiate between internal and external header files.
+Just as with the `pragma`, all defined functions are defined as hidden symbols. Explicitly using attributes should be preferred since the effect of the pragmas is not always obvious. If the `push` and `pop` lines are far enough from each other a programmer might accidentally add a new declaration in the range even though the visibility of this new declaration is not meant to be affected. Both, the pragma and the class attribute, should only be used in internal headers. In the headers which are used to expose the API of the DSO it makes no sense to have them since the whole point is to hide the implementation details. This means it is always a good idea to differentiate between internal and external header files.
 
-Defining entire classes with hidden visibility has some problems which cannot be modeled with sophisticated class layout or moving the definition in private headers. For exception handling the compiler generates data structures (typeinfo symbols) which are also marked according to the visibility attribute used. If an object of this type is thrown the catch operation has to look for the typeinfo information. If that information is in a different DSO the search will be unsuccessful and the program will terminate. All classes which are used in exception handling and where the throw and catch are not both guaranteed to reside in the DSO with the definition must be declared with default visibility. Individual members can still be marked with an visibility attribute but since the typeinfo data is synthesized by the compiler on command there is no way for the programmer to overwrite a hidden visibility attribute associated with the class.
+Defining entire classes with hidden visibility has some problems which cannot be modeled with sophisticated class layout or moving the definition in private headers. For exception handling the compiler generates data structures (`typeinfo` symbols) which are also marked according to the visibility attribute used. If an object of this type is thrown the `catch` operation has to look for the `typeinfo` information. If that information is in a different DSO the search will be unsuccessful and the program will terminate. All classes which are used in exception handling and where the `throw` and `catch` are not both guaranteed to reside in the DSO with the definition must be declared with default visibility. Individual members can still be marked with an visibility attribute but since the `typeinfo` data is synthesized by the compiler on command there is no way for the programmer to overwrite a hidden visibility attribute associated with the class.
 
 The use of the most restrictive visibility possible can be of big benefit for C++ code. Each inline function which is (also) available as a stand-alone function, every synthesized function are variable has a symbol associated which is by default exported. For templatized classes this is even worse, since each instantiated class can bring is many more symbols. It is best to design the code right away so that the visibility attributes can be applied whenever possible. Compatibility with older compilers can easily be achieved by using macros.
 
-### 2.2.5 Use Export Maps
+### 2.2.5 Use Export Maps<a id="_bookmark47"></a>
 
 If for one reason or another none of the previous two solutions are applicable the next best possibility is to instruct the linker to do something. Only the GNU and Solaris linker are known to support this, at least with the syntax presented here. Using export maps is not only useful for the purpose discussed here. When discussing maintenance of APIs and ABIs in chapter [3](#_bookmark65) the same kind of input file is used. This does not mean the previous two methods should not be preferred. Instead, export (and symbol) maps can and should always be used in addition to the other methods described.
 
-The concept of export maps is to tell the linker explicitly which symbols to export from the generated object. Every symbol can belong to one of two classes: exported or not exported. Symbols can be listed individually, globexpressions can be used, or the special \* catch-all glob expression can be used. The latter only once. The symbol map file for our example code could look like this:
+The concept of export maps is to tell the linker explicitly which symbols to export from the generated object. Every symbol can belong to one of two classes: exported or not exported. Symbols can be listed individually, glob expressions can be used, or the special `*` catch-all glob expression can be used. The latter only once. The symbol map file for our example code could look like this:
 
 ```c
 {
     global: index;
     local: *;
 };
-
 ```
 
 This tells the linker that the symbol `index` is to be exported and all others (matched by `*`) are local. We could have listed `last` and `next` explicitly in the `local`: list but it is generally advised to always use the catch-all case to mark all not explicitly mentioned symbols as local. This avoids surprises by allowing access only to the symbols explicitly mentions. Otherwise there would also be the problem with symbols which are matched neither by the `global:` nor by the `local:`, resulting in unspecified behavior. Another unspecified behavior is if a name appears in both lists or is matched using globbing in both lists.
@@ -857,7 +860,7 @@ The file foo.map is supposed to contain text like the one shown above.
 
 It is of course also possible to use export maps with C++ code. One has two options in this case: explicitly name the symbols using their mangled names, or rely on pattern matching for the mangled names. Using the mangled names is straight-forwarded. Just use the identifiers as in the C examples. Using the demangled names require support in the linker. Assume a file defining the following functions:
 
-```c
+```c++
 int foo (int a) { ... }
 int bar (int a) { ... } 
 struct baz {
@@ -865,10 +868,9 @@ struct baz {
     int r () const; 
     int s (int);
 };
-
 ```
 
-A DSO containing definitions for all these functions and members should only export the function foo and the destructor(s) of baz and baz::s. An export map to achieve this could look like this:
+A DSO containing definitions for all these functions and members should only export the function `foo` and the destructor(s) of `baz` and `baz::s`. An export map to achieve this could look like this:
 
 ```c
 {
@@ -886,7 +888,7 @@ The use of `extern "C++"` tells the linker to match the following patterns with 
 
 Using export maps seems like a very desirable solution. The sources do not have to be made less readable using attribute declarations or eventually pragmas. All the knowledge of the ABI is kept locally in the export map file. But this process has one fundamental problem: exactly because the sources are not modified the final code is not optimal. The linker is used only after the compiler already did its work and the once generated code cannot be optimized significantly.
 
-In our running example the compiler must generate the code for the `next` function under the worst case scenario assumption that the variable `last` is exported. This means the code sequence using @GOTOFF which was mentioned before cannot be generated. Instead the normal two instruction sequence using `@GOT` must be generated.
+In our running example the compiler must generate the code for the `next` function under the worst case scenario assumption that the variable `last` is exported. This means the code sequence using `@GOTOFF` which was mentioned before cannot be generated. Instead the normal two instruction sequence using `@GOT` must be generated.
 
 This is what the linker will see when it gets instructed to hide the symbol `last`. The linker will not touch the actual code. Code relaxation here would require substantial analysis of the following code which is in theory possible but not implemented. But the linker will not generate the normal `R_386_GLOB_DAT` relocation either. Since the symbol is not exported no interposition is allowed. The position of the local definition relative to the start of the DSO is known and so the linker will generate a relative relocation.
 
@@ -896,27 +898,27 @@ To summarize, for variables the use of symbol maps creates larger and less effic
 
 ### 2.2.6 Libtool’s -export-symbols
 
-The fourth method to restrict symbol export is the least desirable of them. It is the one used by the GNU Libtool program when the -export-symbols option is used. This option is used to pass to Libtool the name of a file which contains the names of all the symbols which should be exported, one per line. The Libtool command line might look like this:
+The fourth method to restrict symbol export is the least desirable of them. It is the one used by the GNU Libtool program when the `-export-symbols` option is used. This option is used to pass to Libtool the name of a file which contains the names of all the symbols which should be exported, one per line. The Libtool command line might look like this:
 
 ```bash
-$ libtool --mode=link gcc -o libfoo.la \ foo.lo -export-symbols=foo.sym
+$ libtool --mode=link gcc -o libfoo.la foo.lo -export-symbols=foo.sym
 ```
 
 The file `foo.sym` would contain the list of exported symbols. `foo.lo` is the special kind of object files Libtool generates. For more information on this and other strange details from the command line consult the Libtool manual.
 
-Interesting for us here is the code the linker produces using this method. For the GNU linker Libtool converts the `-export-symbols `option into the completely useless `-retain-symbols-file` option. This option instructs the linker to prune the normal symbol tables, not the dynamic symbol table. The normal symbol table will contain only the symbols named in the export list file plus the special STT SECTION symbols which might be needed in relocations. All local symbols are gone. The problem is that the dynamic symbol table is not touched at all and this is the table which is actually used at runtime.
+Interesting for us here is the code the linker produces using this method. For the GNU linker Libtool converts the `-export-symbols `option into the completely useless `-retain-symbols-file` option. This option instructs the linker to prune the normal symbol tables, not the dynamic symbol table. The normal symbol table will contain only the symbols named in the export list file plus the special `STT_SECTION` symbols which might be needed in relocations. All local symbols are gone. The problem is that the dynamic symbol table is not touched at all and this is the table which is actually used at runtime.
 
 The effect of the using `libtool` this way is that programs reading the normal symbol table (for instance nm) do not find any symbols but those listed in the export list. And that is it. There are no runtime effects. Neither have any symbols been made unavailable for the dynamic linker, nor have any normal relocations been converted into relative relocations.
 
 The only reason this method is mentioned here is that there is hope `libtool` will learn about converting the export lists into the anonymous version maps we have seen in the previous section when the GNU linker is used. At that point `libtool` will become useful. Until then relying on its `-export-symbols` option is misleading at best.
 
-### 2.2.7 Avoid Using Exported Symbols<a id="_bookmark52"></a>
+### 2.2.7 Avoid Using Exported Symbols<a id="_bookmark50"></a>
 
 In some situations it might not be desirable to avoid exporting a symbol but at the same time all local references should use the local definition. This also means that the uses of the symbols is cheaper since the less general code sequences can be used. This is a subset of the problem discussed so far. A solution needs a different approach since so far we achieved the better code by not exporting only.
 
 Since a symbol cannot be exported and not-exported at the same time the basic approach is to use two names for the same variable or function. The two names then can be treated differently. There are multiple possibilities to create two names, varying in efficiency and effort.
 
-At this point it is necessary to add a warning. By performing this optimization the semantics of the program changes since the optimization interferes with the symbol lookup rules. It is now possible to use more than one symbol with a given name in the program. Code outside the DSO might find a definition of a symbol somewhere else while the code in the DSO always uses the local definition. This might lead to funny results. Often it is acceptable since multiple definitions are not allowed. A related issue is that one rule of ISO C can be violated by this. ISO C says that functions are identified by their names (identifiers) and that comparing the function pointers one can test for equality. The ELF implementation works hard to make sure this rule is normally obeyed. When forcing the use of local symbols code inside and outside the DSO might find different definitions for a given name and therefore the pointers do not match. It is important to always consider these side effects before performing the optimization.
+At this point it is necessary to add a warning. By performing this optimization the semantics of the program changes since the optimization **interferes** with the symbol lookup rules. **It is now possible to use more than one symbol with a given name in the program**. Code outside the DSO might find a definition of a symbol somewhere else while the code in the DSO always uses the local definition. This might lead to funny results. Often it is acceptable since multiple definitions are not allowed. A related issue is that one rule of ISO C can be violated by this. ISO C says that functions are identified by their names (identifiers) and that comparing the function pointers one can test for equality. The ELF implementation works hard to make sure this rule is normally obeyed. When forcing the use of local symbols code inside and outside the DSO might find different definitions for a given name and therefore the pointers do not match. It is important to always consider these side effects before performing the optimization.
 
 **Wrapper Functions** Only applicable to functions, using wrappers (i.e. alternative entry points) is the most portable but also most costly way to solve the problem. If in our example code we would want to export `index` as well as `next` we could use code like this:
 
@@ -966,10 +968,10 @@ This is quite a collection of non-standard gcc extensions to the C language so i
 
 To achieve the results we want, namely that the aliases are not exported and that gcc gets told about this, we have to add the hidden visibility attribute. Looking back at sections [2.2.2](#_bookmark39) and [2.2.3](#_bookmark41) it should be easy to see that the use of this attribute is equivalent.
 
-If the visibility attributes cannot be used for some reason almost the same code should be used, only leaving out
+If the visibility attributes cannot be used for some reason almost the same code should be used, only leaving out:
 
-```
-, visibility ("hidden")
+```c
+, visibility ("hidden"). 
 ```
 
 This will create a normal alias with the same scope as the original symbol. Using export maps the alias can then be hidden. The resulting binary will not use the efficient code sequences (see section [2.2.5)](#_bookmark47) but the local definition will always be used.
@@ -985,33 +987,31 @@ extern __typeof (next_int) next
 
 ```
 
-As a `static` definition, `next_int` is not exported and eligible for inlining, while next is defined as extern and therefore exported. Even though this sometimes works there is no guarantee it does all the time. The compiler is allowed to use arbitrary symbol names for static functions and variables since the names are not part of the ABI of the object file. This is necessary in some situations to avoid name clashes. The result is that the `alias("next_int")` part might fail to provide the correct symbol name and therefore the alias definition will fail. For this reason it is mandatory to create alias only of non-static functions and variables.
+As a `static` definition, `next_int` is not exported and eligible for inlining, while `next` is defined as `extern` and therefore exported. Even though this sometimes works there is no guarantee it does all the time. The compiler is allowed to use arbitrary symbol names for static functions and variables since the names are not part of the ABI of the object file. This is necessary in some situations to avoid name clashes. The result is that the `alias("next_int")` part might fail to provide the correct symbol name and therefore the alias definition will fail. For this reason it is mandatory to create alias only of non-static functions and variables.
 
 For C++ programs defining aliases we also are also challenged by names. The problem is that the alias attribute requires the assembler name of the defined symbol as a string parameter. For C++ code this means the mangled name. For simple C++ function we manage to get along with the same trick used in the C example.
 
-```c
-int
-add (int a, int b)
-{
-return a + b;
+```c++
+int add (int a, int b) {
+    return a + b;
 }
 extern __typeof (add) add_int
     __attribute ((alias ("_Z3addii"),
                   visibility ("hidden")));
-
 ```
 
 There are only two tricky parts. The first is finding the correct mangled name. For the locally used compiler it is quite easy to determine the name, just compile the code without the alias definition and look at the symbol table of the generated file. Name mangling is unfortunately traditionally not well standardized. There exist several different name mangling schemes which means the alias string would have to be adjusted to the compiler which is used for the compilation.
 
 The second problem is the use of `__typeof` if the function name is overloaded. In this case the compiler does not know which of the potentially many versions of the function is meant and it bails out.
 
-**DF_SYMBOLIC** The original designers of the ELF format considered the possibility that preferring local definitions might be useful. They have included a mechanism which can enforce this. If the DF SYMBOLIC flag is set in the `DT_FLAGS` entry of the dynamic section (or in older ELF binaries: if the dynamic section contains an `DT_SYMBOLIC` entry) the dynamic linker has to prefer local definitions.
+<a id="_bookmark52"></a>
+**DF_SYMBOLIC** The original designers of the ELF format considered the possibility that preferring local definitions might be useful. They have included a mechanism which can enforce this. If the `DF_SYMBOLIC` flag is set in the `DT_FLAGS` entry of the dynamic section (or in older ELF binaries: if the dynamic section contains an `DT_SYMBOLIC` entry) the dynamic linker has to prefer local definitions.
 
 This approach has numerous disadvantages. First, all interfaces are affected. The other approaches discussed here have a per-interface granularity. Treating all interfaces like this is normally not the right way. The second disadvantage is that the compiler does not get told about the use of local symbols and therefore cannot optimize the uses, just as if export maps would be used. And what is even worse, calls to local functions still use the PLT entries. The PLT and GOT entries are still created and the jump is indirect. This might be useful in some situations (e.g., when using `LD_PROFILE`) but usually means a big, missed opportunity for optimization.
 
-Finally the third problem is that the lookup scope is changed in a way which can lead to using unexpected dependencies. DF SYMBOLIC effectively puts the own object in the first spot of its own lookup scope so that there are a number of other DSO which are seen before the dependencies. This is nothing new but the fact that the DSO marked with DF SYMBOLIC is in an unusual place can cause unexpected versions from being picked up.
+Finally the third problem is that the lookup scope is changed in a way which can lead to using unexpected dependencies. `DF_SYMBOLIC` effectively puts the own object in the first spot of its own lookup scope so that there are a number of other DSO which are seen before the dependencies. This is nothing new but the fact that the DSO marked with `DF_SYMBOLIC` is in an unusual place can cause unexpected versions from being picked up.
 
-The advice here is to *never* use DF SYMBOLIC. It does not improve the code, forces all symbols to be treated the same, and can cause problems in symbol lookup. It is mentioned here only for completeness and as a warning.
+The advice here is to *never* use `DF_SYMBOLIC`. It does not improve the code, forces all symbols to be treated the same, and can cause problems in symbol lookup. It is mentioned here only for completeness and as a warning.
 
 ## 2.3 Shortening Symbol Names
 
@@ -1065,7 +1065,7 @@ char str[] = "some string";
 
 This is something completely different than the code before. Here `str` is a name for a sequence of bytes which contains initially the sequence `"some string"`. By rewriting code in this way whenever it is possible we save one pointer variable in the non-sharable data segment, and one relative relocation to initialize the variable with a pointer to the string. Eventually the compiler is able to generate better code since it is known that the value of str can never change (the bytes pointed to by str can change).
 
-### 2.4.2 Forever const
+### 2.4.2 Forever const <a id="_bookmark54"></a>
 
 One nit still exists with the result in the last section: the string is modifiable. Very often the string will never be modified. In such a case the unsharable data segment is unnecessarily big.
 
@@ -1110,7 +1110,7 @@ The problematic piece is the definition of `msgs`. msgs is as defined here a var
 static const char *const msgs[] = {
 ```
 
-(note the addition const) this would not change this (but it opens up some other opportunities, see [2.6](#_bookmark63)). The compiler still would have the place the variable in writable memory. The reason are three relative relocation which modify the content of the array after loading. The total cost for this code is three words of data in writable memory and three relocations modifying this data in addition to the memory for the strings themselves.
+(note the addition `const`) this would not change this (but it opens up some other opportunities, see [2.6](#_bookmark63)). The compiler still would have the place the variable in writable memory. The reason are three relative relocation which modify the content of the array after loading. The total cost for this code is three words of data in writable memory and three relocations modifying this data in addition to the memory for the strings themselves.
 
 Whenever a variable, array, structure, or union, contains a pointer, the definition of an initialized variable requires relocations which in turn requires the variable to be placed in writable memory. This along with the increased startup time due to processing of the relocations is not acceptable for code which is used only in error cases.
 
@@ -1126,7 +1126,7 @@ static const char msgs[][17] = {
 
 The result of this code is optimal. The array `msgs` is placed entirely in read-only memory since it contains no pointer. The C code does not have to be rewritten. The drawback of this solution is that it is not always applicable. If the strings have different lengths it would mean wasting quite a bit of memory since the second dimension of the array has to be that of the length of the longest string plus one. The waste gets even bigger if the values `ERR0`, `ERR1`, and `ERR2` are not consecutive and/or do not start with zero. Every missing entry would mean, in this case, 17 unused bytes.
 
-There are other methods available for case which cannot be handled as the example above but none without major code rewrite[10](#_bookmark57). One possible solution for the problem is the following. This code is not as elegant as the original code but it is still maintainable. Ideally there should be a tool which generates from a description of the strings the appropriate data structures. This can be done with a few lines
+There are other methods available for case which cannot be handled as the example above but none without major code rewrite [[10](#_bookmark57)]. One possible solution for the problem is the following. This code is not as elegant as the original code but it is still maintainable. Ideally there should be a tool which generates from a description of the strings the appropriate data structures. This can be done with a few lines.
 
 > ^10^<a id="_bookmark57"></a>If we would write assembler code we could store offsets relative to a point in the DSO and add the absolute address of the reference point when using the array elements. This is unfortunately not possible in C.
 
@@ -1146,9 +1146,9 @@ static const size_t msgidx[] = {
 const char *errstr (int nr) { 
     return msgstr + msgidx[nr];
 }
-
 ```
-The content of both arrays in this code is constant at compile time. The references to msgstr and msgidx in errstr also do not need relocations since the definitions are known to be local. The cost of this code include three size t words in read-only memory in addition to the memory for the strings. I.e., we lost all the relocations (and therefore startup costs) and moved the array from writable to read-only memory. In this respect the code above is optimal.
+
+The content of both arrays in this code is constant at compile time. The references to `msgstr` and `msgidx` in `errstr` also do not need relocations since the definitions are known to be local. The cost of this code include three `size_t` words in read-only memory in addition to the memory for the strings. I.e., we lost all the relocations (and therefore startup costs) and moved the array from writable to read-only memory. In this respect the code above is optimal.
 
 For a more elaborate and less error-prone method of constructing such tables is appendix [B](#_bookmark79). The presented code does not require the programmer to duplicate strings which must be kept in sync.
 
@@ -1185,13 +1185,12 @@ int add (int a, int b) {
     }
 }
 ```
-Inlining the code as in the code above should certainly be the preferred solution. The compiler never generates relocations for the implementation of a switch statement and therefore the whole code does not need any relocation.
+
+Inlining the code as in the code above should certainly be the preferred solution. The compiler never generates relocations for the implementation of a `switch` statement and therefore the whole code does not need any relocation.
 
 Inlining makes sense even if the inlined function are much larger. Compilers do not have problems with large functions and might even be able to optimize better. The problem is only the programmer. The original code was clean and intentionally written using function pointers. The transformed code might be much less readable. This makes this kind of optimization one which is not performed until the code is tested and does not need much maintenance anymore.
 
-> ^11^<a id="_bookmark59"></a>Interested readers might want to look at the vfprintf implementation in the GNU libc.
-
-A similar problem, though it (unfortunately) is rather rare today, arises for the use of computed gotos, a gcc extension for C. Computed gotos can be very useful in computer-generated code and in highly optimized code[11](#_bookmark59). The previous example using computed gotos might look like this:
+A similar problem, though it (unfortunately) is rather rare today, arises for the use of computed `gotos`, a gcc extension for C. Computed gotos can be very useful in computer-generated code and in highly optimized code [[11](#_bookmark59)]. The previous example using computed gotos might look like this:
 
 ```c
 int add (int a, int b) {
@@ -1221,11 +1220,13 @@ int add (int a, int b) {
 }
 ```
 
-Since we do not have direct access to the PIC register at compile-time and cannot express the computations of the offsets we have to find another base address. In the code above it is simply one of the target addresses, `a0`. The array `offsets` is in this case really constant and placed in read-only memory since all the offsets are known once the compiler finished generating code for the function. We now have relative addresses, no relocations are necessary. The type used for `offsets` might have to be adjusted. If the differences are too large (only really possible for 64-bit architectures, and then only for tremendously large functions) the type might have to be changed to ssize t or something equivalent. In the other direction, if it is known that the offsets would fit in a variable of type `short` or `signed char`, these types might be used to save some memory.
+Since we do not have direct access to the PIC register at compile-time and cannot express the computations of the offsets we have to find another base address. In the code above it is simply one of the target addresses, `a0`. The array `offsets` is in this case really constant and placed in read-only memory since all the offsets are known once the compiler finished generating code for the function. We now have relative addresses, no relocations are necessary. The type used for `offsets` might have to be adjusted. If the differences are too large (only really possible for 64-bit architectures, and then only for tremendously large functions) the type might have to be changed to `ssize_t` or something equivalent. In the other direction, if it is known that the offsets would fit in a variable of type `short` or `signed char`, these types might be used to save some memory.
+
+> ^11^<a id="_bookmark59"></a>Interested readers might want to look at the vfprintf implementation in the GNU libc.
 
 ### 2.4.5 C++ Virtual Function Tables
 
-Virtual function tables, generated for C++ classes with member functions tagged with `virtual`, are a special case. The tables normally involve function pointer which cause, as seen above, the linker to create relocations. It is also worthwhile looking at the runtime costs of virtual functions compared to intraand inter-DSO calls. But first the relocation issues.
+Virtual function tables, generated for C++ classes with member functions tagged with `virtual`, are a special case. The tables normally involve function pointer which cause, as seen above, the linker to create relocations. It is also worthwhile looking at the runtime costs of virtual functions compared to intra- and inter-DSO calls. But first the relocation issues.
 
 Usually the virtual function table consists of an array of function pointers or function descriptors. These representations have in common that for every slot in the virtual function table there must be one relocation and all the relocations have to be resolved at startup-time. Therefore having larger a number of virtual function tables or virtual function tables with many entries impact startup time.
 
@@ -1240,7 +1241,7 @@ struct foo {
     virtual int virfunc () const;
 };
 foo var;
-int bar () { return var.virfunc (); }
+int bar () { return var.virfunc(); }
 ```
 
 The reason is that `var` is known to have type `foo` and not a derived type from which the virtual function table is used. If the class `foo` is instantiated in another DSO not only the virtual function table has to be exported by that DSO, but also the virtual function `virfunc`.
@@ -1259,14 +1260,13 @@ virtual int foo::virfunc () const
 { return virfunc_do (); } 
 int foo::virfunc_do () const
 { ...do something... }
-
 ```
 
-In this case the real implementation of the function is in `virfunc.do` and the virtual function just calls it. There is no need for the user to call the virtual function directly as in the function `bar` above since `virfunc_do`  can be called instead. Therefore the linker version script could hide the symbol for the virtual function and export `virfunc_do` to be called from other DSOs. If the user still calls the virtual function the linker will not be able to find a definition and the programmer has to know that this means she has to rewrite the code to use `virfunc_do`. This makes using the class and the DSO a bit more complex.
+In this case the real implementation of the function is in `virfunc_do` and the virtual function just calls it. There is no need for the user to call the virtual function directly as in the function `bar` above since `virfunc_do`  can be called instead. Therefore the linker version script could hide the symbol for the virtual function and export `virfunc_do` to be called from other DSOs. If the user still calls the virtual function the linker will not be able to find a definition and the programmer has to know that this means she has to rewrite the code to use `virfunc_do`. This makes using the class and the DSO a bit more complex.
 
 The consequence of hiding the virtual function is that the virtual function table slot for `virfunc` can be handled with a relative relocation. This is a big gain not only because this relocation type is much faster to handle. Since virtual function tables contain data references the relocation of the virtual function table slots must happen at startup time.
 
-The improved example above assumes that direct calls are more frequent than calls through the virtual function table since there is additional overhead (one extra function call) involved when calling virfunc. If this assumption is wrong and calls through the virtual function table are more frequent, then the implementations of the two functions can be swapped.
+The improved example above assumes that direct calls are more frequent than calls through the virtual function table since there is additional overhead (one extra function call) involved when calling `virfunc`. If this assumption is wrong and calls through the virtual function table are more frequent, then the implementations of the two functions can be swapped.
 
 In summary, the number and size of virtual function tables should be kept down since it directly impacts startup time behavior. If virtual functions cannot be avoided the implementations of the functions should not be exported.
 
@@ -1294,7 +1294,7 @@ getfoo:
    ret
 ```
 
-The actual variable access is overshadowed by the overhead to do so. Loading the GOT address into the %ecx register takes three instructions. What if this function is called very often? Even worse: what if the function getfoo would be defined static or hidden and no pointer to it are ever available? In this case the caller might already have computed the GOT address; at least on IA-32 the GOT address is the same for all functions in the DSO or executable. The computation of the GOT address in foobar would be unnecessary. The key word in this scenario description is “might”. The IA-32 ABI does not require that the caller loads the PIC register. Only if a function calls uses the PLT do we know that `%ebx` contains the GOT address and in this case the call could come from any other loaded DSO or the executable. I.e., we really always have to load the GOT address.
+The actual variable access is overshadowed by the overhead to do so. Loading the GOT address into the `%ecx` register takes three instructions. What if this function is called very often? Even worse: what if the function `getfoo` would be defined static or hidden and no pointer to it are ever available? In this case the caller might already have computed the GOT address; at least on IA-32 the GOT address is the same for all functions in the DSO or executable. The computation of the GOT address in `foobar` would be unnecessary. **The key word in this scenario description is “might”**. The IA-32 ABI does not require that the caller loads the PIC register. Only if a function calls uses the PLT do we know that `%ebx` contains the GOT address and in this case the call could come from any other loaded DSO or the executable. I.e., we really always have to load the GOT address.
 
 On platforms with better-designed instruction sets the generated code is not bad at all. For example, the x86-64 version could look like this:
 
@@ -1355,7 +1355,7 @@ int getboth (void)
 
 ```
 
-The code generated for this example does not compute the GOT address twice for each call to `getboth`. The function `intfoo` uses the provided pointer and does not need the GOT address. To preserve the semantics of the first code this additional function had to be introduced; it is now merely a wrapper around `intfoo`. If it is possible to write the sources for a DSO to have all global variables in a structure and pass the additional parameter to all internal functions, then the benefit on IA-32 can be big.
+The code generated for this example does not compute the GOT address twice for each call to `getboth`. The function `intfoo` uses the provided pointer and does not need the GOT address. To preserve the semantics of the first code this additional function had to be introduced; it is now merely ==a wrapper around `intfoo`==. If it is possible to write the sources for a DSO to have all global variables in a structure and pass the additional parameter to all internal functions, then the benefit on IA-32 can be big.
 
 But it must be kept in mind that the code generated for the changed example is worse than what would be created for the original on most other architectures. As can be seen, in the x86-64 case the extra parameter to intfoo would be pure overhead since we can access global variables without the GOT value. On IA-64 marking getfoo as hidden would allow to avoid the PLT and therefore the gp register is not reloaded during the call to getfoo. Again, the parameter is pure overhead. For this reason it is questionable whether this IA-32 specific optimization should ever be performed. If IA-32 is the by far most important platform it might be an option.
 
@@ -1363,13 +1363,13 @@ But it must be kept in mind that the code generated for the changed example is w
 
 The explanation of ELF so far have shown the critical importance of the GOT and PLT data structures used at runtime by the dynamic linker. Since these data structures are used to direct memory access and function calls they are also a security liability. If a program error provides an attacker with the possibility to overwrite a single word in the address space with a value of his choosing, then targetting a specific GOT entry is a worthwhile goal. For some architectures, a changed GOT value might redirect a call to a function, which is called through the PLT, to an arbitrary other place. Similarly, if the PLT is modified in relocations and therefore writable, that memory could be modified.
 
-An example with security relevance could be a call to `setuid` to drop a process’ privileges which is redirected to perhaps getpid. The attacker could therefore keep the raised priviledges and later cause greater harm.
+An example with security relevance could be a call to `setuid` to drop a process’ privileges which is redirected to perhaps `getpid`. The attacker could therefore keep the raised priviledges and later cause greater harm.
 
 This kind of attack would not be possible if the data GOT and PLT could not be modified by the user program. For some platforms, like IA-32, the PLT is already read-only. But the GOT must be modifiable at runtime. The dynamic linker is an ordinary part of the program and it is therefore not possible to require the GOT in a memory region which is writable by the dynamic linker but not the rest of the application. Another possibility would be to have the dynamic linker change the access permissions for the memory pages containing the GOT and PLT whenever it has to change a value. The required calls to `mprotect` are prohibitively expensive, ruling out this solution for any system which aims to be performing well.
 
-At this point we should remember how the dynamic linker works and how the GOT is used. Each GOT entry belongs to a certain symbol and depending on how the symbol is used, the dynamic linker will perform the relocation at startup time or on demand when the symbol is used. Of interest here are the relocations of the first group. We know exactly when all non-lazy relocation are performed. So we could change the access permission of the part of the GOT which is modified at startup time to forbid write access after the relocations are done. Creating objects this way is enabled by the -z relro linker option. The linker is instructed to move the sections, which are only modified by relocations, onto separate memory page and emit a new program header entry PT GNU RELRO to point the dynamic linker to these special pages. At runtime the dynamic linker can then remove the write access to these pages after it is done.
+At this point we should remember how the dynamic linker works and how the GOT is used. Each GOT entry belongs to a certain symbol and depending on how the symbol is used, the dynamic linker will perform the relocation at startup time or on demand when the symbol is used. Of interest here are the relocations of the first group. We know exactly when all non-lazy relocation are performed. So we could change the access permission of the part of the GOT which is modified at startup time to forbid write access after the relocations are done. Creating objects this way is enabled by the `-z relro` linker option. The linker is instructed to move the sections, which are only modified by relocations, onto separate memory page and emit a new program header entry `PT_GNU_RELRO` to point the dynamic linker to these special pages. At runtime the dynamic linker can then remove the write access to these pages after it is done.
 
-This is only a partial solution but already very useful. By using the -z now linker option it is possible to disable all lazy relocation at the expense of increased startup costs and make all relocations eligible for this special treatment. For long-running applications which are security relevant this is definitely attractive: the startup costs should not weigh in as much as the gained security. Also, if the application and DSOs are written well, they avoid relocations. For instance, the DSOs in the GNU C library are all build with -z relro and -z now.
+This is only a partial solution but already very useful. By using the `-z now` linker option it is possible to disable all lazy relocation at the expense of increased startup costs and make all relocations eligible for this special treatment. For long-running applications which are security relevant this is definitely attractive: the startup costs should not weigh in as much as the gained security. Also, if the application and DSOs are written well, they avoid relocations. For instance, the DSOs in the GNU C library are all build with `-z relro` and `-z now`.
 
 The GOT and PLT are not the only parts of the application which benefit from this feature. In section [2.4.2](#_bookmark54) we have seen that adding as many const to a data object definition as possible has benefits when accessing the data. But there is more. Consider the following code:
 
@@ -1382,11 +1382,11 @@ const char *const msgs2[] = {
 }
 ```
 
-It has been explained that neither array can be moved into the read-only, and therefore shared, data section if the file is linked into a DSO. The addresses of the strings pointed to by the elements are known only at runtime. Once the addresses are filled in, though, the elements of msgs2 must never be modified again since the array itself is defined as const. Therefore gcc stores the array msgs1 in the .data section while msgs2 is stored into a section called .data.rel. This .data.rel section is just like .data but the dynamic linker could take away write access after the relocations are done. The previously described handling of the GOT is just a special case of exactly this feature. Adding as many const as possible together with the -z relro linker option therefore protects even program data. This might even catch bugs where code incorrectly modifies data declared as const.
+It has been explained that neither array can be moved into the read-only, and therefore shared, data section if the file is linked into a DSO. The addresses of the strings pointed to by the elements are known only at runtime. Once the addresses are filled in, though, the elements of `msgs2` must never be modified again since the array itself is defined as `const`. Therefore gcc stores the array `msgs1` in the `.data` section while `msgs2` is stored into a section called `.data.rel`. This `.data.rel` section is just like `.data` but the dynamic linker could take away write access after the relocations are done. The previously described handling of the GOT is just a special case of exactly this feature. Adding as many `const` as possible together with the `-z relro` linker option therefore protects even program data. This might even catch bugs where code incorrectly modifies data declared as `const`.
 
-A completely different issue, but still worth mentioning in the context of security, are text relocations. Generating DSOs so that text relocations are necessary (see section [2)](#_bookmark33) means that the dynamic linker has to make memory pages, which are otherwise read-only, temporarily writable. The period in which the pages are writable is usually brief, only until all non-lazy relocations for the object are handled. But even this brief period could be exploited by an attacker. In a malicious attack code regions could be overwritten with code of the attacker’s choice and the program will execute the code blindly if it reaches those addresses.
+A completely different issue, but still worth mentioning in the context of security, are text relocations. Generating DSOs so that text relocations are necessary (see section [2](#_bookmark33)) means that the dynamic linker has to make memory pages, which are otherwise read-only, temporarily writable. The period in which the pages are writable is usually brief, only until all non-lazy relocations for the object are handled. But even this brief period could be exploited by an attacker. In a malicious attack code regions could be overwritten with code of the attacker’s choice and the program will execute the code blindly if it reaches those addresses.
 
-During the program startup period this is not possible since there is no other thread available which could perform the attack while the pages are writable. The same is not true if later, when the program already executes normal code and might have start threads, some DSOs are loaded dynamically with dlopen. For this reason creating DSOs with text relocation means unnecessarily increasing the security problems of the system.
+During the program startup period this is not possible since there is no other thread available which could perform the attack while the pages are writable. The same is not true if later, when the program already executes normal code and might have start threads, some DSOs are loaded dynamically with `dlopen`. For this reason creating DSOs with text relocation means unnecessarily increasing the security problems of the system.
 
 Much more critical is that with Security Enhanced Linux (SELinux) text relocations become a big liability. By default, the SELinux extensions prevent making executable data pages writable. Since the kernel cannot distinguish between the dynamic linker doing this and the program or an attacker making the change, the abilities of the dynamic linker are also restricted. The only ways out are to grant the program permission to change the protection (and therefore give attackers the ability to do the same) or to remove text relocations from all DSOs and PIEs. The former option should only be used as a last resort.
 
@@ -1408,17 +1408,17 @@ foo = fctp (arg1, arg2);
 
 or if you prefer
 
-```
+```c
 foo = (*fctp) (arg1, arg2);
 ```
 
 the code should be rewritten to look like this:
 
-```
+```c
 foo = DL_CALL_FCT(fctp, (arg1, arg2));
 ```
 
-The `DL_CALL_FCT` macro contains the necessary magic to record the calling of the function pointed to by fctp. If the DSO which contains the symbol is not profiled nothing happens. It is therefore safe to always use this macro to call symbols in dynamically loaded DSOs. The `DL_CALL_FCT` macro has a low overhead and so could be used unconditionally but for production code it is probably best to avoid it.
+The `DL_CALL_FCT` macro contains the necessary magic to record the calling of the function pointed to by `fctp`. If the DSO which contains the symbol is not profiled nothing happens. It is therefore safe to always use this macro to call symbols in dynamically loaded DSOs. The `DL_CALL_FCT` macro has a low overhead and so could be used unconditionally but for production code it is probably best to avoid it.
 
 # 3 Maintaining APIs and ABIs
 
@@ -1579,7 +1579,7 @@ VERS_2.0 {
 
 The change consists of removing the `index` entry from version `VERS_1.0` and adding it to `VERS_2.0`. This leaves no exported symbol in version `VERS_1.0` which is OK. It would be wrong to remove `VERS_1.0` altogether after moving the `local: *` case to `VERS_2.0`. Even if the move would be done the `VERS_1.0` definition must be kept around since this version is named as the predecessor of `VERS_2.0`. If the predecessor reference would be removed as well, programs linked against the old DSO and referencing index in version `VERS_1.0` would stop working. Just like symbols, version names must never be removed.
 
-The code in this section has one little problem the code for the GNU versioning model in the previous section does not have: the implementation of `indexp1`references the public symbol `index` and therefore calls it with a jump to the PLT (which is slower and possibly allows interposition). The solution for this is left as an exercise to the user (see section [2.2.7).](#_bookmark50)
+The code in this section has one little problem the code for the GNU versioning model in the previous section does not have: the implementation of `indexp1`references the public symbol `index` and therefore calls it with a jump to the PLT (which is slower and possibly allows interposition). The solution for this is left as an exercise to the user (see section [2.2.7)](#_bookmark50).
 
 The Solaris runtime linker uses the predecessor implementation to determine when it finds an interface not available with the version found at link-time. If an application was linked with the old DSO constructed from the code above it would reference `index@VERS_1.0`. If the new DSO is found at runtime the version found would be `index@VERS_2.0`. In case such a mismatch is found the dynamic linker looks into the list of symbols and tries all predecessors in turn until all are checked or a match is found. In our example the predecessor of `VERS_2.0` is `VERS_1.0` and therefore the second comparison will succeed.
 
@@ -1777,7 +1777,7 @@ for ($cnt = 0; $cnt <= $#ARGV; ++$cnt) {
   printf("\n");
 }
 ```
-# B. Automatic Handler of Arrays of String Pointers
+# B. Automatic Handler of Arrays of String Pointers<a id="_bookmark79"></a>
 
 The method to handle arrays of string pointers presented in section [2.4.3](#_bookmark55) show the principle method to construct data structures which do not require relocations. But the construction is awkward and error-prone. Duplicating the strings in multiple places in the sources always has the problem of keeping them in sync.
 
@@ -1786,21 +1786,27 @@ The method to handle arrays of string pointers presented in section [2.4.3](#_bo
 ```c
 #include <stddef.h>
 
-#define MSGSTRFIELD(line) MSGSTRFIELD1(line) #define MSGSTRFIELD1(line) str##line
-static const union msgstr_t { struct {
-#define _S(n, s) char MSGSTRFIELD( LINE )[sizeof(s)]; #include "stringtab.h"
+#define MSGSTRFIELD(line) MSGSTRFIELD1(line) 
+#define MSGSTRFIELD1(line) str##line
+static const union msgstr_t { 
+  struct {
+#define _S(n, s) char MSGSTRFIELD(__LINE__)[sizeof(s)]; 
+#include "stringtab.h"
 #undef _S
-};
-char str[0];
-} msgstr = { { #define _S(n, s) s,
-#include "stringtab.h" #undef _S
+  };
+  char str[0];
+} msgstr = { { 
+#define _S(n, s) s,
+#include "stringtab.h"
+#undef _S
 } };
 static const unsigned int msgidx[] = {
 #define _S(n, s) [n] = offsetof(union msgstr_t, MSGSTRFIELD( LINE )), #include "stringtab.h"
 #undef _S
 };
-const char *errstr (int nr) { return msgstr.str + msgidx[nr];
-
+const char *errstr (int nr) { 
+    return msgstr.str + msgidx[nr];
+}
 ```
 
 The string data has to be provided in the file stringtab.h. For the example from section [2.4.3](#_bookmark55) the data would look like this:
