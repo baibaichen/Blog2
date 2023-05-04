@@ -573,7 +573,7 @@ enum { val3, val1, val2 };
 
 if `val3` is the value most often used for initializations. To summarize, it is always preferable to add variables as uninitialized or initialized with zero as opposed to as initialized with a value other than zero.
 
-## 2.2 Export Control
+## 2.2 Export Control<a id="_bookmark37"></a>
 
 When creating a DSO from a collection of object files the **dynamic symbol table** will by default contain all the symbols which are globally visible in the object files. In most cases this set is far too large. Only the symbols which are actually part of the ABI should be exported. Failing to restrict the set of exported symbols are numerous drawbacks:
 
@@ -1444,7 +1444,7 @@ As an example assume the implementation of the `strtok` function in the C run-ti
 
 The question is: does this really constitute an incompatibility? No valid program would ever be affected. Only programs which are not following the documented interface are affected. And if the change in the implementation would mean an improvement in efficiency (according to whatever measure) this would mean broken applications prevent progress in the implementation of a DSO. This is not acceptable.
 
-The definition of stability should therefore use the *documented* interface as the basis. Legitimate uses of interfaces should not be affected by changes in the implementation; using interfaces in an undefined way void the warranty. The same is true for using completely undocumented, internal symbols. Those must not be used at all. While this definition of stability is widely accepted it does not mean that avoiding or working around changes introduced by changes to the implementation is wrong. It just is not necessary if the achievement of stability comes at a cost which almost always is the case.
+The definition of stability should therefore use the *documented* interface as the basis. Legitimate uses of interfaces should not be affected by changes in the implementation; using interfaces in an undefined way void the warranty. The same is true for using completely undocumented, internal symbols. Those must not be used at all. **While this definition of stability is widely accepted it does not mean that avoiding or working around changes introduced by changes to the implementation is wrong. It just is not necessary if the achievement of stability comes at a cost which almost always is the case**.
 
 Rejecting stability of undefined functionality is one thing, but what happens if some documented behavior changes? This is can happen for various reasons:
 
@@ -1456,13 +1456,13 @@ Rejecting stability of undefined functionality is one thing, but what happens if
 
 Not making the changes can have negative results. Blindly changing the code will definitely have negative results. Making the change and still maintaining ABI stability requires the use of versioning.
 
-These incompatible changes to a DSO are not the only changes which can cause problems. Adding a new interface does not cause problems for existing applications. But if a new application uses the new interface it will run into problems if at runtime only the old version of the DSO, the one without the newly added symbol, is available. The user can detect this by forcing the dynamic linker to perform all relocations at load-time by defining LD BIND NOW to an nonempty value in the environment before starting the application. The dynamic linker will abort with an error if an old DSO is used. But forcing the relocations introduces major performance penalties (which is the reason why lazy relocations were introduced in the first place). Instead the dynamic linker should detect the old DSO version without performing the relocations.
+These incompatible changes to a DSO are not the only changes which can cause problems. Adding a new interface does not cause problems for existing applications. But if a new application uses the new interface it will run into problems if at runtime only the old version of the DSO, the one without the newly added symbol, is available. The user can detect this by forcing the dynamic linker to perform all relocations at load-time by defining `LD_BIND_NOW` to an nonempty value in the environment before starting the application. The dynamic linker will abort with an error if an old DSO is used. But forcing the relocations introduces major performance penalties (which is the reason why lazy relocations were introduced in the first place). Instead the dynamic linker should detect the old DSO version without performing the relocations.
 
 ## 3.3 ABI Versioning
 
 The term “ABI versioning” refers to the process of associating an ABI with a specific version so that if necessary more than one version of the ABI can be present at any one time. This is no new concept but it was refined over time and not all possible versioning methods are available on all systems.
 
-The first method is the oldest and coarsest grained one. It is implemented by using a different filename for each incompatible DSO. In ELF binaries dependencies on DSOs are recorded using `DT_NEEDED` entries in the dynamic segment. The string associated with the entry has to be the name of an existing DSO. It is usually taken from the string associated with the `DT_SONAME` entry in the DSO. Different names can point to different files which makes coexistence of different DSOs possible and easy. But while this method is easy to use and such DSOs can easily be produced, it has a major drawback. For every released version of the DSO which contains an incompatible change the SONAME would have to be changed. This can lead to large numbers of versions of the DSO which each differ only slightly from each other. This wastes resources especially at run-time when the running application need more than one version of the DSO. Another problem is the case when one single application loads more than one version of the DSO. This is easily possible if dependencies (other DSOs the application needs) pull in independently these different versions. Since the two versions of the versioned DSO do not know of each other, the results can be catastrophic. The only safe way to handle versioning with filenames is to avoid the described situation completely. This is most probably only possible by updating all binaries right away which means that effectively no versioning happens. The main advantage of filename versioning is that it works everywhere and can be used as a fallback solution in case no other versioning method is available.
+The first method is the oldest and coarsest grained one. It is implemented by using a different filename for each incompatible DSO. In ELF binaries dependencies on DSOs are recorded using `DT_NEEDED` entries in the dynamic segment. The string associated with the entry has to be the name of an existing DSO. **It is usually taken from the string associated with the `DT_SONAME` entry in the DSO.** Different names can point to different files which makes coexistence of different DSOs possible and easy. But while this method is easy to use and such DSOs can easily be produced, it has a major drawback. For every released version of the DSO which contains an incompatible change the SONAME would have to be changed. This can lead to large numbers of versions of the DSO which each differ only slightly from each other. This wastes resources especially at run-time when the running application need more than one version of the DSO. Another problem is the case when one single application loads more than one version of the DSO. This is easily possible if dependencies (other DSOs the application needs) pull in independently these different versions. Since the two versions of the versioned DSO do not know of each other, the results can be catastrophic. The only safe way to handle versioning with filenames is to avoid the described situation completely. This is most probably only possible by updating all binaries right away which means that effectively no versioning happens. The main advantage of filename versioning is that it works everywhere and can be used as a fallback solution in case no other versioning method is available.
 
 A second method with finer grained control was developed by Sun for its Solaris OS. In this method DSOs have internal versioning methods (filename versioning is obviously available on top of them). The internal versioning allows to make compatible changes to a DSO while avoiding runtime problems with programs running in environments which have only the old version of the DSO available. Compatible changes mean adding new interfaces or defining additional behavior for existing interfaces. Each symbol is associated with a version. The versions in a file are described by a non-cyclical graph which forms a hierarchy. If a symbol is associated with a version which has a predecessor it means that the properties of the symbol associated with the predecessor version are also fulfilled in the successor version. In short: a new version is defined for a new release of a DSO whenever new features are added. The interfaces which changed in a compatible way get the new version associated. All the other interfaces must not change and they keep the version they had in the previous release.
 
@@ -1474,7 +1474,7 @@ While Sun’s extensions help to cope with parts of the stability problem, the m
 
 With Linux’s symbol versioning mechanism this is not necessary. ABIs can normally be kept stable for as long as wanted. The symbol versioning mechanism [4] is an extension of Sun’s internal versioning mechanism. The two main differences are: it is possible to have more than one definition of a given symbol (the associated version must differ) and the application or DSO linked with the versioned DSO contains not only a list of the required version, but also records for each symbol which symbol version was used and from which DSO the definition came. At runtime this information can then be used to pick the right version from all the different versions of the same interface. The only requirement is that the API (headers, DSO used for linking, and documentation) is consistent. Every versioned DSO has at most one version of every API which can be used at link-time. An API (not ABI) can also vanish completely: this is a way to deprecate APIs without affecting binary compatibility.
 
-The only real problem of this approach is that if more than one version of the same API is used in the same application. This can only happen if the uses are in different objects, DSOs or the application itself. From inside one object only one version can be accessed. In the last 8+ years this hasn’t been found to be a problem in the GNU C library development. If it becomes a problem it can potentially be worked around by changing the implementation of the multi-versioned interface to make it aware of it. Since both versions of the interface are implemented in the same DSO the versions can coordinate. In general, most of the implementation of the different versions is shared and the actual versioned interfaces are normally wrappers around a general implementation (see below).
+The only real problem of this approach is that if more than one version of the same API is used in the same application. **This can only happen if the uses are in different objects, DSOs or the application itself**. From inside one object only one version can be accessed. In the last 8+ years this hasn’t been found to be a problem in the GNU C library development. If it becomes a problem it can potentially be worked around by changing the implementation of the multi-versioned interface to make it aware of it. Since both versions of the interface are implemented in the same DSO the versions can coordinate. In general, most of the implementation of the different versions is shared and the actual versioned interfaces are normally wrappers around a general implementation (see below).
 
 If possible, projects implementing generally usable DSOs should use symbol versioning from day one. Since the same techniques are used for symbol export control this is attractive. Unfortunately this versioning scheme requires changes in the dynamic linker which are currently only available on Linux and GNU Hurd[12](#_bookmark69). If this is not possible use Sun’s internal versioning for compatible changes (really only applies to Solaris). Otherwise there is no option but to change the SONAME for every release with incompatible and possible even releases with compatible changes. But the fact that such limited systems exist should *never* make this the only implemented way: if better mechanisms are available they should be used.
 
@@ -1484,7 +1484,7 @@ If possible, projects implementing generally usable DSOs should use symbol versi
 
 One of the reasons changes between revisions of a DSO appear incompatible is that users use internal interfaces of the DSO. This should never happen and usually the official interfaces are documented and the internal interfaces have special names. Still, many users choose to ignore these rules and then complain when internal interfaces change or go away entirely. There is no justification for these complaints but developers can save themselves a lot of nerves by restricting the set of interfaces which are exported from the DSO.
 
-Section [2.2](#_bookmark37) introduced the mechanisms available for this. Now that symbol versioning has been introduced we can extend this discussion a bit. Using symbol maps was introduced as one of the possibilities to restrict the exported symbols. Ideally symbol maps should be used all the time, *in addition* to the other method chosen. The reason is that this allows associating version names with the interfaces which in turn later allow incompatible changes to be made without breaking the ABI. The example map file in section [2.2.5](#_bookmark47) does not define a version name, it is an anonymous version map. The version defining a version name would look like this:
+Section [2.2](#_bookmark37) introduced the mechanisms available for this. Now that symbol versioning has been introduced we can extend this discussion a bit. Using symbol maps was introduced as one of the possibilities to restrict the exported symbols. **Ideally symbol maps should be used all the time, *in addition* to the other method chosen.** The reason is that this allows associating version names with the interfaces which in turn later allow incompatible changes to be made without breaking the ABI. The example map file in section [2.2.5](#_bookmark47) does not define a version name, it is an anonymous version map. The version defining a version name would look like this:
 
 ```c
 VERS_1.0 {
@@ -1510,18 +1510,18 @@ int index1__	(int scale) {
     return next () << (scale>0 ? scale : 0);
 }
 extern int index2__	(int)
-    __attribute ((alias ("index1 "))); 
-asm(".symver index1 ,index@VERS_1.0"); 
-asm(".symver index2 ,index@@VERS_2.0");
+    __attribute ((alias ("index1__"))); 
+asm(".symver index1__,index@VERS_1.0"); 
+asm(".symver index2__,index@@VERS_2.0");
 
 int indexp1 (int scale) { 
-    return index2	(scale) + 1;
+    return index2__(scale) + 1;
 }
 ```
 
-Several things need explaining here. First, we do not explicitly define a function `index` anymore. Instead `index1__` is defined (note the trailing underscore characters; leading underscores are reserved for the implementation). This function is defined using the new semantic. The `extern` declaration following the function definition is in fact a definition of an alias for the name `index1` . This is gcc’s syntax for expressing this. There are other ways to express this but this one uses only C constructs which are visible to the compiler. The reason for having this alias definition can be found in the following two lines. These introduce the “magic” to define a versioned symbol with more than one definition. The assembler pseudoop `.symver` is used to define an alias of a symbol which consists of the official name, `@` or `@@`, and a version name. The alias name will be the name used to access the symbol. It has to be the same name used in the original code, `index` in this case. The version name must correspond to the name used in the map file (see the example in the previous section).
+Several things need explaining here. **First**, we do not explicitly define a function `index` anymore. Instead `index1__` is defined (note the trailing underscore characters; leading underscores are reserved for the implementation). This function is defined using the new semantic. The `extern` declaration following the function definition is in fact a definition of an alias for the name `index1__` . This is gcc’s syntax for expressing this. There are other ways to express this but this one uses only C constructs which are visible to the compiler. The reason for having this alias definition can be found in the following two lines. These introduce the “magic” to define a versioned symbol with more than one definition. The assembler pseudoop `.symver` is used to define an alias of a symbol which consists of the official name, `@` or `@@`, and a version name. The alias name will be the name used to access the symbol. It has to be the same name used in the original code, `index` in this case. The version name must correspond to the name used in the map file (see the example in the previous section).
 
-What remains to be explained is the use of `@` and `@@`. The symbol defined using `@@` is the default definition. There must be at most one. It is the version of the symbol used in all linker runs involving the DSO. No symbol defined using `@` are ever considered by the linker. These are the compatibility symbols which are considered only by the dynamic linker.
+What remains to be explained is the use of `@` and `@@`. The symbol defined using `@@` is the default definition. There must be at most one. **It is the version of the symbol used in all linker runs involving the DSO**. No symbol defined using `@` are ever considered by the linker. **These are the compatibility symbols which are considered only by the dynamic linker.**
 
 In this example we define both versions of the symbol to use the same code. We could have just as well kept the old definition of the function and added the new definition. This would have increased the code size but would provide exactly the same interface. Code which calls the old version, `index@VERS_1.0`, would have produced unspecified behavior with the old DSO and now it would return the same as a call to `index@@VERS_2.0`. But since such a call is invalid anyway nobody can expect that the ABI does not change in this regard.
 
@@ -1541,13 +1541,13 @@ VERS_2.0 {
 
 The important points to note here are that `index` is mentioned in more than one version, `indexp1` only appears in `VERS_2.0`, the `local:` definitions only appear in the `VERS_1.0` definition, and the definition of `VERS_2.0` refers to `VERS_1.0`. The first point should be obvious: we want two versions of `index` to be available, this is what the source code says. The second point is also easy to understand: `indexp1`is a new function and was not available when version 1 of the DSO was released. It is not necessary to mark the definition of `indexp1`in the sources with a version name. Since there is only one definition the linker is able to figure this out by itself.
 
-The omission of the catch-all `local: *` case might be a bit surprising. There is no `local:` case at all in the `VERS_2.0` definition. What about internal symbols introduced in version 2 of the DSO? To understand this it must be noted that all symbols matched in the `local:` part of the version definition do not actually get a version name assigned. They get a special internal version name representing all local symbols assigned. So, the `local:` part could appear anywhere, the result would be the same. Duplicating `local: *` could possibly confuse the linker since now there are two catch-all cases. It is no problem to explicitly mention newly introduced local symbols in the local: cases of new versions, but it is normally not necessary since there always should be a catch-all case.
+The omission of the catch-all `local: *` case might be a bit surprising. There is no `local:` case at all in the `VERS_2.0` definition. What about internal symbols introduced in version 2 of the DSO? To understand this it must be noted that all symbols matched in the `local:` part of the version definition do not actually get a version name assigned. They get a special internal version name representing all local symbols assigned. So, the `local:` part could appear anywhere, the result would be the same. Duplicating `local: *` could possibly confuse the linker since now there are two catch-all cases. It is no problem to explicitly mention newly introduced local symbols in the `local:` cases of new versions, but it is normally not necessary since there always should be a catch-all case.
 
 The fourth point, the `VERS_1.0` version being referred to in the `VERS_2.0` definition, is not really important in symbol versioning. It marks the predecessor relationship of the two versions and it is done to maintain the similarities with Solaris’ internal versioning. It does not cause any problem it might in fact be useful to a human reader so predecessors should always be mentioned.
 
 ## 3.6 Handling Compatible Changes (Solaris)
 
-The code changes to the code of the last section to handle Solaris’ internal versioning simplify sources and the map file. Since there can only be one definition of a symbol (and since a symbol cannot be removed there is exactly one definition) we do not need any alias and we do not have to mention index twice in the map file. The source code would look like this:
+The code changes to the code of the last section to handle Solaris’ internal versioning simplify sources and the map file. Since there can only be one definition of a symbol (and since a symbol cannot be removed there is exactly one definition) we do not need any alias and we do not have to mention `index` twice in the map file. The source code would look like this:
 
 ```c
 static int last;
@@ -1577,17 +1577,17 @@ VERS_2.0 {
 
 ```
 
-The change consists of removing the `index` entry from version `VERS_1.0` and adding it to `VERS_2.0`. This leaves no exported symbol in version `VERS_1.0` which is OK. It would be wrong to remove `VERS_1.0` altogether after moving the `local: *` case to `VERS_2.0`. Even if the move would be done the `VERS_1.0` definition must be kept around since this version is named as the predecessor of `VERS_2.0`. If the predecessor reference would be removed as well, programs linked against the old DSO and referencing index in version `VERS_1.0` would stop working. Just like symbols, version names must never be removed.
+The change consists of removing the `index` entry from version `VERS_1.0` and adding it to `VERS_2.0`. This leaves no exported symbol in version `VERS_1.0` which is OK. It would be wrong to remove `VERS_1.0` altogether after moving the `local: *` case to `VERS_2.0`. Even if the move would be done the `VERS_1.0` definition must be kept around since this version is named as the predecessor of `VERS_2.0`. If the predecessor reference would be removed as well, programs linked against the old DSO and referencing `index` in version `VERS_1.0` would stop working. Just like symbols, version names must never be removed.
 
-The code in this section has one little problem the code for the GNU versioning model in the previous section does not have: the implementation of `indexp1`references the public symbol `index` and therefore calls it with a jump to the PLT (which is slower and possibly allows interposition). The solution for this is left as an exercise to the user (see section [2.2.7)](#_bookmark50).
+The code in this section has one little problem the code for the GNU versioning model in the previous section does not have: the implementation of `indexp1`references the public symbol `index` and therefore calls it with a jump to the PLT (which is slower and possibly allows interposition). The solution for this is left as an exercise to the user (see section [2.2.7](#_bookmark50)).
 
-The Solaris runtime linker uses the predecessor implementation to determine when it finds an interface not available with the version found at link-time. If an application was linked with the old DSO constructed from the code above it would reference `index@VERS_1.0`. If the new DSO is found at runtime the version found would be `index@VERS_2.0`. In case such a mismatch is found the dynamic linker looks into the list of symbols and tries all predecessors in turn until all are checked or a match is found. In our example the predecessor of `VERS_2.0` is `VERS_1.0` and therefore the second comparison will succeed.
+The Solaris runtime linker uses ==the predecessor implementation== to determine when it finds an interface not available with the version found at link-time. If an application was linked with the old DSO constructed from the code above it would reference `index@VERS_1.0`. If the new DSO is found at runtime the version found would be `index@VERS_2.0`. In case such a mismatch is found the dynamic linker looks into the list of symbols and tries all predecessors in turn until all are checked or a match is found. In our example the predecessor of `VERS_2.0` is `VERS_1.0` and therefore the second comparison will succeed.
 
-## 3.7 Incompatible Changes
+## 3.7 Incompatible Changes <a id="_bookmark72"></a>
 
 Incompatible changes can only be handled with the symbol versioning mechanism present on Linux and GNU Hurd. For Solaris one has to fall back to the filename versioning method.
 
-Having just covered the code for the compatible change, the differences are not big. For illustration we pick up the example code once again. This time, instead of making a compatible change to the semantics of index we change the interface.
+Having just covered the code for the compatible change, the differences are not big. For illustration we pick up the example code once again. This time, instead of making a compatible change to the semantics of `index` we change the interface.
 
 ```c
 static int last;
@@ -1611,7 +1611,7 @@ int index2__(int scale, int *result) {
 asm(".symver index2__,index@@VERS_2.0");
 ```
 
-The interface of `index` in version `VERS_2.0` as implemented in `index2__` (note: this is the default version as can be seen by the two @ in the version definition) is quite different and it can easily be seen that programs which previously return some more or less sensible value now can crash because `*result` is written to. This parameter would contain garbage if the function would be used with an old prototype. The `index1__` definition is the same as the previous `index` implementation. We once again have to define the real function with an alias since the `index` names get introduced by the `.symver` pseudo-ops.
+The interface of `index` in version `VERS_2.0` as implemented in `index2__` (note: this is the default version as can be seen by the two `@` in the version definition) is quite different and it can easily be seen that programs which previously return some more or less sensible value now can crash because `*result` is written to. This parameter would contain garbage if the function would be used with an old prototype. The `index1__` definition is the same as the previous `index` implementation. We once again have to define the real function with an alias since the `index` names get introduced by the `.symver` pseudo-ops.
 
 It is characteristic for incompatible changes that the implementations of the different versions require separate code. But as in this case one function can often be implemented in terms of the other (the new code using the old code as it is the case here, or vice versa).
 
@@ -1620,7 +1620,7 @@ The map file for this example looks very much like the one for the compatible ch
 ```c
 VERS_1.0 {
   global: index; 
-    local: *;
+  local: *;
 };
 
 VERS_2.0 {
@@ -1628,7 +1628,7 @@ global: index;
 } VERS_1.0;
 ```
 
-We have two definitions of index and therefore the name must be mentioned by the appropriate sections for the two versions.
+We have two definitions of `index` and therefore the name must be mentioned by the appropriate sections for the two versions.
 
 It might also be worthwhile pointing out once again that the call to `index1__` in `index2__` does not use the PLT and is instead a direct, usually PC-relative, jump.
 
@@ -1646,7 +1646,7 @@ It is therefore highly recommended to never depend on undefined symbols. The lin
 
 ## 3.9 Inter-Object File Relations
 
-Part of the ABI is also the relationship between the various participating executables and DSOs which are created by undefined references. It must be ensured that the dynamic linker can locate exactly the right DSOs at program start time. The static linker uses the SONAME of a DSO in the record to specify the interdependencies between two objects. The information is stored in the `DT_NEEDED` entries in the dynamic section of the object with the undefined references. Usually this is only a file name, without a complete path. It is then the task of the dynamic linker to find the correct file at startup time.
+**Part of the ABI is also the relationship between the various participating executables and DSOs which are created by undefined references**. It must be ensured that the dynamic linker can locate exactly the right DSOs at program start time. The static linker uses the SONAME of a DSO in the record to specify the interdependencies between two objects. The information is stored in the `DT_NEEDED` entries in the dynamic section of the object with the undefined references. Usually this is only a file name, without a complete path. It is then the task of the dynamic linker to find the correct file at startup time.
 
 This can be a problem, though. By default the dynamic linker only looks into a few directories to find DSOs (on Linux, in exactly two directories, `/lib` and `/usr/lib`). More directories can be added by naming them in the `/etc/ld.so.conf` file which is always consulted by the dynamic linker. Before starting the application, the user can add `LD_LIBRARY_PATH` to the environment of the process. The value is another list of directories which are looked at.
 
@@ -1662,7 +1662,7 @@ gcc -Wl,-rpath,/some/dir:/dir2 file.o
 
 This will add the two named directories to the run path in the order in which say appear on the command line. If more than one `-rpath`/`-R` option is given the parameters will be concatenated with a separating colon. The order is once again the same as on the linker command line. For compatibility reasons with older version of the linker `DT_RPATH` entries are created by default. The linker option `--enable-new-dtags` must be used to also add `DT_RUNPATH` entry. This will cause both, `DT_RPATH` and `DT_RUNPATH` entries, to be created.
 
-There are a number of pitfalls one has to be aware of when using run paths. The first is that an empty path represents the current working directory (CWD) of the process at runtime. One can construct such an empty path by explicitly adding such a parameter (`-Wl,-R,""`) but also, and this is the dangerous part, by two consecutive colons or a colon at the beginning or end of the string. That means the run path value ”`:/home::/usr:`” searches the CWD, `home`, the CWD again, `usr`, and finally the CWD again[13](#_bookmark75). It is very easy to add such an empty path. Makefiles often contain something like this:
+There are a number of pitfalls one has to be aware of when using run paths. The first is that an empty path represents the current working directory (CWD) of the process at runtime. One can construct such an empty path by explicitly adding such a parameter (`-Wl,-R,""`) but also, and this is the dangerous part, by two consecutive colons or a colon at the beginning or end of the string. That means the run path value ”`:/home::/usr:`” searches the CWD, `home`, the CWD again, `usr`, and finally the CWD again [[13](#_bookmark75)]. It is very easy to add such an empty path. Makefiles often contain something like this:
 
 ```makefile
 RPATH = $(GLOBAL\_RPATH):$(LOCAL\_RPATH) LDFLAGS += -Wl,-rpath,$(RPATH)
@@ -1674,11 +1674,11 @@ The second issue run paths have is that either that paths like `/usr/lib/someapp
 
 A solution out of the dilemma is an extension syntax for all search paths (run paths, but also `LD_LIBRARY_PATH`). If one uses the string `$ORIGIN` this will represent the absolute path of the directory the file containing this run path is in. One common case for using this “dynamic string token” (DST) is a program (usually installed in a `bin/` directory) which comes with one or more DSOs it needs, which are installed in the corresponding `lib/` directory. For instance the paths could be `/bin` and `/lib` or `/usr/bin` and `/usr/lib`. In such a case the run path of the application could contain `$ORIGIN/../lib` which will expand in the examples case just mentioned to `/bin/../lib` and `/usr/bin/../lib` respectively. The effective path will therefore point to the appropriate `lib/` directory.
 
-`$ORIGIN` is not the only DST available. The GNU libc dynamic currently recognizes two more. The first is `$LIB` which is useful on platforms which can run in 32and 64bit mode (maybe more in future). On such platforms the replacement value in 32-bit binaries is `lib` and for 64-bit binaries it is `lib64`. This is what the system ABIs specify as the directories for executable code. If the platform does not know more than one mode the replacement value is `lib`. This DST makes it therefore easy to write Makefiles creating the binaries since no knowledge about the differentiation is needed.
+`$ORIGIN` is not the only DST available. The GNU libc dynamic currently recognizes two more. The first is `$LIB` which is useful on platforms which can run in 32and 64bit mode (maybe more in future). On such platforms the replacement value in 32-bit binaries is `lib` and for 64-bit binaries it is `lib64`. **This is what the system ABIs specify as the directories for executable code**. If the platform does not know more than one mode the replacement value is `lib`. This DST makes it therefore easy to write Makefiles creating the binaries since no knowledge about the differentiation is needed.
 
 The last DST is `$PLATFORM`. It is replaced by the dynamic linker with an architecture-specific string representing the name of the platform (as the name suggests). For instance, it will be replaced with `i386` or `i686` on IA-32 machines, depending on the CPU(s) used. This allows using better optimized versions of a DSO if the CPU supports it. On system with the GNU libc this is generally not needed since the dynamic linker by itself and by default looks for such subdirectories. The actual rules are quite complicated and not further discussed here. What is important to remember is that the `$PLATFORM` DST is not really useful; it is mainly available for compatibility with Solaris’s dynamic linker.
 
-Another aspect of `DT_NEEDED` entries worth looking at is whether they are necessary in the first place. Especially when the above guideline of using the -z defs linker option is followed, many projects name all kinds of DSOs on the linker command line, whether they are really needed or not in the specific case. This problem is intensified with useless wrappers like pkg-config which just add tons of dependencies to the link time. This might have been OK in the days of static linking, but the default for DSOs appearing on the linker command line is, that they are always added to the result’s dependency list, whether they are actually used or not. To determine whether an executable or DSO has such unnecessary dependencies the ldd script can be used:
+Another aspect of `DT_NEEDED` entries worth looking at is whether they are necessary in the first place. Especially when the above guideline of using the `-z defs` linker option is followed, many projects name all kinds of DSOs on the linker command line, whether they are really needed or not in the specific case. This problem is intensified with useless wrappers like pkg-config which just add tons of dependencies to the link time. This might have been OK in the days of static linking, but the default for DSOs appearing on the linker command line is, that they are always added to the result’s dependency list, whether they are actually used or not. To determine whether an executable or DSO has such unnecessary dependencies the ldd script can be used:
 
 ```bash
 $ ldd -u -r \
@@ -1686,7 +1686,6 @@ $ ldd -u -r \
 
 /usr/lib/libpangox-1.0.so.0
 /lib/libdl.so.2
-
 ```
 
 These references can be manually eliminated by avoiding to name the DSO on the linker command line. Alternatively the `--as-needed` linker option can be used. If this option is used, all DSOs named on the command line after the option are only added to the dependency list if they are really needed. This mode can be disabled again with the `--no-as-needed` option. This way the lazy programmer can still name all the DSOs which might be needed at all times. The linker does all the hard work.
@@ -1822,8 +1821,6 @@ The macro `_S` takes two parameters: the first is the index used to locate the s
 The array `msgidx` in this cases uses the type `unsigned int` which is in most cases 32 bits wide. This is usually far too much to address all bytes in the string collectionin `msgstr`. So, if size is an issue the type used could be `uint16_t` or even `uint8_t`.
 
 Note that both arrays are marked with const and therefore are not only stored in the read-only data segment and therefore shared between processes, preserving, precious data memory, making the data read-only also prevents possible security problems resulting from overwriting values which can trick the program into doing something harmful.
-
-# Index
 
 
 # References
