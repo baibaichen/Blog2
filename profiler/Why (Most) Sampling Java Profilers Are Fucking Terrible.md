@@ -746,7 +746,7 @@ public void meSoHotInline_avgt_jmhStub(InfraControl control, RawResults result, 
 
 所以，如果我们构造一个已知的工作负载...，这些分析器会看到什么？
 
-我们使用**JMH**安全点偏差分析器 `-prof stack`进行研究。它为相同的代码提供的分析器，非常类似于**JVisualVM**，对于这项研究来说更方便。
+我们使用 **JMH** 安全点偏差分析器 `-prof stack`进行研究。它为相同的代码提供的分析器，非常类似于**JVisualVM**，对于这项研究来说更方便。
 
 **注意**：在以下各节中，我将用术语<u>子方法</u>描述被另一个方法调用的方法。例如。 如果方法A调用方法B，则B是A的子方法。也许存在更好的术语，但这就是我的意思。
 
@@ -909,21 +909,21 @@ void AsyncGetCallTrace(ASGCT_CallTrace *trace, // pre-allocated trace to fill
 
 ## 轻量级的 Honest Profiler
 
-名称中的“异步”是指可以在**Signal Handler**（<u>信号处理程序</u>）中安全调用AGCT。 这在 <u>profiling</u> 时非常方便，因为这意味着可以按以下方式实现**Profiler**：
+名称中的“异步”是指可以在 **Signal Handler**（<u>信号处理程序</u>）中安全调用AGCT。 这在 <u>profiling</u> 时非常方便，因为这意味着可以按以下方式实现**Profiler**：
 
 1. 在JVMTI的代理中，为某个信号X注册一个信号处理程序。
 
-2. [设置一个定时器](http://man7.org/linux/man-pages/man2/setitimer.2.html)，以所需的采样频率触发信号X。Honest Profiler使用 **ITIMER_PROF** 选项，这意味着我们将根据CPU时间获得信号。信号将被发送到进程，其中一个正在运行的线程将被中断，并调用注册的信号处理程序。请注意，这假设操作系统将在线程之间公平地分配信号，所以在所有正在运行线程之间合平地采样。
+2. [设置一个定时器](http://man7.org/linux/man-pages/man2/setitimer.2.html)，以所需的采样频率触发信号X。Honest Profiler使用 **ITIMER_PROF** 选项，这意味着我们将根据 CPU 时间获得信号。信号将被发送到进程，其中一个正在运行的线程将被中断，并调用注册的信号处理程序。请注意，这假设操作系统将在线程之间公平地分配信号，所以在所有正在运行线程之间合平地采样。
 
    > 注意：在多线程环境下，信号会随机地分发到该进程中某个正在运行地线程。
 
 3. 从信号处理程序中调用**AGCT**：请注意，被中断的线程（从当前在CPU上执行的线程中随机选取）将运行注册的信号处理程序。线程不在安全点。 它可能根本不是Java线程。
 
-4. 持久化<u>调用追踪</u>：请注意，在信号处理程序中运行时，只有“异步”代码才合法。例如，这意味着禁止任何阻塞代码，包括malloc和IO。
+4. 持久化<u>调用追踪</u>：请注意，在信号处理程序中运行时，只有“异步”代码才合法。例如，这意味着禁止任何阻塞代码，包括 malloc 和 IO。
 
 5. WIN!
 
-`ucontext`参数就是信号处理程序传给你的（信号处理程序是一个回调，函数定义是`handle(int signum，siginfo_t * info，void  * context)`）。AGCT将在此挖掘出中断时的**指令/帧/堆栈指针值**，并尽最大努力找出您所处的位置。
+`ucontext`参数就是信号处理程序传给你的（信号处理程序是一个回调，函数定义是`handle(int signum，siginfo_t * info，void  * context)`）。AGCT 将在此挖掘出中断时的**指令/帧/堆栈指针值**，并尽最大努力找出您所处的位置。
 
 **Jeremy Manson** 就是采用此种方法，他解释了基础架构，（以一种概念验证、非确定的方式）[开源了基础的Profiler](https://code.google.com/archive/p/lightweight-java-profiler/)，他在此问题上有一系列精彩文章：
 
@@ -932,7 +932,7 @@ void AsyncGetCallTrace(ASGCT_CallTrace *trace, // pre-allocated trace to fill
 - [More thoughts on SIGPROF, JVMTI and stack traces](http://jeremymanson.blogspot.co.za/2007/06/more-thoughts-on-sigprof-jvmti-and.html)
 - [Why Many Profilers have Serious Problems (More on Profiling with Signals)](http://jeremymanson.blogspot.co.za/2010/07/why-many-profilers-have-serious.html)
 
-然后，**Richard Warburton** 基于相同的代码，进一步改进和稳定了 [Honest-Profiler](https://github.com/RichardWarburton/honest-profiler)（我对此做出了一些贡献）。Honest Profiler致力于成为一个最初的产品原型，并辅以一些使整个产品可用的工具。通过预先分配`ASGCT_CallTrace`，辅以无锁的 **MPSC** 环形缓冲区（即预先分配<u>调用帧数组</u>），解决了信号处理程序中的序列化问题。然后，在后续的线程中读取<u>调用追踪信息</u>，并收集一些额外的信息（如将**BCI**转换为行号，将**jmethodIds**转换为类名/文件名等）写入日志文件。更多详细信息请参见项目Wiki。
+然后，**Richard Warburton** 基于相同的代码，进一步改进和稳定了 [Honest-Profiler](https://github.com/RichardWarburton/honest-profiler)（我对此做出了一些贡献）。Honest Profiler 致力于成为一个最初的产品原型，并辅以一些使整个产品可用的工具。通过预先分配`ASGCT_CallTrace`，辅以无锁的 **MPSC** 环形缓冲区（即预先分配<u>调用帧数组</u>），解决了信号处理程序中的序列化问题。然后，在后续的线程中读取<u>调用追踪信息</u>，并收集一些额外的信息（如将**BCI**转换为行号，将**jmethodIds**转换为类名/文件名等）写入日志文件。更多详细信息请参见项目Wiki。
 
 > 1. MPSC：multi-producer, single consumer
 > 2. BCI：Byte Code Instrument
@@ -1189,7 +1189,7 @@ JMC报告的样本数量很少（<u>在**树状视图**中总的数量与**根**
 
 ## 小结：有什么好处？
 
-AsyncGetCallTrace比GetStackTraces有提高，因为它以较低的开销运行且不受安全点偏差的影响。但确实要调整一下思维模式（[mental model](https://www.zhihu.com/question/19940741)）：
+`AsyncGetCallTrace` 比 `GetStackTraces` 有提高，因为它以较低的开销运行且不受安全点偏差的影响。但确实要调整一下思维模式（[mental model](https://www.zhihu.com/question/19940741)）：
 
 1. `-XX:+UnlockDiagnosticVMOptions` `-XX:+DebugNonSafepoints`：如果未启用，则调试数据的分辨率（解析）仍然困扰着您。这与安全点偏差不同，因为您实际上可以在任何地方采样，但是从PC到BCI的转换会搞死你。还没看到这些标志会带来不可忽视的开销，所以不相信默认值是对的，但现在就是这样。Honest-Profiler会为处理这个问题，JMC则需要你将其添加到命令行中。
 2. 每次采样**一个CPU线程**：这与对所有线程进行采样的`GetStackTraces`方法非常不同。这意味着每个样本获得的**trace**信息更少，并且完全不会采样睡眠/饥饿的线程。因为开销要低得多，所以可以通过更频繁或更长的时间进行采样来进行补偿。**这是一件好事**，鉴于线程数量可能很多，所以每次采样所有线程是一个非常有问题的任务。
@@ -1199,8 +1199,8 @@ AsyncGetCallTrace比GetStackTraces有提高，因为它以较低的开销运行�
 `AsyncGetCallTrace`在以下情况下使用受到限制：
 
 1. 采样大量失败：这可能意味着应用程序将时间浪费在GC/Deopts/Runtime代码上。小心失败。 我认为Honest Profiler目前可以对此提供更好的可见性，但我也相信JMC的好伙伴可以帮忙。
-2. 从Java代码很难发现性能问题。例如，请参阅[上一篇文章，讨论使用JMH perfasm时遇到的问题](http://psy-lob-saw.blogspot.com/2015/07/JMH-perfasm.html)（错误共享对象头中`class id`，使得接口调用的<u>条件内联</u>非常昂贵）。
-3. 由于指令滑动/编译/可用的调试信息，导致归因到错误的Java代码行。在存在内联和代码移动的情况下，可能非常令人困惑。
+2. 从 Java 代码很难发现性能问题。例如，请参阅[上一篇文章，讨论使用JMH perfasm时遇到的问题](http://psy-lob-saw.blogspot.com/2015/07/JMH-perfasm.html)（错误共享对象头中`class id`，使得接口调用的<u>条件内联</u>非常昂贵）。
+3. 由于指令滑动/编译/可用的调试信息，导致归因到错误的 Java 代码行。在存在内联和代码移动的情况下，可能非常令人困惑。
 
 现在，可使用Honest-Profiler在Linux和OS X上分析Open / Oracle JDK6 / 7/8应用程序。还可以使用它在最新的Zing版本（15.05.0.0及更高版本的所有JDK）上分析Zing应用程序。Honest-Profiler不错，但我要提醒读者，它还没有广泛使用，可能包含错误，应谨慎使用。这是一个有用的工具，但不确定是否会在我的生产系统上使用它😉。JMC / JFR仅在JDK7u40上的Oracle JVM上可用，但在Linux，OS X，Windows和Solaris（仅JFR）上可用。 JMC / JFR出于开发目的是免费的，但需要许可证才能在生产中使用。注意，JFR收集了大量超出本文范围的性能数据，我衷心建议您尝试一下。
 
