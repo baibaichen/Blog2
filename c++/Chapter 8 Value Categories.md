@@ -1,27 +1,10 @@
 # Chapter 8 Value Categories
-> This chapter introduces the formal terminology and rules for move semantics. We formally introduce value categories such as lvalue, rvalue, prvalue, and xvalue and discuss their role when binding references to objects. This allows us to also discuss details of the rule that move semantics is not automatically passed through, as well as a very subtle behavior of `decltype` when it is called for expressions.
->
-> This chapter is the most complicated chapter of the book. You will probably see facts and features that are tricky and for some people hard to believe. Come back to it later, whenever you read about value categories, binding references to objects, and `decltype` again.
+This chapter introduces the formal terminology and rules for move semantics. We formally introduce value categories such as lvalue, rvalue, prvalue, and xvalue and discuss their role when binding references to objects. This allows us to also discuss details of the rule that move semantics is not automatically passed through, as well as a very subtle behavior of `decltype` when it is called for expressions.
 
-本章介绍移动语义的正式术语和规则。我们正式介绍左值、右值、纯右值和将亡值等**值类别**，并讨论它们在将引用绑定到对象时的作用。这使我们还可以讨论不自动传递移动语义的规则的细节，以及为表达式调用 `decltype` 时非常微妙的行为。
-
-本章是全书最复杂的一章。 您可能会看到一些令人难以相信的棘手事实和特征。稍后，每当您阅读有关值类别、将引用绑定到对象以及再次 `decltype` 的内容时，再回来阅读它。
+This chapter is the most complicated chapter of the book. You will probably see facts and features that are tricky and for some people hard to believe. Come back to it later, whenever you read about value categories, binding references to objects, and `decltype` again.
 
 ## 8.1 Value Categories
-> To compile an expression or statement it does not only matter whether the involved types fit. For example, you cannot assign an `int` to an `int` when on the left-hand side of the assignment an int literal is used:
->
-> ```c++
-> int i = 42;
-> i = 77; // OK
-> 77 = i; // ERROR
-> ```
->
-> For this reason, each expression in a C++ program has a **value category**. Besides the type, the value category is essential to decide what you can do with an expression.
->
-> However, value categories have changed over time in C++.
->
-
-要编译表达式或语句，不仅关系到所涉及的类型是否适合。例如，当赋值的左边使用 `int` 字面量时，你不能将 `int` 分配给 `int`：
+To compile an expression or statement it does not only matter whether the involved types fit. For example, you cannot assign an `int` to an `int` when on the left-hand side of the assignment an int literal is used:
 
 ```c++
 int i = 42;
@@ -29,76 +12,17 @@ i = 77; // OK
 77 = i; // ERROR
 ```
 
-因此，C++ 程序中的每个表达式都有一个**值类别**。 除了类型之外，值类别对于决定你可以用表达式做什么是必不可少的。
+For this reason, each expression in a C++ program has a **value category**. Besides the type, the value category is essential to decide what you can do with an expression.
 
-但是，C++ 中的值类别随时间发生了变化。
+However, value categories have changed over time in C++.
 
 ### 8.1.1 History of Value Categories
-> Historically (taken from Kernighan&Ritchie C, K&R C), we had only the value categories **lvalue** and **rvalue**. The terms came from what was allowed in an assignment:
->
-> - An **lvalue** could occur on the left-hand side of an assignment
-> - An **rvalue** could occur only on the right-hand side of an assignment
->
-> According to this definition, when you use an `int` object/variable you use an lvalue, but when you use an `int` literal you use an rvalue:
->
-> ```c++
-> int x; // x is an lvalue when used in an expression
-> 
-> x = 42; // OK, because x is an lvalue and the type matches
-> 42 = x; // ERROR: 42 is an rvalue and can be only on the right-hand side of an assignment
-> ```
->
-> However, these categories were important not only for assignments. They were used generally to specify whether and where an expression can be used. For example:
->
-> ```c++
-> int x; // x is an lvalue when used in an expression
-> 
-> int* p1 = &x; // OK: & is fine for lvalues (object has a specified location)
-> int* p2 = &42; // ERROR: & is not allowed for rvalues (object has no specified location)
-> ```
->
-> However, things became more complicated with **ANSI-C** because an `x` declared as `const int` could not stand on the left-hand side of an assignment but could still be used in several other places where only an lvalue could be used:
->
-> ```c++
-> const int c = 42; // Is c an lvalue or rvalue?
-> 
-> c = 42; // now an ERROR (so that c should no longer be an lvalue)
-> const int* p1 = &c; // still OK (so that c should still be an lvalue)
-> ```
->
-> The decision in C was that c declared as const int is still an **lvalue** because most of the operations for lvalues can still be called for const objects of a specific type. The only thing you could not do anymore was to have a const object on the left-hand side of an assignment.
->
-> As a consequence, in ANSI-C, the meaning of the l changed to **locator value**. An **lvalue** is now an object that has a specified location in the program (so that you can take the address, for example). In the same way, an **rvalue** can now be considered just a **readable value**.
->
-> C++98 adopted these definitions of value categories. However, with the introduction of move semantics, the question arose as to which value category an object marked with std::move() should have, because objects of a class marked with std::move() should follow the following rules:
->
-> ```c++
-> std::string s;
-> ...
-> std::move(s) = "hello"; // OK (behaves like an lvalue)
-> auto ps = &std::move(s); // ERROR (behaves like an rvalue)
-> ```
->
-> However, note that fundamental data types (FDTs) behave as follows:
->
-> ```c++
-> int i;
-> ...
-> std::move(i) = 42; // ERROR
-> auto pi = &std::move(i); // ERROR
-> ```
->
-> With the exception of fundamental data types, an object marked with `std::move()` should still behave like an lvalue by allowing you to modify its value. On the other hand, there are restrictions such as that you should not be able to take the address.
->
-> A new category **xvalue** (“eXpiring value”) was therefore introduced to specify the rules for objects explicitly marked as **I no longer need the value here** (mainly objects marked with `std::move()`). However, most of the rules for former rvalues also apply to xvalues. Therefore, the former primary value category **rvalue** became a composite value category that now represents both new primary value categories **prvalue** (for everything that was an rvalue before) and **xvalue**. See http://wg21.link/n3055 for the paper proposing these changes.
->
+Historically (taken from Kernighan&Ritchie C, K&R C), we had only the value categories **lvalue** and **rvalue**. The terms came from what was allowed in an assignment:
 
-历史上（取自 Kernighan&Ritchie C、K&R C），`值类别`只有 **lvalue** 和 **rvalue**。 这些术语来自于赋值中允许的操作：
+- An **lvalue** could occur on the left-hand side of an assignment
+- An **rvalue** could occur only on the right-hand side of an assignment
 
-- **左值**可以出现在赋值的左边
-- **右值**只能出现在赋值的右边
-
-根据这个定义，当你使用 `int` 对象/变量时，你使用的是左值，但是当你使用 `int` 字面量时，你使用的是右值：
+According to this definition, when you use an `int` object/variable you use an lvalue, but when you use an `int` literal you use an rvalue:
 
 ```c++
 int x; // x is an lvalue when used in an expression
@@ -107,7 +31,7 @@ x = 42; // OK, because x is an lvalue and the type matches
 42 = x; // ERROR: 42 is an rvalue and can be only on the right-hand side of an assignment
 ```
 
-然而，这些类别不仅对赋值很重要。它们通常用于指定是否以及在何处可以使用表达式。 例如：
+However, these categories were important not only for assignments. They were used generally to specify whether and where an expression can be used. For example:
 
 ```c++
 int x; // x is an lvalue when used in an expression
@@ -116,7 +40,7 @@ int* p1 = &x; // OK: & is fine for lvalues (object has a specified location)
 int* p2 = &42; // ERROR: & is not allowed for rvalues (object has no specified location)
 ```
 
-然而，使用 **ANSI-C** 时事情变得更加复杂，因为声明为 `const int` 的 `x` 不能位于赋值的左侧，但仍可以在其他几个只能使用左值的地方使用：
+However, things became more complicated with **ANSI-C** because an `x` declared as `const int` could not stand on the left-hand side of an assignment but could still be used in several other places where only an lvalue could be used:
 
 ```c++
 const int c = 42; // Is c an lvalue or rvalue?
@@ -125,11 +49,11 @@ c = 42; // now an ERROR (so that c should no longer be an lvalue)
 const int* p1 = &c; // still OK (so that c should still be an lvalue)
 ```
 
-C 中的决定是声明为 `const int` 的 `c` 仍然是一个**左值**，因为左值的大部分操作仍然可以为特定类型的 `const` 对象调用。 你唯一不能再做的就是在赋值的左侧有一个 `const` 对象。
+The decision in C was that c declared as const int is still an **lvalue** because most of the operations for lvalues can still be called for const objects of a specific type. The only thing you could not do anymore was to have a const object on the left-hand side of an assignment.
 
-因此，在 ANSI-C 中，l 的含义更改为**有地址的值**。**左值**现在是程序中具有指定位置的对象（例如，这样您就可以获取地址）。同样，一个**右值**现在可以被认为只是一个**可读的值**。
+As a consequence, in ANSI-C, the meaning of the l changed to **locator value**. An **lvalue** is now an object that has a specified location in the program (so that you can take the address, for example). In the same way, an **rvalue** can now be considered just a **readable value**.
 
-C++98 采用了这些值类别的定义。 然而，随着移动语义的引入，问题出现了，以 `std::move()` 标记的对象应该具有哪个值类别，因为以 `std::move()` 标记的类的对象应遵循以下规则：
+C++98 adopted these definitions of value categories. However, with the introduction of move semantics, the question arose as to which value category an object marked with std::move() should have, because objects of a class marked with std::move() should follow the following rules:
 
 ```c++
 std::string s;
@@ -138,7 +62,7 @@ std::move(s) = "hello"; // OK (behaves like an lvalue)
 auto ps = &std::move(s); // ERROR (behaves like an rvalue)
 ```
 
-但是，请注意基本数据类型 (FDT) 的行为如下：
+However, note that fundamental data types (FDTs) behave as follows:
 
 ```c++
 int i;
@@ -147,11 +71,9 @@ std::move(i) = 42; // ERROR
 auto pi = &std::move(i); // ERROR
 ```
 
-除了基本数据类型之外，标有 `std::move()` 的对象应该仍然表现得像一个左值，允许您修改它的值。 另一方面，也有不能取得地址等限制。
+With the exception of fundamental data types, an object marked with `std::move()` should still behave like an lvalue by allowing you to modify its value. On the other hand, there are restrictions such as that you should not be able to take the address.
 
 A new category **xvalue** (“eXpiring value”) was therefore introduced to specify the rules for objects explicitly marked as **I no longer need the value here** (mainly objects marked with `std::move()`). However, most of the rules for former rvalues also apply to xvalues. Therefore, the former primary value category **rvalue** became a composite value category that now represents both new primary value categories **prvalue** (for everything that was an rvalue before) and **xvalue**. See http://wg21.link/n3055 for the paper proposing these changes.
-
-因此引入了一个新的类别 **xvalue**（将亡值），用于为显式标记为**我不再需要这里的值**（主要是用 std::move() 标记的对象）指定规则。但是，以前的右值的大多数规则也适用于 xvalues。 因此，以前的主要值类别 **rvalue** 变成了一个复合值类别，现在代表新的基础值类别 **prvalue**（对于之前是右值的所有内容）和 **xvalue**。 有关提出这些更改的论文，请参阅 http://wg21.link/n3055。
 
 ### 8.1.2 Value Categories Since C++11
 Since C++11, the value categories are as described in Figure 8.1.
@@ -172,22 +94,24 @@ The composite categories are:
 #### Value Categories of Basic Expressions
 
 Examples of lvalues are:
-• An expression that is just the name of a variable, function, or data member (except a plain value member
-of an rvalue)
-• An expression that is just a string literal (e.g., "hello")
-• The return value of a function if it is declared to return an lvalue reference (return type Type&)
-• Any reference to a function, even when marked with std::move() (see below)
-• The result of the built-in unary * operator (i.e., what dereferencing a raw pointer yields)
+
+- An expression that is just the name of a variable, function, or data member (except a **plain value member** of an rvalue)
+- An expression that is just a string literal (e.g., `"hello"`)
+- The return value of a function if it is declared to return an lvalue reference (return type Type&)
+- Any reference to a function, even when marked with std::move() (<u>see below</u>)
+- The result of the built-in unary `*` operator (i.e., what dereferencing a raw pointer yields)
+
 Examples of prvalues are:
-• Expressions that consist of a built-in literal that is not a string literal (e.g., 42, true, or nullptr)
-• The return type of a function if it is declared to return by value (return type Type)
-• The result of the built-in unary & operator (i.e., what taking the address of an expression yields)
-• A lambda expression
+- Expressions that consist of a built-in literal that is not a string literal (e.g., `42`, `true`, or `nullptr`)
+- The return type of a function if it is declared to return by value (return type Type)
+- The result of the built-in unary & operator (i.e., what taking the address of an expression yields)
+- A lambda expression
+
 Examples of xvalues are:
-• The result of marking an object with std::move()
-• A cast to an rvalue reference of an object type (not a function type)
-• The returned value of a function if it is declared to return an rvalue reference (return type Type&&)
-• A non-static value member of an rvalue (see below)
+- The result of marking an object with std::move()
+- A cast to an rvalue reference of an object type (not a function type)
+- The returned value of a function if it is declared to return an rvalue reference (return type Type&&)
+- A non-static value member of an rvalue (see below)
 
 For example:
 
@@ -204,7 +128,6 @@ f(X()); // passes a prvalue (old syntax of creating a temporary)
 f(X{}); // passes a prvalue (new syntax of creating a temporary)
 f(std::move(v)); // passes an xvalue
 ```
-
 Roughly speaking, as a rule of thumb:
 
 - All names used as expressions are lvalues.
@@ -220,7 +143,6 @@ int x = 3; // here, x is a variable, not an lvalue
 
 int y = x; // here, x is an lvalue
 ```
-
 In the first statement, 3 is a prvalue that initializes the variable (not the lvalue) x. In the second statement, x is an lvalue (its evaluation designates an object containing the value 3). The lvalue x is used as an rvalue, which is what initializes the variable y.
 
 ### 8.1.3 Value Categories Since C++17
@@ -428,7 +350,6 @@ void foo2(std::string&); // forward declaration
 foo1(std::string{"hello"}); // OK
 foo2(std::string{"hello"}); // ERROR
 ```
-
 ### 8.3.1 Overload Resolution with Rvalue References
 
 Let us see the exact rules when passing an object to a reference. Assume we have a `non-const` variable `v` and a `const` variable `c` of a `class X`:
@@ -442,7 +363,7 @@ X v{ ... };
 const X c{ ... };
 ```
 
-Table `Rules for binding references` lists the formal rules for binding references to passed arguments if we provide all the reference overloads of a function f():
+Table `Rules for binding references` lists the formal rules for binding references to passed arguments if we provide **all the reference overloads** of a function `f()`:
 
 ```c++
 void f(const X&);  // read-only access
@@ -519,7 +440,7 @@ void rvFunc(std::string&&); // forward declaration
 rvFunc("hello");            // OK, although "hello" is an lvalue
 ```
 
-Remember that [string literals are lvalues]() when used as an expression. Therefore, passing them to an rvalue reference does not compile. However, there is a hidden operation involved, because the type of the argument (array of six constant characters) does not match the type of the parameter. We have an implicit type conversion, performed by the string constructor, which creates a temporary object that does not have a name.
+Remember that [string literals are lvalues]() when used as an expression. Therefore, passing them to an rvalue reference does not compile. However, there is a hidden operation involved, because the type of the argument (array of six constant characters) does not match the type of the parameter. We have an implicit type conversion, performed by the `string` constructor, which creates a temporary object that does not have a name.
 
 Therefore, what we really call is the following:
 
@@ -673,8 +594,8 @@ Before C++20, you have to skip the suffix `_v` and append `::value` instead.
 - Whether a call or operation in C++ is valid depends on both the type and the value category.
 - Rvalue references of types can only bind to rvalues (prvalues or xvalues).
 - Implicit operations might change the value category of a passed argument.
-- Passing an rvalue to an rvalue references binds it to an lvalue.
-- Move semantics is not passed through.
+- **Passing an rvalue to an rvalue references binds it to an lvalue**.
+- **Move semantics is not passed through**.
 - Functions and references to functions are always lvalues.
 - For rvalues (temporary objects or objects marked with std::move()), plain value members have move semantics but reference or `static` members have not.
 - `decltype` can either check for the declared type of a passed name or for the type and the value category of a passed expression.
