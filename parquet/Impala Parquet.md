@@ -1101,7 +1101,7 @@ To represent the data in columnar format we create one column per primitive type
 
 The structure of the record is captured for each value by two integers called repetition level and definition level. Using definition and repetition levels, we can fully reconstruct the nested structures. This will be explained in detail below.
 
-## Definition levels
+### Definition levels
 
 To support nested records we need to store the level for which the field is null. This is what the definition level is for: from 0 at the root of the schema up to the maximum level for this column. When a field is defined then all its parents are defined too, but when it is null we need to record the level at which it started being null to be able to reconstruct the record.
 
@@ -1147,7 +1147,7 @@ The maximum definition level is now 2 as **b** does not need one. The value of t
 
 Making definition levels small is important as the goal is to store the levels in as few bits as possible.
 
-## Repetition levels
+### Repetition levels
 
 To support repeated fields we need to store when new lists are starting in a column of values. This is what repetition level is for: it is the level at which we have to create a new list for the current value. In other words, the repetition level can be seen as a marker of when to start a new list and at which level. For example consider the following representation of a list of lists of strings:
 
@@ -1169,7 +1169,7 @@ On the following diagram we can visually see that it is the level of nesting at 
 
 A repetition level of 0 marks the beginning of a new record. In a flat schema there is no repetition and the repetition level is always 0. [Only levels that are repeated need a Repetition level](https://github.com/Parquet/parquet-mr/blob/8f93adfd0020939b9a58f092b88a5f62fd14b834/parquet-column/src/main/java/parquet/schema/GroupType.java#L199): optional or required fields are never repeated and can be skipped while attributing repetition levels.
 
-## Striping and assembly
+### Striping and assembly
 
 Now using the two notions together, let’s consider the AddressBook example again. This table shows the maximum repetition and definition levels for each column with explanations on why they are smaller than the depth of the column:
 
