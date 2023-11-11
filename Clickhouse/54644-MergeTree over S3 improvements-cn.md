@@ -6,12 +6,12 @@
 
 对 **MergeTree** 表的对象存储支持已于 2020 年添加到 ClickHouse 中，并从那时起不断发展。Double.Cloud 的文章[**基于 s3 的 ClickHouse 混合存储是如何工作的**](https://double.cloud/blog/posts/2022/11/how-s3-based-clickhouse-hybrid-storage-works-under-the-hood/) 描述了当前实现。我们将使用 S3 作为对象存储的同义词，但它也适用于 GCS 和 Azure blob 存储。
 
-尽管近年来 S3 支持有了显着改善，但当前的实现仍然存在许多问题（另请参见 [3] 和 [4]）：
+尽管近年来 S3 支持有了显着改善，但当前的实现仍然存在许多问题（另请参见 [[3](https://gist.github.com/filimonov/75360ce79c4a73e6adfab76a3a5705d1)] 和 [[4](https://docs.google.com/document/d/1sltWM2UJnAvtmYK_KMPvrKO9xB7PcHPfWsiOa7MbA14/edit#heading=h.czg4grkvo6gy)]）：
 
 - 数据存储在两个地方：**本地元数据文件**和 **S3 对象**。
 - 存储在 S3 中的数据不是独立的，即，如果没有本地元数据数据文件，则无法附加存储在 S3 中的表
 - 每次修改都**需要在 2 个不同的非事务性介质之间进行同步**：本地磁盘上的本地元数据文件和存储在对象存储中的数据本身。这会导致一致性问题。
-- 由于上述原因，[零拷贝复制](https://clickhouse.com/docs/en/operations/storing-data#zero-copy)也不可靠，并且[已知存在错误](https: //github.com/ClickHouse/ClickHouse/labels/comp-s3)。
+- 由于上述原因，[零拷贝复制](https://clickhouse.com/docs/en/operations/storing-data#zero-copy)也不可靠，并且存在[已知错误](https: //github.com/ClickHouse/ClickHouse/labels/comp-s3)。
 - 备份并非易事，因为需要分别备份两个不同的源。
 
 ClickHouse Inc. 使用 [SharedMergeTree 存储引擎](https://clickhouse.com/blog/clickhouse-cloud-boosts-performance-with-sharedmergetree-and-lightweight-updates) 对此提出了自己的解决方案，但该解决方案不会 以开源形式发布。本文档的目的是提出一种解决方案，使对象存储对 MergeTree 的支持更好，并且可以由开源 ClickHouse 社区在 Apache 2.0 许可下实现。
@@ -20,7 +20,7 @@ ClickHouse Inc. 使用 [SharedMergeTree 存储引擎](https://clickhouse.com/blo
 
 我们认为 S3 上的 MergeTree 应满足以下高级要求：
 
-- 它应该将 MergeTree 表数据（完整或选定的部分/分区）存储在对象存储中
+- 它应该将 MergeTree 表数据（完整或选定的 Part/分区）存储在对象存储中
 - 它应该允许从多个**==副本节点==**读取 S3 MergeTree 表
 - 它应该允许从多个**==副本节点==**写入 S3 MergeTree 表
 - **它应该是独立的**，即所有数据和元数据都应该存储在一个存储桶中
@@ -29,17 +29,17 @@ ClickHouse Inc. 使用 [SharedMergeTree 存储引擎](https://clickhouse.com/blo
 
 需要考虑的其他要求：
 
-- <u>==能够在副本之间分发合并==</u>（另请参阅“worker-replicas”提案 [复制数据库的副本组 #53620](https://github.com/ClickHouse/ClickHouse/issues/53620)）
+- <u>==能够在副本之间分发合并==</u>（另请参阅 **worker-replicas** 提案 [复制数据库的副本组 #53620](https://github.com/ClickHouse/ClickHouse/issues/53620)）
 - 减少 S3 操作的数量，否则可能会增加不必要的成本。
 
 ## 提议
 
-我们建议重点关注两个可以并行执行的不同工作：
+我们建议重点关注两个可以并行执行的工作：
 
 1. 改进基于现有 S3 磁盘设计的零拷贝复制
 2. 改进S3数据的存储模型
 
-我们不需要解决动态分片问题，这也是 ClickHouse 的 `SharedMergeTree` 的一个功能。
+**我们不需要解决动态分片问题**，这也是 ClickHouse 的 `SharedMergeTree` 的一个功能。
 
 ### 1. 改进零拷贝复制
 
@@ -337,7 +337,7 @@ total 36
 
 #### 零拷贝限制和问题
 
-零拷贝机制尚未达到生产质量； 有时会有错误。 最新的一个已经在最近版本中修复了的例子是**修改期间**双重复制的情况。
+零拷贝机制尚未达到生产质量； 有时会有错误。最新的一个已经在最近版本中修复了的例子是**修改期间**双重复制的情况。
 
 当一个节点创建零件时，会发生以下情况：
 
@@ -347,7 +347,7 @@ total 36
 
 同时，第二个节点对这些 part 之间的连接一无所知。
 
-如果第一个节点之前删除了旧部分，则删除时的第二个节点将决定删除对象的最后一个本地链接。 结果，它会从 Keeper 得到信息，没有其他人使用这部分的对象，因此，它会删除 S3 中的对象。
+如果第一个节点之前删除了旧部分，则删除时的第二个节点将决定删除对象的最后一个本地链接。结果，它会从 Keeper 得到信息，没有其他人使用这部分的对象，因此，它会删除 S3 中的对象。
 
 如上所述，这个错误已经被修复，并且我们长期以来一直在我们的解决方案中使用零拷贝。
 
@@ -357,8 +357,236 @@ total 36
 
 我们还看到该社区已经开始添加其他对象存储提供程序，例如由 Content Square 的朋友开发的 [Azure blob storage 开发](https://github.com/ClickHouse/ClickHouse/issues/29430)，这再次向我们展示了 我们正朝着正确的方向前进。
 
-关于 DoubleCloud 上该功能的可用性的小说明。 DoubleCloud 的所有集群默认都已经拥有基于 S3 的混合存储； 您不需要配置或设置任何额外的内容。 [只需使用您首选的混合存储配置文件创建一个表](https://double.cloud/docs/en/management-clickhouse/step-by-step/use-hybrid-storage)，即可开始使用。
+关于 DoubleCloud 上该功能的可用性的小说明。DoubleCloud 的所有集群默认都已经拥有基于 S3 的混合存储； 您不需要配置或设置任何额外的内容。[只需使用您首选的混合存储配置文件创建一个表](https://double.cloud/docs/en/management-clickhouse/step-by-step/use-hybrid-storage)，即可开始使用。
 
-[联系我们的架构师](mailto:viktor@double.cloud) 了解如何将此方法应用于您的项目，或者即使您正在寻求设置和使用该功能的帮助并希望与我们聊天。
+[联系我们的架构师](mailto:viktor@double.cloud)了解如何将此方法应用于您的项目，或者即使您正在寻求设置和使用该功能的帮助并希望与我们聊天。
 
-ClickHouse® 是 ClickHouse, Inc. 的商标。 [https://clickhouse.com](https://clickhouse.com/)
+ClickHouse® 是 ClickHouse, Inc. 的商标。[https://clickhouse.com](https://clickhouse.com/)
+
+# 将 ClickHouse 与 S3 结合使用
+
+## 为什么选择 S3
+
+* 存储成本
+* 可扩展性
+* 耐用性
+
+但
+
+* 延迟
+* 运营成本
+* 性能
+* 一致性（覆盖和删除是最终一致的）
+* 更复杂（和本地磁盘相比）
+* 无硬链接/重命名（在 ClickHouse 中大量使用）
+* 各种实现（aws、gcs、azure、minio、ceph 等）
+
+## ClickHouse 中 S3 支持的状态
+
+ClickHouse 中 S3 支持的不同模式：
+
+* s3 磁盘（支持所有操作，**元数据存放在本地磁盘**，<u>存储桶存储**具有随机名称**的对象</u>），需要额外的“状态”来读取 s3（来自本地磁盘的元数据）+ Zookeeper 中的正常副本状态
+* **s3plain** 磁盘 - <u>**==存储桶存储文件的方式与存储在磁盘上的方式完全相同==**</u>，目前是**只能写入一次**（使用备份到 s3）
+* s3 表引擎/表函数  - 可以从 s3 存储桶中读取各种格式的数据，支持 ==glob？？==
+* s3 Cluster - 与上面相同，当读取大量文件时（使用全局选择器） - 将在不同节点之间分发不同的文件
+   （单个文件无法扩展）
+* 备份
+
+最近的开发相当活跃，变化很多，很多新设置等等。**没有经过很好的测试**。
+
+## 谁需要 S3？
+
+**中小型用户真的需要 S3 吗**？
+
+==使用 S3 的好处==主要用于备份或存档。块设备 (EBS) 通常更快/更便宜。
+
+**大型用户真的需要 S3 吗**？
+这可以带来显着的好处。但通常最好将活动数据集放在本地磁盘上。因此，如果他们使用 S3 作为主存储，他们可能仍然希望拥有一些本地缓存。<u>相反，可以使用分层存储（热数据位于本地磁盘上，冷数据位于 S3 ）。这样就不用担心缓存的问题，而且S3的成本也更低</u>。
+
+**存算分离？**
+
+选择：
+
+1. s3 磁盘+零拷贝复制（+  `TTL MOVE` 的最终规则）
+   - **零拷贝复制**仍然需要在 zookeeper 中创建/维护副本的状态。（不容易扩展/缩小，需要半手动配置/取消配置）。
+   - **离线副本需要重新同步其状态**
+   - 副本仍然需要一直执行复制队列（只有一些“捷径”来减少流量）
+   - **需要始终使用固定分片模式，因此，如果数据是为 3 个分片写入的，则只能使用 3 个节点来处理该数据**。
+   - 实验性的，新版本可能会更改，但适用于简单的情况，尚未准备好用于生产环境（？）
+   - 元数据存储在本地文件系统上，需要手动备份
+   - 所有数据都是实时在线的，并且可以通过单表界面访问。
+   - `TTL move` 可用于制作多层系统
+2. s3 磁盘+零拷贝复制+并行副本。与上面相同，**但不需要固定分片，因此您可以拥有单个分片**
+   - 实验性的，新版本可能会更改
+   - 每个副本都可以充当一个分片。
+   - 某些查询（JOIN）可能会很棘手
+   - 该功能有 3 轮迭代，前 2 个不是很成功，最后一个似乎工作良好（至少对于简单的情况）
+
+3) **将数据卸载到类似 s3 的存储存档，以便以后访问**
+   
+    - 非实时
+    - 要访问存档，您需要使用不同的查询/不同的表
+    - 没有自动移动/TTL（因此需要，可能可以实现）
+    - 可以使用标准格式（比如 Parquet 等）
+    - 也可以实时工作
+    
+    选择存储格式：
+    1) clickhouse 的磁盘格式，通过 **s3plain** 
+       - 有标记/索引/元数据
+       - Clickhouse 原生
+       - 良好的压缩性
+       - 范围读取
+       - 专有格式（在 Clickhouse 之外不易阅读）
+       如何做：`OPTIMIZE TABLE PARTITION ... ; BACKUP old partition to s3_plain disk; ATTACH TABLE`
+    2) Parquet
+       - 列格式
+       - 标准且可以被其他工具使用
+       - 良好的压缩性
+       - 范围读取
+       - 没有 Clickhouse 使用的额外元数据，如标记/索引
+       - 不是 clickhouse 原生的，并且 clickhouse 目前无法使用它的所有功能（如索引）
+       如何做：`insert into s3(...) select ... WHERE partition;`
+    3) ORC：类似于Parquet
+    4) JSONEachRow / TSV 等 - 基于行
+
+4. ==无服务器/外部编排 - 使用无状态 clickhouse-local 执行器，由一些额外层或另一个 clickhouse-local 编排==
+
+## 最好解决下列问题：
+
+1. **启动新节点**（新的计算节点 - 当计算和存储分开时） - 非常昂贵（部署 schema  + 复制 + 在zookeeper 中注册等 ）。
+2. 存储在本地磁盘上的元数据 - 不可靠（没有复制，难以备份），s3上的数据不是自描述的（没有元数据）
+3. **ClickHouse inc.内部使用了一些部分闭源的解决方案。对于 p.1，他们可以反对接受同样的替代社区实现**。
+4. s3 不是一个文件系统 - 大多数重命名和硬链接都是有问题的，这在 ClickHouse 中被大量使用
+   1. 更改/突变/合并/移动等问题。
+   2. 分布式硬链接/引用计数
+5. 成本与性能 - s3 api 调用成本与 s3 性能
+6. 最近有很多变化和改进，有一些新的/深奥的设置：需要大量的测试。
+7. 非常嘈杂的日志
+8. 备份
+9. 更好（原子性）卸载不可变数据
+
+最好做：
+
+1. 大规模测试
+
+2. 通过支持动态集群，**测试/改进 s3cluster（针对无服务器）**
+
+3. s3 用于可变/热数据：测试/考虑改进（也许更密集地使用 keeper？Mike Kot 将致力于此）
+
+4. s3 plain：扩展用法以使其可写 - 它应该支持简单插入，简单合并，简单移动（但没有**==修改==**/在表之间移动数据等）
+
+   1. 避免文件夹重命名（使用文件标记代替）
+
+      目前在许多情况下，写入时会发生重命名：**移动**：part -> tmp_clone（长时运行）和 tmp_clone -> part（目标磁盘）
+
+      我们可以使用一些文件标记：正（part 已准备好）或负（part 未准备好）
+
+   2. ~~抱怨尝试**使用硬链接**，测试基本场景来测试会抱怨什么~~。
+
+5. 测试多层设置的不同方法，其中包括 s3plain
+
+   1. 在普通（可变）MergeTree 表中有 s3plain
+
+      1. 不可变/“冷”/“休息”分区 - 所有突变都会自动工作“IN PARTITION <可变分区集>”
+      2. 设置标记？ 或者通过磁盘功能？ 因此，当至少一部分位于不可变磁盘上时，分区自动不可变
+      3. 使用缓存层进行测试
+      4. 使用普通 TTL 规则移动到不可变分区
+      5. 合并到另一个磁盘
+
+   2. 在单独的表中包含 s3plain 数据（或其他格式的数据，如 Parquet ）
+
+      1. s3plain表+通常的MergeTree表+engine=Merge
+
+         events_local 引擎=MergeTree
+
+         events_cold 引擎=MergeTree 设置磁盘 = 磁盘(s3plain,...)
+
+         events_full 引擎=合并
+
+         如何原子移动？
+
+      2. s3plain 表 + 引擎=S3(Parquet) + 引擎=合并
+
+6. 改进 Parquet，以使用索引/分区/谓词下推/虚拟投影（如计数）
+
+7. 测试 s3 的加密
+
+8. 分析/优化 s3 api 调用（批处理、并行性、缓存、重试等）- 降低成本
+
+# ClickHouse Cloud 通过 SharedMergeTree 和轻量级更新提高性能
+
+## 介绍
+ClickHouse 是用于实时应用和分析中，速度最快、资源效率最高的数据库。**MergeTree 表引擎**家族中的表是 ClickHouse 快速数据处理能力的核心组件。本文，我们描述该家族新成员——`SharedMergeTree` 表引擎背后的动机和机制。
+
+该表引擎是 [ClickHouse Cloud](https://clickhouse.com/cloud) 中 `ReplicatedMergeTree` 表引擎更高效的直接替代品，它是为云原生数据处理而设计和优化的。我们深入了解这个新表引擎的内部结构，解释其优点，并通过基准测试展示其效率。我们还有一件事要告诉你。我们正在引入轻量级更新，它与 `SharedMergeTree` 具有协同效应。
+
+## MergeTree表引擎是ClickHouse的核心
+
+MergeTree 系列的表引擎是 ClickHouse 中的主要[表引擎](https://clickhouse.com/docs/en/engines/table-engines)。它们负责存储**插入查询**接收到的数据、在**后台合并该数据**、应用特定于引擎的数据转换等等。通过基于 `ReplicatedMergeTree` 表引擎的复制机制，MergeTree 系列中的大多数表都支持自动[数据复制](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replication) 。
+
+在传统的 [shared-nothing](https://en.wikipedia.org/wiki/Shared-nothing_architecture) ClickHouse [集群](https://clickhouse.com/company/events/scaling-clickhouse)中，通过 `ReplicatedMergeTree` 进行复制是用于数据可用性，[分片](https://clickhouse.com/docs/en/architecture/horizontal-scaling)用于集群扩展。[ClickHouse Cloud](https://clickhouse.com/cloud) 采用了一种新的方法来构建基于 ClickHouse 的云原生数据库服务，我们将在下面对此进行描述。
+
+## ClickHouse Cloud登场
+
+ClickHouse Cloud 于 2022 年 10 月[进入](https://clickhouse.com/blog/clickhouse-cloud-public-beta)公开测试版，具有完全不同的[架构](https://clickhouse.com/docs/en/cloud/reference/architecture)针对云进行了优化（我们[解释](https://clickhouse.com/blog/building-clickhouse-cloud-from-scratch-in-a-year)了如何用一年从头开始构建它）。通过将数据存储在几乎无限[共享](https://en.wikipedia.org/wiki/Shared-disk_architecture)的[对象存储](https://en.wikipedia.org/wiki/Object_storage)中，存储和计算是分离的：所有[水平](https://en.wikipedia.org/wiki/Scalability#Horizontal_or_scale_out)和[垂直](https://en.wikipedia.org/wiki/Scalability#Vertical_or_scale_up)扩展的 ClickHouse 服务器都可以访问相同的物理数据，并且实际上是单个无限[分片](https://clickhouse.com/docs/en/architecture/horizontal-scaling#shard)的多个副本：
+![smt_01.png](https://clickhouse.com/uploads/smt_01_d28f858be6.png)
+
+### 共享对象存储以实现数据可用性
+
+由于 ClickHouse Cloud 将所有数据存储在共享对象存储中，因此无需在不同服务器上显式创建数据的物理副本。对象存储的实现，例如 Amazon AWS [简单存储服务](https://aws.amazon.com/s3/)、Google GCP [云存储](https://cloud.google.com/storage) 和 Microsoft Azure [Blob 存储](https://azure.microsoft.com/en-us/products/storage/blobs/) 确保<u>存储具有高可用性和容错能力</u>。
+
+请注意，ClickHouse Cloud 服务具有多层 [read-through](https://en.wiktionary.org/wiki/read-through) 和 [write-through](https://en.wikipedia.org/wiki/Cache_(computing)#WRITE-THROUGH) 缓存（在本地 [NVM](https://en.wikipedia.org/wiki/Non-volatile_memory)e SSD 上），在对象存储之上，用于本机工作，尽管底层主数据存储的访问延迟较慢，但仍能快速获得分析查询结果。对象存储表现出**较慢的访问延迟**，但提供**高并发吞吐量**和**大聚合带宽**。ClickHouse Cloud 通过[利用](https://clickhouse.com/docs/knowledgebase/async_vs_optimize_read_in_order#asynchronous-data-reading)多个 I/O 线程来访问对象存储数据，并通过异步[预取](https:// /clickhouse.com/docs/en/whats-new/cloud#performance-and-reliability-3)数据。
+
+### 自动集群扩展
+
+**ClickHouse Cloud 不使用分片来扩展集群大小**，而是在共享和几乎无限的对象存储上，允许用户简单地增加运行的服务器的数量，或者向上扩展服务器。这增加了 `INSERT` 和 `SELECT` 查询数据处理的并行性。
+
+请注意，ClickHouse 云服务器实际上是**单个无限分片**的多个副本，但它们与无共享集群中的副本服务器不同。这些服务器不包含相同数据的本地副本，而是可以访问共享对象存储中存储的相同数据。这将这些服务器分别变成动态计算单元或计算节点，其大小和数量可以轻松适应工作负载。手动或完全[自动](https://clickhouse.com/docs/en/cloud/reference/architecture#compute)。我们用下图解释
+
+![smt_02.png](https://clickhouse.com/uploads/smt_02_a2d0b54be6.png)①通过放大和②缩小操作，我们可以改变一个节点的大小（CPU核心和RAM的数量) 。而根据③的横向扩展，我们可以增加参与并行数据处理的节点数量。无需对数据进行任何物理重新分片或重新平衡，我们就可以自由添加或删除节点。
+
+对于这种集群扩展方法，ClickHouse Cloud 需要一个表引擎来支持更多数量的服务器访问相同的共享数据。
+
+## 在 ClickHouse Cloud 中运行 ReplicatedMergeTree 的挑战
+
+`ReplicatedMergeTree` 表引擎并不适合 ClickHouse Cloud 的预期架构，因为它的复制机制被设计为在少量副本服务器上创建数据的物理副本。而 ClickHouse Cloud 则需要一个支持共享对象存储之上大量服务器的引擎。
+
+### 不需要显式数据复制
+
+我们简单解释一下 `ReplicatedMergeTree` 表引擎的复制机制。该引擎使用 [ClickHouse Keeper](https://clickhouse.com/docs/en/guides/sre/keeper/clickhouse-keeper)（也称为**Keeper**）作为通过[复制日志](https://youtu.be/vBjCJtw_Ei0?t=1150)进行数据复制的协调系统。Keeper 充当复制特定元数据和表模式的中央存储，并充当分布式操作的[共识](https://en.wikipedia.org/wiki/Consensus_(computer_science))系统。Keeper 确保按照 Part 名称的顺序分配连续的块编号。到特定副本服务器[合并](https://clickhouse.com/blog/asynchronous-data-inserts-in-clickhouse#data-needs-to-be-batched-for-optimal-performance)和 [mutations](https:// /clickhouse.com/docs/en/sql-reference/statements/alter#mutations) 是通过 Keeper 提供的共识机制实现。
+
+下图描绘了一个具有 3 个副本服务器的无共享 ClickHouse 集群，并展示了 `ReplicatedMergeTree` 表引擎的数据复制机制：
+
+![smt_03.png](https://clickhouse.com/uploads/smt_03_21a5b48f65.png)
+
+当 ① **server-1** 收到一个插入查询时，然后 ② **server-1** 在其本地磁盘上，使用插入查询的数据创建一个新的数据 [Part](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/mergetree#mergetree-data-storage)。③ 通过复制日志，其他服务器（server-2、server-3）获知server-1 上存在新 Part。在 ④ 处，其他服务器独立地将部分从 server-1 下载（**获取**)到它们自己的本地文件系统。创建或接收 Part 后，三台服务器还会更新自己的元数据，描述其在 Keeper 中的 Part 集。
+
+请注意，我们仅展示了如何复制新创建的 Part。Part 合并（和 mutations）以类似的方式复制。如果一台服务器决定合并一组 Part，那么其他服务器将自动在其本地 Part 副本上执行相同的合并操作（或者只是[下载](https://clickhouse.com/docs/en/operations/settings/merge-tree-settings#always_fetch_merged_part) 合并的 Part)。
+
+如果本地存储完全丢失或添加新副本，`ReplicatedMergeTree` 会从现有副本克隆数据。ClickHouse Cloud 使用持久共享对象存储来实现数据可用性，并且不需要 `ReplicatedMergeTree` 的显式数据复制。
+
+### 集群扩展不需要分片
+
+无共享 ClickHouse [集群](https://clickhouse.com/company/events/scaling-clickhouse)的用户可以将复制与[分片](https://clickhouse.com/docs/en/architecture/horizontal-scaling)结合使用，以通过更多服务器处理更大的数据集。表数据以[分片](https://clickhouse.com/docs/en/architecture/horizontal-scaling#shard)的形式分布在多个服务器上（表数据的不同子集），每个分片通常有 2 或 3 个副本以确保存储和数据可用性。通过添加更多分片可以提高数据摄取和查询处理的并行性。请注意，ClickHouse 将拓扑更复杂的集群抽象到了[分布式表](https://clickhouse.com/docs/en/engines/table-engines/special/distributed)下，这样你就可以像本地一样进行分布式查询。
+
+ClickHouse Cloud 不需要分片来实现集群扩展，因为所有数据都存储在几乎无限的共享对象存储中，并且可以通过添加访问共享数据的额外服务器来简单地提高数据处理的并行度。然而，`ReplicatedMergeTree` 的复制机制最初被设计为**在无共享集群架构中的本地文件系统之上工作**，并且具有少量的副本服务器。拥有大量的 `ReplicatedMergeTree` 副本是一种[反模式](https://en.wikipedia.org/wiki/Anti-pattern)，服务器会在复制日志上创建太多的[竞争](https://en.wikipedia.org/wiki/Resource_contention)，并且会增加服务器间通信的开销。
+
+## 零拷贝复制并不能解决挑战
+
+ClickHouse Cloud 提供服务器的自动垂直扩展 - 服务器的 CPU 核心和 RAM 数量会根据 CPU 和内存压力自动适应工作负载。开始时每个 ClickHouse 云服务都有固定数量的 3 台服务器，最终引入了水平扩展至任意数量的服务器。
+
+为了使用 `ReplicatedMergeTree` 支持共享存储之上的这些高级扩展操作，ClickHouse Cloud 使用了一种称为[零拷贝复制](https://clickhouse.com/docs/en/operations/storing-data#zero-copy)的特殊修改，用于调整 `ReplicatedMergeTree` 表的复制机制以在共享对象存储之上工作。
+
+这种改编使用了几乎相同的原始复制模型，只是对象存储中只存储了一份数据副本。因此称为零拷贝复制。服务器之间不复制数据。相反，我们只复制元数据：
+
+![smt_04.png](https://clickhouse.com/uploads/smt_04_712af233a0.png)
+
+当①server-1收到插入查询时，然后②服务器将插入的数据以 part 的形式写入对象存储，并且 ③ 将有关该 Part 的元数据（例如，该 Part 存储在对象存储中的位置）写入其本地磁盘。④ 通过复制日志，其他服务器获知 server-1 上存在新部分，尽管实际数据存储在对象存储中。⑤ 其他服务器独立地将元数据从 server-1 下载（“获取”）到自己的本地文件系统。为了确保在**<u>所有副本删除指向同一对象的元数据之前</u>**不会删除数据，使用了分布式引用计数机制：在创建或接收元数据后，所有三个服务器还会在 ClickHouse Keeper 中更新自己的 Part 信息元数据集。
+
+为此，以及将合并和 mutations 等操作分配给特定服务器，零拷贝复制机制依赖于在 Keeper 中创建独占[锁](https://zookeeper.apache.org/doc/r3.1.2/recipes.html#sc_recipes_Locks)。这意味着这些操作可以互相阻塞，并且需要等待当前执行的操作完成。
+
+零拷贝复制不足以解决共享对象存储之上的 `ReplicatedMergeTree` 的挑战：
+
+- **元数据仍然与服务器耦合**：元数据存储与计算没有分离。零拷贝复制仍然需要每个服务器上有一个本地磁盘来存储有关 Part 的元数据。本地磁盘是额外的故障点，其可靠性取决于副本的数量，这与高可用性的计算开销有关。
+- **零拷贝复制的持久性取决于3个组件的保证**：对象存储、Keeper 和本地存储。如此数量的组件增加了复杂性和开销，因为该堆栈是构建在现有组件之上的，而不是作为云原生解决方案进行重新设计。
+- **这仍然是为少量服务器设计的**：使用最初<u>为具有少量副本服务器的无共享集群架构设计的相同复制模型</u>来更新元数据。大量服务器会在复制日志上产生过多争用，并在锁和服务器间通信上产生较高开销。此外，实现从一个副本到另一个副本的数据复制和克隆的代码非常复杂。由于元数据是独立更改的，因此不可能对所有副本进行原子提交。
