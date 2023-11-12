@@ -829,3 +829,60 @@ In this blog post, we have explored the mechanics of the new ClickHouse Cloud Sh
 We are looking forward to seeing this new default table engine in action to boost the performance of your ClickHouse Cloud use cases.
 
 [Get started](https://clickhouse.cloud/signUp?loc=blog-cta-footer&utm_source=clickhouse&utm_medium=web&utm_campaign=blog) with ClickHouse Cloud today and receive $300 in credits. At the end of your 30-day trial, continue with a pay-as-you-go plan, or [contact us](https://clickhouse.com/company/contact?loc=blog-cta-footer) to learn more about our volume-based discounts. Visit our [pricing page](https://clickhouse.com/pricing?loc=blog-cta-header) for details.
+
+# Shared metadata storage
+> https://github.com/ClickHouse/ClickHouse/issues/48620
+
+## Use case
+
+Currently, ClickHouse (CK) stores all metadata in local files. Each CK instance in a cluster has its own local metadata. These metadata represent one kind of system state of a CK instance. It is hard to dynamically remove or add CK instances without separating the metadata. To this end, we want to add an option to store metadata on a shared storage (e.g. keeper or distributed KV stores).
+
+## Describe the solution you'd like
+
+For compatibility purposes, each instance stores its metadata in a different namespace in the shared store. When recreating an instance you only need to select the corresponding namespace in the shared store without using original local disk storage. For example:
+
+```
+instance-1 → /clickhouse/instance-1/{databases,tables,acl,...}
+instance-2 → /clickhouse/instance-2/{databases,tables,acl,...}
+```
+
+The logic for manipulating metadata on shared storage is roughly the same as on local disk, except that it calls the remote storage interface and uses a different serialization method. In addition, we need to consider how to upload metadata from the local storage to the shared storage when CK nodes first boot with the shared storage option. We plan to support the following types of metadata:
+
+### Database DDL
+
+Database DDL is stored as pure sql txt files in metadata/. When CK nodes first boot on the shared storage, the original code for metadata initialization is used to load DDL from txt files in metadata/, then upload them to the shared storage. When these CK nodes boot again, the original code is skipped and the SQL String (i.e. Database metadata) is loaded directly from the shared storage.
+
+### Table DDL
+
+Similar to Database DDL, Table DDL is stored as pure sql txt files in `metadata/$DB_UUID/`. Due to the asynchronous operation of the drop table, there may be some dropped table sql files under metadata_dropped/ . When CK nodes first boot on the shared storage, the original code for loading Table metadata is used to load DDL from txt files in metadata/$DB_UUID/and metadata_dropped/ , then upload them to the shared storage. When these CK nodes reboot, the original code is skipped and the SQL String is loaded directly from the shared storage.
+
+### MergeTreePart
+
+MergeTreePart-related metadata includes uuid, columns, checksums, partition, ttl_infos, rows_count and so on, which used to be loaded from disk when the node initially starts. After we add the option of storing metadata in the shared storage, the processing of MergeTreePart-related metadata is as follows:
+
+- When CK nodes first boot on the shared storage, the original code for metadata initialization is used to load MergeTreePart from files in data part directory in disk, then upload them to the shared storage.
+
+- When these CK nodes boot again, the original code is skipped and we directly load MergeTreePart-related metadata from the shared storage, then builds the MergeTreePart.
+
+- Every time we remove, add and modify any parts, we remove metadata of these parts in the shared storage (add metadata of new parts to the shared storage if generating new parts).
+
+### Config
+
+The main server configuration files are stored in `config.xml`, `users.xml`, `{config, users}.d/*.xml.` When CK nodes first boot on the shared storage, the original code for Config metadata is used to load configs from these xml files, then upload them to the shared storage. When rebooting, the original code is skipped and the config is loaded directly from the shared storage as an in-memory object. Since we stored the config metadata on the shared storage, the original way of changing configs by altering xml files is no longer applicable. Hence, we have implemented new sql statements to add/modify/delete config parameters on the shared storage.
+
+### Dict
+
+Dictionaries can be created with xml files or DDL queries. The process of dictionaries DDL queries on the shared storage is the same as table DDL. For dictionaries created with xml files, the configuration files on the local disk are uploaded to the shared storage at first startup. At subsequent startup, the configuration files of the dictionary will not be obtained from the local disk but from the shared storage. The update and creation of dictionaries with xml files are also performed directly in the shared storage and then synchronized to the nodes. The process of dictionary queries has not changed.
+
+### UDF
+
+There are two types of user defined functions, namely executable user defined functions and sql user defined functions.
+The xml configuration files of external executable user-defined functions and the DDL queries of sql user defined functions are migrated to the shared storage at first startup. At subsequent startup, these xml configuration files and DDL queries are fetched from the shared storage instead of local disks. In addition, the executable files for executable user defined functions are still kept locally on the node instead of the shared storage. The update and creation of executable user defined functions are also performed directly in the shared storage and then synchronized to the nodes. The process of user defined functions queries has not changed.
+
+### ACL
+
+ACL-related metadata mainly includes two types of permission management objects: (1) Access Entity statically defined in the configuration file with tag entries and (2) Access Entity dynamically generated in SQL-driven way with pure sql text. When CK nodes first boot on the shared storage, the original code for ACL metadata is used to parse access entities from configuration files and sql text files, then upload them to the shared storage. It is worth noting that with shared storage configured, the access entities persisted on local disk are migrated to shared storage on the first startup. When rebooting, the original code is skipped and the access entity is loaded directly from the shared storage as an in-memory objects instead of from local disk.
+
+## About Shared Storage
+
+In our current implementation, we choose FoundationDB as the shared storage because of its good performance and scalability. To avoid the bottleneck of ZooKeeper in large-scale CK deployment, we have also developed FDBKeeper as an alternative implementation of IKeeper. This can avoid deploying both ZooKeeper and FoundationDB.

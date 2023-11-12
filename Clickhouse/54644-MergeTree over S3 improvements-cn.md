@@ -16,6 +16,8 @@
 
 ClickHouse Inc. 使用 [SharedMergeTree 存储引擎](https://clickhouse.com/blog/clickhouse-cloud-boosts-performance-with-sharedmergetree-and-lightweight-updates) 对此提出了自己的解决方案，但该解决方案不会 以开源形式发布。本文档的目的是提出一种解决方案，使对象存储对 MergeTree 的支持更好，并且可以由开源 ClickHouse 社区在 Apache 2.0 许可下实现。
 
+> 零拷贝复制：只复制**元数据**，不复制**数据**
+
 ## 要求
 
 我们认为 S3 上的 MergeTree 应满足以下高级要求：
@@ -29,7 +31,7 @@ ClickHouse Inc. 使用 [SharedMergeTree 存储引擎](https://clickhouse.com/blo
 
 需要考虑的其他要求：
 
-- <u>==能够在副本之间分发合并==</u>（另请参阅 **worker-replicas** 提案 [复制数据库的副本组 #53620](https://github.com/ClickHouse/ClickHouse/issues/53620)）
+- <u>==能够在副本之间分发合并==</u>（另请参阅 **worker-replicas** 提案 [可复制数据库的副本组 #53620](https://github.com/ClickHouse/ClickHouse/issues/53620)）
 - 减少 S3 操作的数量，否则可能会增加不必要的成本。
 
 ## 提议
@@ -723,12 +725,62 @@ ClickHouse 中 [ALTER TABLE … UPDATE](https://clickhouse.com/docs/en/sql-refer
 
 #### 与 SharedMergeTree 的协同作用
 
-从用户的角度来看，轻量级更新的修改将立即发生，但在更新物化之前，用户将体验到 SELECT 查询性能的轻微降低，因为更新是查询时在流式数据中执行的。 随着更新作为后台合并操作的一部分而物化，对查询延迟的影响就消失了。 `SharedMergeTree` 表引擎[提高了后台合并和修改的吞吐量和可扩展性](https://clickhouse.com/blog/clickhouse-cloud-boosts-performance-with-sharedmergetree-and-lightweight-updates#improved-throughput-and-scalability-of-background-merges-and-mutations)，因此，修改完成得更快，轻量级更新后的 SELECT 查询更快地恢复全速。
+从用户的角度来看，轻量级更新的修改将立即发生，但在更新物化之前，用户将体验到 SELECT 查询性能的轻微降低，因为更新是查询时在流式数据中执行的。随着更新作为后台合并操作的一部分而物化，对查询延迟的影响就消失了。`SharedMergeTree` 表引擎[提高了后台合并和修改的吞吐量和可扩展性](https://clickhouse.com/blog/clickhouse-cloud-boosts-performance-with-sharedmergetree-and-lightweight-updates#improved-throughput-and-scalability-of-background-merges-and-mutations)，因此，修改完成得更快，轻量级更新后的 SELECT 查询更快地恢复全速。
 
 #### 下一步是？
 
-我们上面描述的轻量级更新机制只是第一步。 我们已经在计划额外的实现阶段，以进一步提高轻量级更新的性能并消除当前的[限制](https://clickhouse.com/docs/en/guides/developer/lightweght-update)。
+我们上面描述的轻量级更新机制只是第一步。我们已经在计划额外的实现阶段，以进一步提高轻量级更新的性能并消除当前的[限制](https://clickhouse.com/docs/en/guides/developer/lightweght-update)。
 
 ## 总结
 
-在这篇博文中，我们探索了新的 ClickHouse Cloud `SharedMergeTree` 表引擎的机制。 我们解释了为什么有必要引入一个原生支持 ClickHouse 云架构的新表引擎，分开垂直和水平可扩展的计算节点和存储在几乎无限的共享对象存储中的数据。 `SharedMergeTree` 可以在存储之上无缝地、几乎无限地扩展计算层。 插入和后台合并的吞吐量可以轻松扩展，这有利于 ClickHouse 中的其他功能，如轻量级更新和特定于引擎的数据转换。 此外，`SharedMergeTree` 为插入提供了更强的持久性，为选择查询提供了更轻量级的强一致性。 最后，它为新的云原生功能和改进打开了大门。 我们通过基准测试展示了引擎的效率，并描述了 `SharedMergeTree` 增强的一项新功能，称为轻量级更新。
+在这篇博文中，我们探索了新的 ClickHouse Cloud `SharedMergeTree` 表引擎的机制。我们解释了为什么有必要引入一个原生支持 ClickHouse 云架构的新表引擎，分开垂直和水平可扩展的计算节点和存储在几乎无限的共享对象存储中的数据。`SharedMergeTree` 可以在存储之上无缝地、几乎无限地扩展计算层。插入和后台合并的吞吐量可以轻松扩展，这有利于 ClickHouse 中的其他功能，如轻量级更新和特定于引擎的数据转换。此外，`SharedMergeTree` 为插入提供了更强的持久性，为选择查询提供了更轻量级的强一致性。最后，它为新的云原生功能和改进打开了大门。我们通过基准测试展示了引擎的效率，并描述了 `SharedMergeTree` 增强的一项新功能，称为轻量级更新。
+
+# 共享元数据
+> https://github.com/ClickHouse/ClickHouse/issues/48620
+
+## 用例
+
+目前，ClickHouse（CK）将所有元数据存储在本地文件中。集群中的每个 CK 实例都有自己的本地元数据。这些元数据代表了CK 实例的一种**系统状态**。**<u>在不分离元数据的情况下，很难动态删除或添加 CK 实例</u>**。为此，我们希望添加一个选项来将元数据存储在共享存储上（例如 keeper 或分布式 KV 存储）。
+
+## 描述您想要的解决方案
+出于兼容性目的，每个实例将其元数据存储在共享存储中的不同命名空间中。重新创建实例时，只需在共享存储中选择对应的命名空间即可，无需使用原有的本地磁盘存储。例如：
+
+```
+instance-1 → /clickhouse/instance-1/{databases,tables,acl,...}
+instance-2 → /clickhouse/instance-2/{databases,tables,acl,...}
+```
+
+在共享存储上操作元数据的逻辑与在本地磁盘上操作元数据的逻辑大致相同，只是它调用远程存储接口并使用不同的序列化方法。此外，我们需要考虑当 CK 节点首次使用共享存储选项启动时，如何将元数据从本地存储上传到共享存储。我们计划支持以下类型的元数据：
+
+### 数据库DDL
+数据库 DDL 作为纯 sql 文本文件存储在 `metadata/` 中。当 CK 节点首次在共享存储上启动时，元数据初始化的原始代码用于从 `metadata/` 中的文本文件加载 DDL，然后将它们上传到共享存储。当这些 CK 节点再次启动时，将跳过原始代码并直接从共享存储加载 SQL 字符串（即数据库元数据）。
+
+### 表 DDL
+与数据库 DDL 类似，表 DDL 作为纯 sql 文本文件存储在 `metadata/$DB_UUID/`中。由于 drop 表是异步操作，`metadata_dropped/` 下可能会有一些 drop 表的 sql 文件。当 CK 节点首次在共享存储上启动时，加载表元数据的原始代码用于从 `metadata/$DB_UUID/` 和 `metadata_dropped/` 中的文本文件加载 DDL，然后将它们上传到共享存储。当这些 CK 节点重新启动时，将跳过原始代码并直接从共享存储加载 SQL 字符串。
+
+### MergeTreePart
+
+MergeTreePart 相关的元数据包括 uuid、columns、checksums、partition、ttl_infos、rows_count等，以前在节点初始启动时从磁盘加载。我们支持在共享存储中存储元数据后，MergeTreePart 相关元数据的处理如下：
+
+- 当 CK 节点首次在共享存储上启动时，元数据初始化的原始代码用于从磁盘中数据部分目录中的文件加载 MergeTreePart，然后将它们上传到共享存储。
+
+- 当这些CK节点再次启动时，原始代码将被跳过，我们直接从共享存储加载 MergeTreePart 相关的元数据，然后构建 MergeTreePart。
+
+- 每次删除、添加和修改任何 Part 时，我们都会删除共享存储中这些 Part 的元数据（如果生成新 Part，则将新 Part 的元数据添加到共享存储）。
+
+### 配置
+
+服务器的配置文件存储在 `config.xml`、`users.xml`、`{config, users}.d/*.xml` 中。当 CK 节点首次在共享存储上启动时，配置元数据的原始代码用于从这些 xml 文件加载配置，然后将它们上传到共享存储。重新启动时，将跳过原始代码，并直接从共享存储中加载配置作为内存中对象。由于我们将配置元数据存储在共享存储上，因此通过更改 xml 文件来更改配置的原始方法不再适用。**因此，我们实现了新的 sql 语句来添加/修改/删除共享存储上的配置参数**。
+
+### 字典
+可以使用 xml 文件或 DDL 查询创建字典。**字典 DDL 在共享存储上的查询过程与表DDL相同**。对于使用 xml 文件创建的词典，首次启动时会将本地磁盘上的配置文件上传到共享存储。后续启动时，不会从本地磁盘获取字典的配置文件，而是从共享存储获取。用 xml 文件更新和创建字典也是直接在共享存储中进行，然后同步到节点。字典查询的过程没有改变。
+
+### UDF
+> TODO
+
+### ACL
+> TODO
+
+## 关于共享存储
+
+在我们当前的实现中，我们选择 FoundationDB 作为共享存储，因为它具有良好的性能和可扩展性。 为了避免 ZooKeeper 在大规模CK部署中的瓶颈，我们还开发了 FDBKeeper 作为 IKeeper 的替代实现。 这可以避免同时部署 ZooKeeper 和 FoundationDB。
