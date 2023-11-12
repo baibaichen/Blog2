@@ -625,15 +625,15 @@ If your use case requires consistency guarantees that each server is delivering 
 
 ### Improved throughput and scalability of background merges and mutations
 
-With the SharedMergeTree, there is no performance degradation with higher amounts of servers. The throughput of background merges scales with the number of servers as long as Keeper has enough resources. The same is true for [mutations](https://clickhouse.com/docs/en/sql-reference/statements/alter#mutations) which are implemented via explicitly triggered and (by [default](https://clickhouse.com/docs/en/operations/settings/settings#mutations_sync)) asynchronously executed merges.
+With the `SharedMergeTree`, there is no performance degradation with higher amounts of servers. The throughput of background merges scales with the number of servers as long as Keeper has enough resources. The same is true for [mutations](https://clickhouse.com/docs/en/sql-reference/statements/alter#mutations) which are implemented via explicitly triggered and (by [default](https://clickhouse.com/docs/en/operations/settings/settings#mutations_sync)) asynchronously executed merges.
 
-This has positive implications for other new features in ClickHouse, like [lightweight updates](https://clickhouse.com/blog/clickhouse-cloud-boosts-performance-with-sharedmergetree-and-lightweight-updates#introducing-lightweight-updates-powered-by-sharedmergetree), which get a performance boost from the SharedMergeTree. Similarly, engine-specific [data transformations](https://clickhouse.com/docs/en/guides/developer/cascading-materialized-views) (aggregations for [AggregatingMergeTree](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/aggregatingmergetree), deduplication for [ReplacingMergeTree](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replacingmergetree), etc.) benefit from the better merge throughput of the SharedMergeTree. These transformations are incrementally applied during background part merges. To ensure correct query results with potentially unmerged parts, users need to merge the unmerged data at query time by utilising the [FINAL](https://clickhouse.com/docs/en/sql-reference/statements/select/from#final-modifier) modifier or using explicit GROUP BY clauses with aggregations. In both cases, the execution speed of these queries benefits from better merge throughput. Because then the queries have less query-time data merge work to do.
+This has positive implications for other new features in ClickHouse, like [lightweight updates](https://clickhouse.com/blog/clickhouse-cloud-boosts-performance-with-sharedmergetree-and-lightweight-updates#introducing-lightweight-updates-powered-by-sharedmergetree), which get a performance boost from the SharedMergeTree. Similarly, engine-specific [data transformations](https://clickhouse.com/docs/en/guides/developer/cascading-materialized-views) (aggregations for [`AggregatingMergeTree`](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/aggregatingmergetree), deduplication for [`ReplacingMergeTree`](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replacingmergetree), etc.) benefit from the better merge throughput of the `SharedMergeTree`. These transformations are incrementally applied during background part merges. To ensure correct query results with potentially unmerged parts, users need to merge the unmerged data at query time by utilising the [FINAL](https://clickhouse.com/docs/en/sql-reference/statements/select/from#final-modifier) modifier or using explicit GROUP BY clauses with aggregations. In both cases, the execution speed of these queries benefits from better merge throughput. Because then the queries have less query-time data merge work to do.
 
 ## The new ClickHouse Cloud default table engine
 
-The SharedMergeTree table engine is now generally available as the default table engine in ClickHouse Cloud for new Development tier services. Please reach out to us if you would like to create a new Production tier service with the SharedMergeTree table engine.
+The `SharedMergeTree` table engine is now generally available as the default table engine in ClickHouse Cloud for new Development tier services. Please reach out to us if you would like to create a new Production tier service with the `SharedMergeTree` table engine.
 
-All table engines from the MergeTree family that are [supported](https://clickhouse.com/docs/en/whats-new/cloud-compatibility#database-and-table-engines) by ClickHouse Cloud are automatically based on the SharedMergeTree. For example, when you create a [ReplacingMergeTree](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replacingmergetree) table, ClickHouse Cloud will automatically create a SharedReplacingMergeTree table under the hood:
+All table engines from the `MergeTree` family that are [supported](https://clickhouse.com/docs/en/whats-new/cloud-compatibility#database-and-table-engines) by ClickHouse Cloud are automatically based on the `SharedMergeTree`. For example, when you create a [`ReplacingMergeTree`](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replacingmergetree) table, ClickHouse Cloud will automatically create a `SharedReplacingMergeTree` table under the hood:
 
 ```sql
 CREATE TABLE T (id UInt64, v String)
@@ -649,11 +649,11 @@ WHERE name = 'T';
 └──────────────────────────┘
 ```
 
-Note that existing services will be migrated from ReplicatedMergeTree to the SharedMergeTree engine overtime. Please reach out to the ClickHouse Support team if you'd like to discuss this.
+Note that existing services will be migrated from `ReplicatedMergeTree` to the `SharedMergeTree` engine overtime. Please reach out to the ClickHouse Support team if you'd like to discuss this.
 
-Also note that the current implementation of SharedMergeTree does not yet have support for more advanced capabilities present in ReplicatedMergeTree, such as [deduplication of async inserts](https://clickhouse.com/blog/asynchronous-data-inserts-in-clickhouse#inserts-are-idempotent) and encryption at rest, but this support is planned for future versions.
+Also note that the current implementation of `SharedMergeTree` does not yet have support for more advanced capabilities present in `ReplicatedMergeTree`, such as [deduplication of async inserts](https://clickhouse.com/blog/asynchronous-data-inserts-in-clickhouse#inserts-are-idempotent) and encryption at rest, but this support is planned for future versions.
 
-## SharedMergeTree in action
+## `SharedMergeTree` in action
 
 In this section, we are going to demonstrate the seamless ingest performance scaling capabilities of the SharedMergeTree. We will explore the performance scaling of SELECT queries in another blog.
 
@@ -772,9 +772,9 @@ On our cluster with 80 nodes, we load the data only into a SharedMergeTree table
 
 The insertion of 26 billion rows finished in 67 seconds, which gives 388 million rows/sec.
 
-## Introducing Lightweight Updates, boosted by SharedMergeTree
+## Introducing Lightweight Updates, boosted by `SharedMergeTree`
 
-SharedMergeTree is a powerful building block that we see as a foundation of our cloud-native service. It allows us to build new capabilities and improve existing ones when it was not possible or too complex to implement before. Many features benefit from working on top of SharedMergeTree and make ClickHouse Cloud more performant, durable, and easy to use. One of these features is “Lightweight Updates” – an optimization that allows to instantly make results of ALTER UPDATE queries available while using fewer resources.
+`SharedMergeTree` is a powerful building block that we see as a foundation of our cloud-native service. It allows us to build new capabilities and improve existing ones when it was not possible or too complex to implement before. Many features benefit from working on top of `SharedMergeTree` and make ClickHouse Cloud more performant, durable, and easy to use. One of these features is “Lightweight Updates” – an optimization that allows to instantly make results of ALTER UPDATE queries available while using fewer resources.
 
 ### Updates in traditional analytical databases are heavy operations
 
@@ -782,13 +782,19 @@ SharedMergeTree is a powerful building block that we see as a foundation of our 
 
 #### Synchronous mutations
 
-![smt_20.png](https://clickhouse.com/uploads/smt_20_fc56fe2e17.png)In our example scenario above, ClickHouse ① receives an insert query for an initially empty table, ② writes the query’s data into a new data part on storage, and ③ acknowledges the insert. Next, ClickHouse ④ receives an update query and executes that query by ⑤ mutating Part-1. The part is loaded into the main memory, the modifications are done, and the modified data is written to a new Part-2 on storage (Part-1 is deleted). Only when that part rewrite is finished, ⑥ the acknowledgment for the update query is returned to the sender of the update query. Additional update queries (which can also delete data) are executed in the same way. For larger parts, this is a very heavy operation.
+![smt_20.png](https://clickhouse.com/uploads/smt_20_fc56fe2e17.png)
+
+In our example scenario above, ClickHouse ① receives an insert query for an initially empty table, ② writes the query’s data into a new data part on storage, and ③ acknowledges the insert. Next, ClickHouse ④ receives an update query and executes that query by ⑤ mutating Part-1. The part is loaded into the main memory, the modifications are done, and the modified data is written to a new Part-2 on storage (Part-1 is deleted). Only when that part rewrite is finished, ⑥ the acknowledgment for the update query is returned to the sender of the update query. Additional update queries (which can also delete data) are executed in the same way. For larger parts, this is a very heavy operation.
 
 #### Asynchronous mutations
 
-By [default](https://clickhouse.com/docs/en/operations/settings/settings#mutations_sync), update queries are executed asynchronously in order to fuse several received updates into a single mutation for mitigating the performance impact of rewriting parts:![smt_21.png](https://clickhouse.com/uploads/smt_21_f1b7f214ce.png)When ClickHouse ① receives an update query, then the update is added to a [queue](https://clickhouse.com/docs/en/operations/system-tables/mutations) and executed asynchronously, and ② the update query immediately gets an acknowledgment for the update.
+By [default](https://clickhouse.com/docs/en/operations/settings/settings#mutations_sync), update queries are executed asynchronously in order to fuse several received updates into a single mutation for mitigating the performance impact of rewriting parts:
 
-Note that SELECT queries to the table don’t see the update before it ⑤ gets materialized with a background mutation.
+![smt_21.png](https://clickhouse.com/uploads/smt_21_f1b7f214ce.png)
+
+When ClickHouse ① receives an update query, then the update is added to a [queue](https://clickhouse.com/docs/en/operations/system-tables/mutations) and executed asynchronously, and ② the update query immediately gets an acknowledgment for the update.
+
+Note that SELECT queries to the table don’t see the update before it ⑤ **==gets materialized with a background mutation==**.
 
 Also, note that ClickHouse can fuse queued updates into a single part rewrite operation. For this reason, it is a best practice to batch updates and send 100s of updates with a single query.
 
@@ -796,7 +802,11 @@ Also, note that ClickHouse can fuse queued updates into a single part rewrite op
 
 The aforementioned explicit batching of update queries is no longer necessary, and from the user's perspective, modifications from single update queries, even when being materialized asynchronously, will occur instantly.
 
-This diagram sketches the new lightweight and instant update [mechanism](https://clickhouse.com/docs/en/guides/developer/lightweght-update) in ClickHouse:![smt_22.png](https://clickhouse.com/uploads/smt_22_e303a94b55.png)When ClickHouse ① receives an update query, then the update is added to a queue and executed asynchronously. ② Additionally, the update query’s update expression is put into the main memory. The update expression is also stored in Keeper and distributed to other servers. When ③ ClickHouse receives a SELECT query before the update is materialized with a part rewrite, then ClickHouse will execute the SELECT query as usual - use the [primary index](https://clickhouse.com/docs/en/optimize/sparse-primary-indexes) for reducing the set of rows that need to be streamed from the part into memory, and then the update expression from ② is applied to the streamed rows on the fly. That is why we call this mechanism `on [the] fly` mutations. When ④ another update query is received by ClickHouse, then ⑤ the query’s update (in this case a delete) expression is again kept in main memory, and ⑥ a succeeding SELECT query will be executed by applying both (②, and ⑤) update expressions on the fly to the rows streamed into memory. The on-the-fly update expressions are removed from memory when ⑦ all queued updates are materialized with the next background mutation. ⑧ Newly received updates and ⑩ SELECT queries are executed as described above.
+This diagram sketches the new lightweight and instant update [mechanism](https://clickhouse.com/docs/en/guides/developer/lightweght-update) in ClickHouse:
+
+![smt_22.png](https://clickhouse.com/uploads/smt_22_e303a94b55.png)
+
+When ClickHouse ① receives an update query, then the update is added to a queue and executed asynchronously. ② Additionally, the update query’s update expression is put into the main memory. The update expression is also stored in Keeper and distributed to other servers. When ③ ClickHouse receives a SELECT query before the update is materialized with a part rewrite, then ClickHouse will execute the SELECT query as usual - use the [primary index](https://clickhouse.com/docs/en/optimize/sparse-primary-indexes) for reducing the set of rows that need to be streamed from the part into memory, and then the update expression from ② is applied to the streamed rows on the fly. That is why we call this mechanism `on [the] fly` mutations. When ④ another update query is received by ClickHouse, then ⑤ the query’s update (in this case a delete) expression is again kept in main memory, and ⑥ a succeeding SELECT query will be executed by applying both (②, and ⑤) update expressions on the fly to the rows streamed into memory. The on-the-fly update expressions are removed from memory when ⑦ all queued updates are materialized with the next background mutation. ⑧ Newly received updates and ⑩ SELECT queries are executed as described above.
 
 This new mechanism can be enabled by simply setting the `apply_mutations_on_fly` setting to `1`.
 

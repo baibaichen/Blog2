@@ -590,3 +590,145 @@ ClickHouse Cloud 提供服务器的自动垂直扩展 - 服务器的 CPU 核心�
 - **元数据仍然与服务器耦合**：元数据存储与计算没有分离。零拷贝复制仍然需要每个服务器上有一个本地磁盘来存储有关 Part 的元数据。本地磁盘是额外的故障点，其可靠性取决于副本的数量，这与高可用性的计算开销有关。
 - **零拷贝复制的持久性取决于3个组件的保证**：对象存储、Keeper 和本地存储。如此数量的组件增加了复杂性和开销，因为该堆栈是构建在现有组件之上的，而不是作为云原生解决方案进行重新设计。
 - **这仍然是为少量服务器设计的**：使用最初<u>为具有少量副本服务器的无共享集群架构设计的相同复制模型</u>来更新元数据。大量服务器会在复制日志上产生过多争用，并在锁和服务器间通信上产生较高开销。此外，实现从一个副本到另一个副本的数据复制和克隆的代码非常复杂。由于元数据是独立更改的，因此不可能对所有副本进行原子提交。
+
+## `SharedMergeTree` 用于云原生数据处理
+
+我们决定（并且从一开始就[计划](https://github.com/ClickHouse/ClickHouse/issues/44767)）从头开始为 ClickHouse Cloud 实现一个名为 `SharedMergeTree` 的新表引擎 ——旨在工作于共享存储之上。`SharedMergeTree` 是云原生方式，让我们能够 (1) 使 MergeTree 代码更加简单和可维护，(2) 同时[支持](https://clickhouse.com/changes) 垂直和水平自动扩展服务器，以及 (3) 为我们的云用户提供进一步的功能改进，如更高的一致性保证、更好的持久性、时间点恢复、数据时间旅行等等。
+
+这里，我们简单描述一下 [`SharedMergeTree`](https://clickhouse.com/docs/en/guides/developer/shared-merge-tree) 如何原生支持 ClickHouse Cloud 的集群自动扩展[模型](https://clickhouse.com/blog/clickhouse-cloud-boosts-performance-with-sharedmergetree-and-lightweight-updates#automatic-cluster-scaling)。提醒一下：每个 ClickHouse 云服务器只是**计算单元**，可以访问相同共享的数据，服务器的==大小==和数量可以自动更改。为了支持这种机制，`SharedMergeTree` **将数据和元数据的存储与服务器完全分离，并使用 `Keeper` 的接口来读取、写入和修改所有服务器的共享元数据**。**每个服务器都有一个包含元数据子集的本地缓存，并通过订阅机制自动获取有关数据更改的通知**。
+
+此图概述了如何使用 SharedMergeTree 将新服务器添加到集群中：
+
+![smt_05.png](https://clickhouse.com/uploads/smt_05_a45df09927.png)
+
+当 server-3 添加到集群中时，这个新服务器 ① 订阅Keeper中的元数据变化，并将当前元数据的部分内容提取到本地缓存中。这不需要任何锁定机制； 新服务器基本上只是说：“我在这里。请让我了解所有数据更改的最新情况”。新添加的 server-3 几乎可以立即参与数据处理，因为它通过仅从 Keeper 获取必要的共享元数据集，来发现存在哪些数据以及在对象存储中的位置。
+
+下图显示了所有服务器如何了解新插入的数据：
+
+![smt_06.png](https://clickhouse.com/uploads/smt_06_dbf29bf0dc.png)
+
+当①server-1收到插入查询时，则 ② 服务器将插入查询的数据以 **Part** 的形式写入对象存储。③ Server-1 还将有关该 Part 的信息存储在其本地缓存和 Keeper 中（例如，哪些文件属于该 Part 以及与文件对应的 blob 驻留在对象存储中的位置）。之后，④ ClickHouse 向查询发送者**确认插入**。其他服务器（server-2、server-3）会通过 Keeper 的订阅机制自动通知对象存储中存在的新数据，并将元数据更新获取到本地缓存中。
+
+请注意，插入查询的数据在步骤 ④ 之后是持久的。即使 Server-1 或任何或所有其他服务器崩溃，该部分也会存储在高可用对象存储中，并且元数据存储在 Keeper 中（具有至少 3 个 Keeper 服务器的高可用设置）。
+
+从集群中删除服务器也是一个简单而快速的操作。为了正常删除，服务器只需从 Keeper 注销自己，以便正确处理正在进行的**分布式查询**，而不会发出服务器丢失的警告消息。
+
+> 疑问，`SharedMergeTree` 是否还使用**分布式表**？
+
+## ClickHouse 云用户的好处
+在 ClickHouse Cloud 中，`SharedMergeTree` 表引擎是 `ReplicatedMergeTree` 表引擎更高效的直接替代品。为 ClickHouse Cloud 用户带来以下强大的好处。
+
+### 无缝的集群扩展
+ClickHouse Cloud 将所有数据存储在几乎无限、持久且高度可用的共享对象存储中。`SharedMergeTree` 表引擎为所有表组件添加了共享元数据存储。它几乎可以无限地扩展在该存储之上运行的服务器。服务器实际上是无状态计算节点，我们几乎可以立即更改它们的大小和数量。
+
+#### 示例
+
+假设 ClickHouse Cloud 用户当前使用三个节点，如下图所示：
+
+![smt_07.png](https://clickhouse.com/uploads/smt_07_9e7ecdd514.png)
+
+（手动或自动）将计算量加倍很简单，将每个节点的大小加倍（垂直扩展），或者（例如，当达到每个节点的最大大小时）将节点数量从 3 个增加到 6 个（水平扩展）：
+
+![smt_08.png](https://clickhouse.com/uploads/smt_08_a32f622149.png)
+
+这[ Dobule 了](https://clickhouse.com/blog/clickhouse-cloud-boosts-performance-with-sharedmergetree-and-lightweight-updates#sharedmergetree-in-action)**插入**的吞吐量。对于 `SELECT` 查询，增加节点数量可以提高并发查询执行和[单个查询并发执行](https://clickhouse.com/blog/clickhouse-release-23-03#parallel-replicas-for-utilizing-the-full-power-of-your-replicas-nikita-mikhailov)的并行数据处理度。请注意，增加（或减少）ClickHouse Cloud 中的节点数量不需要任何物理重新分片或重新平衡实际数据。我们可以自由地添加或删除节点，其效果与无共享集群中的手动分片相同。
+
+**更改无共享集群中的服务器数量需要更多的精力和时间。如果集群当前由三个分片组成，每个分片有两个副本**：
+
+![smt_09.png](https://clickhouse.com/uploads/smt_09_52c758d36c.png)
+
+则将分片数量加倍需要对当前存储的数据进行重新分片和重新平衡 :
+
+![smt_10.png](https://clickhouse.com/uploads/smt_10_43b84bbb96.png)
+
+### 自动增强插入查询的持久性
+通过 `ReplicatedMergeTree`，您可以使用 [`insert_quorum`](https://clickhouse.com/docs/en/operations/settings/settings#settings-insert_quorum) 设置来确保数据持久性。您可以将**插入查询**配置为仅当插入的数据（零拷贝复制情况下的元数据）存储在特定数量的副本上时才返回发送者。对于 `SharedMergeTree`，不需要 `insert_quorum`。如上所示，当插入查询成功返回发送者时，查询的数据将存储在高可用的对象存储中，元数据集中存储在 Keeper 中（具有至少 3 个 Keeper 服务器的高可用设置）。
+
+
+### 更轻量级的强一致性 Select 查询
+如果您的用例需要一致性保证每个服务器提供相同的查询结果，那么您可以运行 [SYNC REPLICA](https://clickhouse.com/docs/en/sql-reference/statements/system#sync-replica) 系统语句，这是使用 `SharedMergeTree` 的更轻量级的操作。每个服务器只需要从 Keeper 获取当前版本的元数据，而不是在服务器之间同步数据（或具有零拷贝复制的元数据）。
+
+### 提高后台合并和修改的吞吐量和可扩展性
+使用 SharedMergeTree，服务器数量增加不会导致性能下降。只要 Keeper有足够的资源，后台的吞吐量就与服务器的数量成正比。对于通过显式触发实现的 [mutations](https://clickhouse.com/docs/en/sql-reference/statements/alter#mutations) 也是如此（[默认情况下](https://clickhouse.com/docs/en/operations/settings/settings#mutations_sync)) 异步执行合并。
+
+> 没有[原子性](https://clickhouse.com/docs/zh/sql-reference/statements/alter/overview)是要解决的：
+>
+> > 对于 `*MergeTree` 表，通过重写整个数据部分来执行突变。没有原子性——一旦突变的部件准备好，部件就会被替换，并且在突变期间开始执行的 `SELECT` 查询将看到来自已经突变的部件的数据，以及来自尚未突变的部件的数据。
+
+这对 ClickHouse 中的其他新功能具有积极的影响，例如[**轻量级更新**](https://clickhouse.com/blog/clickhouse-cloud-boosts-performance-with-sharedmergetree-and-lightweight-updates#introducing-lightweight-updates-powered-by-sharedmergetree)，它可以从 `SharedMergeTree` 中获得性能提升。同样，特定于引擎的[数据转换](https://clickhouse.com/docs/en/guides/developer/cascading-materialized-views)（[`AggregatingMergeTree`](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/aggregatingmergetree)  的聚合、[`ReplacingMergeTree`](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replacingmergetree) 的删除重复数据等）也受益于 `SharedMergeTree` 更好的**合并吞吐量**。这些转换在背台合并 Part 期间逐步应用。为了确保从可能未合并的 Part 中得到正确的查询结果，用户需要在查询时使用 [FINAL](https://clickhouse.com/docs/en/sql-reference/statements/select/from#final) 修饰符或**使用带有 GROUP BY 的聚合子句**来合并未合并的数据。在这两种情况下，这些查询的执行速度都受益于更好的合并吞吐量。因为这样查询在查询时要做的数据合并工作就少了。
+
+## 新的 ClickHouse Cloud 默认表引擎
+
+`SharedMergeTree` 表引擎现在通常作为 ClickHouse Cloud 的默认表引擎，用于新的开发层服务。如果您想使用 `SharedMergeTree` 表引擎创建新的生产层服务，请联系我们。
+
+ClickHouse Cloud [支持](https://clickhouse.com/docs/en/whats-new/cloud-compatibility#database-and-table-engines)的 `MergeTree` 系列中的所有表引擎均自动基于 `SharedMergeTree`。例如，当您创建一个 [`ReplacingMergeTree`](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/replacingmergetree) 表时，ClickHouse Cloud 会自动在底层创建一个 `SharedReplacingMergeTree` 表 引擎：
+
+```sql
+CREATE TABLE T (id UInt64, v String)
+ENGINE = ReplacingMergeTree
+ORDER BY (id);
+
+SELECT engine
+FROM system.tables
+WHERE name = 'T';
+
+┌─engine───────────────────┐
+│ SharedReplacingMergeTree │
+└──────────────────────────┘
+```
+请注意，随着时间的推移，现有服务将从 `ReplicatedMergeTree` 迁移到 `SharedMergeTree` 引擎。如果您想讨论此问题，请联系 ClickHouse 支持团队。
+
+另请注意，`SharedMergeTree` 的当前实现尚不支持 `ReplicatedMergeTree` 中存在的更高级功能，例如[异步插入的重复数据删除](https://clickhouse.com/blog/asynchronous-data-inserts- in-clickhouse#inserts-are-idempot) 和静态加密，但计划在未来版本中提供此支持。
+
+## `SharedMergeTree` 的实际应用
+> TODO:
+
+## 简介介轻量级更新，由 `SharedMergeTree` 加速
+`SharedMergeTree` 是一个强大的构建块，我们将其视为云原生服务的基础。它使我们能够在以前不可能或过于复杂而无法实现的情况下构建新功能并改进现有功能。许多功能都受益于在 `SharedMergeTree` 之上工作，并使 ClickHouse Cloud 性能更高、更耐用且易于使用。其中一个功能是**轻量级更新**——一种优化，允许在使用更少的资源的情况下立即提供 `ALTER UPDATE` 查询的结果。
+
+### 传统分析数据库中的更新是很重的操作
+
+ClickHouse 中 [ALTER TABLE … UPDATE](https://clickhouse.com/docs/en/sql-reference/statements/alter/update) 的查询被实现为 [mutations](https://clickhouse.com/docs/en/sql-reference/statements/alter#mutations)。**mutations** 是一种重量级操作，可以同步或异步重写 **part**。
+
+#### 同步修改
+
+![smt_20.png](https://clickhouse.com/uploads/smt_20_fc56fe2e17.png)
+
+在上面的示例场景中，ClickHouse ① 对首先为空表执行插入查询，② 将插入的数据写入存储上的新数据 Part，③ 确认插入。接下来，ClickHouse ④ 接收更新查询并通过 ⑤ 改变 Part-1 来执行该查询。该 Part 被加载到内存中，修改完成，修改后的数据被写入存储上的新 Part-2（Part-1被删除）。仅当该 Part 重写完成时， ⑥ 更新查询的确认才返回给更新查询的发送者。其他更新查询（也可以删除数据）以相同的方式执行。对于较大的 Part，这是一项非常繁重的操作。
+
+#### 异步修改
+
+[默认情况下](https://clickhouse.com/docs/en/operations/settings/settings#mutations_sync)，更新查询是异步执行的，以便将多个收到的更新融合到单个修改中，从而减轻重写 Part 对性能的影响 :
+
+![smt_21.png](https://clickhouse.com/uploads/smt_21_f1b7f214ce.png)
+
+当 ClickHouse ① 收到更新查询时，更新会被添加到[队列](https://clickhouse.com/docs/en/operations/system-tables/mutations)中并异步执行，而 ② 更新查询会立即获取对**更新**的**确认**。
+
+请注意，在 ⑤ **==背台的修改被物化之前==**，对表的 SELECT 查询看不到更新。另请注意，ClickHouse 可以将排队的更新融合到单个 Part 的重写操作中。因此，最佳实践是批量更新，在单个查询发送 100 个更新。
+
+### 轻量级更新
+前面提到的更新查询的显式批处理不再是必要的，并且从用户的角度来看，单个更新查询的修改，即使是异步实现的，也将立即发生。
+
+下图描绘了 ClickHouse 中新的轻量级即时更新[机制](https://clickhouse.com/docs/en/guides/developer/lightweght-update)：
+
+![smt_22.png](https://clickhouse.com/uploads/smt_22_e303a94b55.png)
+
+当 ClickHouse ① 收到更新查询时，更新会被添加到队列中并异步执行。② 此外，更新查询的更新表达式被放入主存中。更新表达式也存储在 Keeper 中并分发到其他服务器。当 ③ ClickHouse 在通过 Part 重写实现更新之前收到 SELECT 查询时，ClickHouse 将照常执行 SELECT 查询 - 使用[主索引](https://clickhouse.com/docs/en/optimize/sparse-primary-indexes)，用于减少需要从 Part 流式传输到内存的行集，然后将来自 ② 的更新表达式即时应用于流式传输的行。这就是为什么我们称这种机制为**动态修改**。当 ④ ClickHouse 收到另一个更新查询时， ⑤ 该查询的更新（在本例中为删除）表达式再次保留在主内存中，并且 ⑥ 将通过应用（② 和 ⑤）更新表达式来在后续流式流入的数据上执行 SELECT 查询。当所有排队的更新在下一个背台修改中物化后，动态更新表达式将从内存中删除。⑧ 新收到的更新和 ⑩ SELECT 查询的执行如上所述。
+
+只需将 `apply_mutations_on_fly` 设置为 `1` 即可启用此新机制。
+
+#### 优点
+
+用户无需等修改完成。ClickHouse 立即提供更新的结果，同时使用更少的资源。此外，这使得 ClickHouse 用户更容易使用更新，他们可以发送更新而无需考虑如何批量更新。
+
+#### 与 SharedMergeTree 的协同作用
+
+从用户的角度来看，轻量级更新的修改将立即发生，但在更新物化之前，用户将体验到 SELECT 查询性能的轻微降低，因为更新是查询时在流式数据中执行的。 随着更新作为后台合并操作的一部分而物化，对查询延迟的影响就消失了。 `SharedMergeTree` 表引擎[提高了后台合并和修改的吞吐量和可扩展性](https://clickhouse.com/blog/clickhouse-cloud-boosts-performance-with-sharedmergetree-and-lightweight-updates#improved-throughput-and-scalability-of-background-merges-and-mutations)，因此，修改完成得更快，轻量级更新后的 SELECT 查询更快地恢复全速。
+
+#### 下一步是？
+
+我们上面描述的轻量级更新机制只是第一步。 我们已经在计划额外的实现阶段，以进一步提高轻量级更新的性能并消除当前的[限制](https://clickhouse.com/docs/en/guides/developer/lightweght-update)。
+
+## 总结
+
+在这篇博文中，我们探索了新的 ClickHouse Cloud `SharedMergeTree` 表引擎的机制。 我们解释了为什么有必要引入一个原生支持 ClickHouse 云架构的新表引擎，分开垂直和水平可扩展的计算节点和存储在几乎无限的共享对象存储中的数据。 `SharedMergeTree` 可以在存储之上无缝地、几乎无限地扩展计算层。 插入和后台合并的吞吐量可以轻松扩展，这有利于 ClickHouse 中的其他功能，如轻量级更新和特定于引擎的数据转换。 此外，`SharedMergeTree` 为插入提供了更强的持久性，为选择查询提供了更轻量级的强一致性。 最后，它为新的云原生功能和改进打开了大门。 我们通过基准测试展示了引擎的效率，并描述了 `SharedMergeTree` 增强的一项新功能，称为轻量级更新。
