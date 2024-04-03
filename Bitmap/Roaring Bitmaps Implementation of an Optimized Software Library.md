@@ -115,9 +115,9 @@ Like most commodity processors, Intel and AMD processors benefit from *bit-manip
 
 ### 3.1. Converting Bitsets To Arrays
 
-Two useful bit-manipulation instructions are `blsi`, which sets all but the least significant 1-bit to zero (i.e., `x & -x` in C), and `tzcnt`, which counts the number of trailing zeroes (largest *i* such as that *x/*2^i^ is an integer). Using the corresponding Intel intrinsics (`_blsi_u64` and `_mm_tzcnti_64`), we can extract the locations of all 1-bits in a 64-bit word (`w`) to an array (`out`) efficiently.
+Two useful bit-manipulation instructions are `blsi`, which sets all but the least significant 1-bit to zero (i.e., `x & -x` in C), and `tzcnt`, which counts the number of trailing zeroes (largest *i* such as that *x*/2^i^ is an integer). Using the corresponding Intel intrinsics (`_blsi_u64` and `_mm_tzcnti_64`), we can extract the locations of all 1-bits in a 64-bit word (`w`) to an array (`out`) efficiently.
 
-> 两条有用的位操作指令是 `blsi`，将除最低有效 1 位以外的所有位设置为零（即 C 中的 `x & -x`），及 `tzcnt`，计算尾随零的数量（即求最大的 *i*，使得 *x/*2^i^ 是整数）。使用相应的 Inte l内部函数（`_blsi_u64`和`_mm_tzcnti_64`），我们可以将64位字（`w`）中所有1位的位置有效地提取到数组（`out`）中。
+> 两条有用的位操作指令是 `blsi`，将除最低有效 1 位以外的所有位设置为零（即 C 中的 `x & -x`），及 `tzcnt`，计算尾随零的数量（即求最大的 *i*，使得 *x*/2^i^ 是整数）。使用相应的 Inte l内部函数（`_blsi_u64`和`_mm_tzcnti_64`），我们可以将64位字（`w`）中所有1位的位置有效地提取到数组（`out`）中。
 >
 > > `blsi`：找到最右边的1位，并将所有其他位设置为0。最终结果只有一个最右边的1位集。例如，01010**==1==**00（最右边的位以粗体显示）将变为00000100。
 
@@ -151,8 +151,6 @@ Such code is useful when we need to convert a bitset container to an array conta
 >                                      uint32_t base)
 > ```
 
-
-
 ### 3.2. Array-Bitset Aggregets
 
 Several other such instructions are useful when implementing Roaring. For example, the `bt` (bittest) instruction returns the value of a bit whereas other bit-manipulation instructions can set (`bts`), clear (`btr`) and flip bits (`btc`) as they query their value. On a Pentium 4, these instructions had a throughput of one instruction every two cycles and a latency of six cycles. However, starting with the Intel Sandy Bridge microarchitecture (2011), they became much faster with a throughput of two instructions every cycle and a latency of one cycle [[44] ](#_bookmark87)for data in registers.
@@ -177,7 +175,7 @@ We are interested in the following scenario: given a bitset and an array of 16-b
 
   > 如只设置位，不考虑基数，用 `(w[pos >> 6] |= UINT64_C(1) << (pos & 63)`这样简单的 C 表达式即可。编译器可将此表达式转换为两个移位（一个用于位集中的索引，另一个用于移位 1 ）和一个按位 `OR`。
   >
-  > 在最新的 x6 4处理器上（见§[5.2](##u bookmark33)），并使用最新流行的C编译器（见§[5.1](#u bookmark29)），我们估计可以≈每 3.6 个周期设置一个位，已考虑从数组读取**要设置位**的位置所需的时间。
+  > 在最新的  x64 处理器上（见§[5.2](##u bookmark33)），并使用最新流行的C编译器（见§[5.1](#u bookmark29)），我们估计可以 ≈ 每 3.6 个周期设置一个位，已考虑从数组读取**要设置位**的位置所需的时间。
   >
   > 可以通过使用一个移位（用于位集中的索引）和指令 `bts`（位测试和设置）来提高性能。实际上，如果`pos` 变量给出位在位集中的位置 ，那将 `pos` 右移6位，结果则放在`offset` 中。借助 `offset`，将受影响的字从内存中提取到 `load` 变量。 `bts`的操作数是 `pos` 和 `load` ，将在 `load` 中设置相应的位，因此我们可以将其存回`offset`处的内存。这样，假设要设置的位的位置已经在寄存器中，我们总共生成四条指令（一个加载、一个移位、一个 `bts` 和一个存储）。我们发现，能够将设置位的速度提高到大约是原来的两倍（≈ 每 1.7 个周期一位）。我们受益于以下事实：处理器是超标量的，因此它们每个周期可以执行多个指令。
   >
@@ -211,20 +209,23 @@ We are interested in the following scenario: given a bitset and an array of 16-b
   words [pos >> 6] = new_w ;
 ```
 
-  This code first retrieves the word `old_w` at index `pos/64` (or equivalently `pos >> 6`) in an array of 64-bit words `words`. We then set the bit at index `pos % 64` (or equivalently `pos & 63`)  to 1, and call the result `new_w`. We can write back `new_w` to the array `words`, and use the bitwise **XOR** between `old_w` and (`new_w`) to determine whether the bit value was changed. We get about ≈ 3.6 cycles per bit set, or ab7 the same speed we get when we use similar C code without tracking the cardinality.
+This code first retrieves the word `old_w` at index `pos/64` (or equivalently `pos >> 6`) in an array of 64-bit words `words`. We then set the bit at index `pos % 64` (or equivalently `pos & 63`)  to 1, and call the result `new_w`. We can write back `new_w` to the array `words`, and use the bitwise **XOR** between `old_w` and (`new_w`) to determine whether the bit value was changed. We get about ≈ 3.6 cycles per bit set, or ab7 the same speed we get when we use similar C code without tracking the cardinality.
 
   > 这段代码首先取出数组位置为`pos/64`（即`pos >> 6`）处的字，存入`old_w`。然后设置在位集索引`pos % 64`（即`pos & 63`）处的位，结果存入`new_w`。我们可以在 `old_w` 和 `new_w` 之间用 **XOR** 来确定是否更改了位集中的位，然后把 `new_w`写回数组`words`。这个方法设置每个位平均需  ≈ 3.6 个周期，和不更新基数的 C 代码的速度类似。
 
- We can also achieve the same result, set the bit, and adjust the cardinality counter as follows: Use a shift (to identify the word index), the instruction `bts`, then an instruction like `sbb` (“integer subtraction with borrow”) to modify the cardinality counter according to the carry flag eventually set by `bts`. Indeed, if the position of the bit in the bitset is given by the `pos` variable, then we can proceed as follows:
+We can also achieve the same result, set the bit, and adjust the cardinality counter as follows: Use a shift (to identify the word index), the instruction `bts`, then an instruction like `sbb` (“integer subtraction with borrow”) to modify the cardinality counter according to the carry flag eventually set by `bts`. Indeed, if the position of the bit in the bitset is given by the `pos` variable, then we can proceed as follows:
   - We shift `pos` right by 6 bits (e.g., `shrx`) and store the result in `offset`.
-- We load the 64-bit word at index `offset` and store it in `load`.
+
+  - We load the 64-bit word at index `offset` and store it in `load`.
+
   - We call `bts` with `pos` and `load`. This sets the corresponding bit in `load`, so we can store it back in memory at index `offset`.
+
   - The call to `bts` stored the value of the bit in the carry (**CF**) flag. If the bit was set, then the carry flag has value 1, otherwise it has value 0. We want to increment our counter when the carry flag has value 1, and leave it unchanged when it has value 0. Thus we can call the subtract with borrow (`sbb`) instruction, passing our cardinality counter as well as the parameter -1. It will add -1 to the carry flag (getting 0 and -1), and then subtract this value from the counter, effectively adding 0 or 1 to it.
-  
-  In total, we need five instructions (one load, one shift, one `bts`, one store and one sbb), which is one more instruction than if we did not have to track the cardinality.
-  
-  With this approach, we find that we can set a bit while maintaining a cardinality counter every ≈ 1.8 cycles on our processor. It is only 0.1 cycles per bit set slower than if we do not track the cardinality.
-  
+
+In total, we need five instructions (one load, one shift, one `bts`, one store and one sbb), which is one more instruction than if we did not have to track the cardinality.
+
+With this approach, we find that we can set a bit while maintaining a cardinality counter every ≈ 1.8 cycles on our processor. It is only 0.1 cycles per bit set slower than if we do not track the cardinality.
+
   > 下面的方法有相同的结果，即设置位同时调整基数：使用**移位**获得字的索引，使用指令 `bts`，然后使用类似 `sbb` 的指令（带借位的整数减法），根据 `bts` 最终设置的**进位标志**（CF）修改基数计数器。实际上，如果位在位集中的位置是由`pos`变量指定，那么我们可以进行如下操作：
   >
   > - 将 `pos` 右移6位（例如，`shrx`），并将结果存储在 `offset` 中
@@ -278,7 +279,7 @@ Compilers can automatically translate C or C++ code into the appropriate SIMD in
 
 We can trivially vectorize operations between bitsets. Indeed, it suffices to compute bitwise operations over vectors instead of machine words. **By aggressively unrolling the resulting loop, we can produce highly efficient code. Optimizing compilers can often automatically vectorize such code**. It is more difficult, however, to also compute the cardinality of the result efficiently. Ideally, we would like to vectorize simultaneously the operations between bitsets and the computation of the cardinality of the result.
 
-> 我们可以简单地将位集之间的操作向量化。实际上，基于向量而非机器字做按位运算就足够了。**通过积极地循环展开，可以生成高效的代码。编译器优化通常可以自动向量化此类代码**。然而比较难的是要同时高效地计算结果基数。理想情况下，我们希望在使用向量化指令进行位集运算的同时，还能获得计算结果的基数。
+> 我们可以简单地将位集之间的操作向量化。实际上，基于向量而非机器字做按位运算就足够了。**通过激进地循环展开，可以生成高效的代码。编译器优化通常可以自动向量化此类代码**。然而比较难的是要同时高效地计算结果基数。理想情况下，我们希望在使用向量化指令进行位集运算的同时，还能获得计算结果的基数。
 
 #### 4.1.1. Vectorized Harley-Seal Population Count
 
