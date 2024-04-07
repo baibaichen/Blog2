@@ -538,78 +538,41 @@ Class WINNER {
 
 ##### 4.2.1.4 Expressions
 
-> There are two kinds of expression objects: `EXPR` and `M_EXPR`. An `EXPR` object corresponds to an expression in query optimization, which represents a query or a sub-query in the optimizer. An EXPR object is modeled as an operator with arguments (class OP), plus pointers to input expressions (class EXPR). For convenience, it retains the operator's arity. EXPRs are used to represent the initial and final query and are involved in the definitions and bindings of rules.
->
-> An M_EXPR implements a multi-expression. It is a compact form of EXPR which utilizes sharing. An M_EXPR is modeled as an operator with arguments plus pointers to input GROUPs instead of EXPRs, so an M_EXPR embodies several EXPRs. M_EXPRs are the main component of groups and all searching is done over M_EXPRs. So there must be some state associated with M_EXPRs. Table 3 shows the definition of data members in the class M_EXPR and Table 4 shows the definition of corresponding class EXPR_LIST implementing multi-expressions in Cascades.
->
-> ```c++
-> // Table 3. Data Member Definition of class M_EXPR in Columbia
-> Class M_EXPR {
->   private:
->     OP*         Op;        // Operator
->     GRP_ID*     Inputs;    // input groups
->     GRP_ID      GrpID;     // I reside in this group
->     M_EXPR*     NextMExpr; // link to the next mexpr in the same group
->     M_EXPR *    HashPtr;   // list within hash bucket
->     BIT_VECTOR  RuleMask;  // If the index bit is on, do not fire rule with that index
-> }
-> ```
->
-> ```c++
-> // Table 4. Data Member Definition of class EXPR_LIST in Cascades
-> class EXPR_LIST {
->   private:
->     OP_ARG*       op_arg;         // operator
->     GROUP_NO*     input_group_no; // input groups
->     GROUP_NO      group_no;       // I reside in this group
->     EXPR_LIST*    group_next;     // list within group
->     EXPR_LIST*    bucket_next;    // list within hash bucket
->     BIT_VECTOR    dont_fire;      //If the index bit is on, do not fire rule with that index
->     int           arity;          // cache arity of the operator
->     int           task_no;        //Task that created me, for book keeping
->     PROPERTY_SET* phys_prop;      // phys props of the mexpr if it is physical
->     COST*         cost;           // cost of the mexpr if it is physical
-> }
-> ```
->
-> Table 3 and 4 illustrate the two class implementations of multi-expressions in Columbia and Cascades. We can see that comparing to the corresponding class EXPR_LIST in Cascades, class M_EXPR has fewer data members. The extra data members in EXPR_LIST are not needed in M_EXPR: The arity of the mexpr can be gotten from the operator. There is no need to keep track of the tasks which created the mexpr and store the physical properties and cost of the physical mexpr because they are no longer used anywhere once they are calculated and the decision is made. Since multi-expressions occupy the main part of the search space memory, it is very critical to make this data structure as succinct as possible. For example, an M_EXPR object takes 24 bytes of memory while an EXPR_LIST object takes 40 bytes of memory. The memory usage ratio between class EXPR_LIST and M_EXPR is about 1.67 : 1. If the initial query is a join of 10 tables, there are at least 57k logical multi-expressions according to Table 1 shown in Section 2.5. In Columbia these logical multi-expression may take up to 24*57k = 1368k bytes of memory. In Cascades, they may take up to 40*57k = 2280k bytes of memory. So this succinct data structure in Columbia causes a big saving in memory.
->
+There are two kinds of expression objects: `EXPR` and `M_EXPR`. An `EXPR` object corresponds to an expression in query optimization, which represents a query or a sub-query in the optimizer. An EXPR object is modeled as an operator with arguments (class OP), plus pointers to input expressions (class EXPR). For convenience, it retains the operator's arity. EXPRs are used to represent the initial and final query and are involved in the definitions and bindings of rules.
 
-表达式对象有两种：`EXPR` 和 `M_EXPR`。 `EXPR` 对象对应于查询优化中的**表达式**，代表优化器中的**查询**或**子查询**。 `EXPR` 对象被建模为<u>带参数的运算符</u>（`OP` 类），**且**含有指向<u>输入表达式</u>（`EXPR` 类）的指针。为方便起见，它保留了运算符参数的个数。 `EXPR` 用于表示初始查询和最终查询，并参与规则的定义和绑定。
-
-`M_EXPR` 实现了<u>==多表达式==</u>，是 `EXPR` 的一种紧凑形式，利用了共享。M_EXPR 被建模为带参数的运算符，**且**含有指向输入 `GROUP` 的指针（不是指向 `EXPR` 的指针），因此 `M_EXPR` 包含了多个 `EXPR`。`M_EXPR` 是 **Group** 的主要组成部分，所有搜索都在 `M_EXPR` 上完成。因此，必须有一些与 `M_EXPR` 相关的状态。表 3 是 `M_EXPR` 类数据成员的定义，表 4 是 Cascade 中对应实现<u>==多表达式==</u>的类 `EXPR_LIST` 的定义。
+An M_EXPR implements a multi-expression. It is a compact form of EXPR which utilizes sharing. An M_EXPR is modeled as an operator with arguments plus pointers to input GROUPs instead of EXPRs, so an M_EXPR embodies several EXPRs. M_EXPRs are the main component of groups and all searching is done over M_EXPRs. So there must be some state associated with M_EXPRs. Table 3 shows the definition of data members in the class M_EXPR and Table 4 shows the definition of corresponding class EXPR_LIST implementing multi-expressions in Cascades.
 
 ```c++
-// Table 3. Columbia 中 M_EXPR 类数据成员的定义
+// Table 3. Data Member Definition of class M_EXPR in Columbia
 Class M_EXPR {
-  private:
-    OP*         Op;        // 运算符
-    GRP_ID*     Inputs;    // 输入 groups
-    GRP_ID      GrpID;     // 这个 mexpr 所在的 group
-    M_EXPR*     NextMExpr; // 链接到同一 group 内的下一个 mexpr
-    M_EXPR *    HashPtr;   // 哈希桶中的链表
-    BIT_VECTOR  RuleMask;  // 如果索引位打开，则不要使用该索引触发规则
+private:
+ OP*         Op;        // Operator
+ GRP_ID*     Inputs;    // input groups
+ GRP_ID      GrpID;     // I reside in this group
+ M_EXPR*     NextMExpr; // link to the next mexpr in the same group
+ M_EXPR *    HashPtr;   // list within hash bucket
+ BIT_VECTOR  RuleMask;  // If the index bit is on, do not fire rule with that index
 }
 ```
 
 ```c++
-// Table 4. Cascades 中 EXPR_LIST 类数据成员的定义
+// Table 4. Data Member Definition of class EXPR_LIST in Cascades
 class EXPR_LIST {
-  private:
-    OP_ARG*       op_arg;         // 运算符
-    GROUP_NO*     input_group_no; // 输入 groups
-    GROUP_NO      group_no;       // 这个 mexpr 所在的 group
-    EXPR_LIST*    group_next;     // group 内的链表
-    EXPR_LIST*    bucket_next;    // 哈希桶中的链表
-    BIT_VECTOR    dont_fire;      // 如果索引位打开，则不要使用该索引触发规则
-    int           arity;          // 运算符的参数个数
-    int           task_no;        // 创建改 mexpr 的任务，用于簿记
-    PROPERTY_SET* phys_prop;      // 如果是物理多表达式，这是其属性
-    COST*         cost;           // 如果是物理多表达式，这是其成本
+private:
+ OP_ARG*       op_arg;         // operator
+ GROUP_NO*     input_group_no; // input groups
+ GROUP_NO      group_no;       // I reside in this group
+ EXPR_LIST*    group_next;     // list within group
+ EXPR_LIST*    bucket_next;    // list within hash bucket
+ BIT_VECTOR    dont_fire;      //If the index bit is on, do not fire rule with that index
+ int           arity;          // cache arity of the operator
+ int           task_no;        //Task that created me, for book keeping
+ PROPERTY_SET* phys_prop;      // phys props of the mexpr if it is physical
+ COST*         cost;           // cost of the mexpr if it is physical
 }
 ```
 
-表 3 和表 4 是 Columbia 和 Cascade 中<u>多表达式</u>的两个实现类。可以看到，与 Cascade 中的对应的 `EXPR_LIST` 类相比，`M_EXPR` 的数据成员更少。`EXPR_LIST` 中额外的数据成员在 `M_EXPR` 中不需要：运算符参数的个数可以从运算符那获得。无需跟踪创建 `mexpr` 的任务，也无需存储物理多表达式的物理属性和成本，因为一旦计算出它们并做出决策，就没有地方再用到它们。由于<u>==多表达式==</u>占据了搜索空间内存的主要部分，因此该数据结构越简洁越好。例如，一个 `M_EXPR` 对象24个字节，而一个 `EXPR_LIST` 对象40个字节。类 `EXPR_LIST` 和 `M_EXPR` 之间的内存使用率约为 `1.67:1`。如果初始查询是 10 个表的联接，那么根据 2.5 节中的表 1，至少有 57k 个逻辑多表达式。这些逻辑多表达式在 Columbia 中，可能占用多达 `24 * 57k=1368k` 字节的内存。在 Cascade 中，它们可能占用多达`40 * 57k=2280k` 字节的内存。因此，Columbia 这种简洁的数据结构大大节省了内存。
+Table 3 and 4 illustrate the two class implementations of multi-expressions in Columbia and Cascades. We can see that comparing to the corresponding class EXPR_LIST in Cascades, class M_EXPR has fewer data members. The extra data members in EXPR_LIST are not needed in M_EXPR: The arity of the mexpr can be gotten from the operator. There is no need to keep track of the tasks which created the mexpr and store the physical properties and cost of the physical mexpr because they are no longer used anywhere once they are calculated and the decision is made. Since multi-expressions occupy the main part of the search space memory, it is very critical to make this data structure as succinct as possible. For example, an M_EXPR object takes 24 bytes of memory while an EXPR_LIST object takes 40 bytes of memory. The memory usage ratio between class EXPR_LIST and M_EXPR is about 1.67 : 1. If the initial query is a join of 10 tables, there are at least 57k logical multi-expressions according to Table 1 shown in Section 2.5. In Columbia these logical multi-expression may take up to 24*57k = 1368k bytes of memory. In Cascades, they may take up to 40*57k = 2280k bytes of memory. So this succinct data structure in Columbia causes a big saving in memory.
 
 #### 4.2.2 Rules
 
@@ -774,85 +737,44 @@ The whole search algorithm is performed by all the specific tasks in the optimiz
 
 ##### 4.2.3.1 O_GROUP - Task to Optimize a Group
 
-> This task finds the cheapest plan in this group, for a given set of contexts, and stores it (with the contexts) in the group's winner structure. If there is no cheapest plan (e.g. the upper bound cannot be met), the context with a null plan is stored in the winner structure. This task generates all relevant logical and physical expressions in the group, costs all the physical expressions and chooses the cheapest one. Two other types of tasks are created by O_GROUP task to generate and optimize the expressions in a group: O_EXPR and O_INPUTS.
->
-> Dynamic programming and memoization are used in this task. Before initiating optimization of all of a groups’ expressions, it checks whether the same optimization goal (i.e., same searching context) has been pursued already; if so, it simply returns the plan found in the earlier search. Reusing plans derived earlier is the crucial aspect of dynamic programming and memoization.
->
-> Figure 18 illustrates the process in O_GROUP task. It is implemented by `O_GROUP::perform()` method.
->
-> ```c++
-> /* Figure 18. Algorithm for O_GROUP */
-> 
-> //find the best plan for a group with certain context
-> O_GROUP::perform( context ) {
->   If ( lower bound of the group greater than upper bound in the context)
->     return;                                    // impossible goal
->   If ( there is a winner for the context )
->     return;                                   // done, no further optimization needed
-> 
->   // else, more search needed
->     
->   // optimize all the logical mexprs with the same context
->   For ( each logical log_mexpr in the group )
->     PTasks.push (new O_EXPR( log_mexpr, context ) );
-> 
->   // cost all the physical mexprs with the same context
->   For ( each physical phys_mexpr in the group )
->     PTasks.push ( new O_INPUTS( phys_mexpr , context ) ) ;
-> }
-> /* 
->   Note: Since the tasks are pushed into a stack, O_INPUTS tasks are actually scheduled earlier than O_EXPR tasks. It is desired because a winner may be produced earlier. 
-> */
-> ```
->
-> As seen in figure 18, the separation of logical and physical multi-expressions in a group facilitates the search in this task. There are two cases for performing a O_GROUP task.
->
-> **First**, the first time optimizing a group (i.e., searching a group for a context): In this case, only one logical mexpr (the initial mexpr) is in the group. By this algorithm, only one task, O_EXPR the intial mexpr, is created and pushed into the task stack, which will generate other expressions by applying rules.
->
-> The **second** case occurs when optimizing a group under a different context, e.g., a different required physical property: In this case, the group has been optimized and may have some winners. So there may be more than one logical and physical multi-expression in the group. Two things are needed: 1. We need to perform O_EXPR on each logical multi-expression with the new context. Because under the new context, some rules in the rule set that can not be applied to a mexpr become applicable. Due to the unique rule set technique, we will not fire the same rule twice, thus avoiding duplicate multi-expressions generated into the group; 2. We need to perform O_INPUTS on each physical mexpr with the new context to calculate the cost of the physical mexpr and produce a winner for the context if possible.
->
-> In Cascades, the task of optimizing a group did not deal with physical multiexpressions. For all the logical multi-expressions in a group, the task creates and pushes the O_EXPR task for each logical multi-expression. Then all the physical multi-expressions will be generated and the costs are calculated. In the case of optimizing a group the second time, all physical multi-expressions would be generated again for cost calculations under a different context. And because all logical and physical multi-expressions are stored in one linked list, this method must skip over all the physical multi-expressions in a group. From this comparison, the algorithm of optimizing a group in Columbia is more efficient than that in Cascades.
->
+This task finds the cheapest plan in this group, for a given set of contexts, and stores it (with the contexts) in the group's winner structure. If there is no cheapest plan (e.g. the upper bound cannot be met), the context with a null plan is stored in the winner structure. This task generates all relevant logical and physical expressions in the group, costs all the physical expressions and chooses the cheapest one. Two other types of tasks are created by O_GROUP task to generate and optimize the expressions in a group: O_EXPR and O_INPUTS.
 
-该任务在给定的一组上下文中，找到**组**中成本最低的计划，并将其（与上下文一起）存储在组的 **winner** 结构中。如果没有成本最低的计划（例如无法满足上限），那么带有空计划的上下文存储在 winner 结构中。该任务生成组中所有相关的逻辑和物理表达式，计算所有物理表达式的开销，并选择成本最低的计划。`O_GROUP` 创建两种其他类型的任务：`O_EXPR` 和 `O_INPUTS` 来生成和优化 **==Group==** 中的表达式。
+Dynamic programming and memoization are used in this task. Before initiating optimization of all of a groups’ expressions, it checks whether the same optimization goal (i.e., same searching context) has been pursued already; if so, it simply returns the plan found in the earlier search. Reusing plans derived earlier is the crucial aspect of dynamic programming and memoization.
 
-这个任务使用动态规划和<u>==**缓存**==</u>。在优化 **Group** 中所有的表达式之前，它先检查是否已经搜索了相同的优化目标（即，相同的搜索上下文）； 如果是这样，只需要简单地返回先前搜索中找到的计划。重用先前找到的计划是动态规划的关键。
+Figure 18 illustrates the process in O_GROUP task. It is implemented by `O_GROUP::perform()` method.
 
-图 18 描述了 `O_GROUP` 任务。 它由 `O_GROUP :: perform()` 实现。
-
-```C++
+```c++
 /* Figure 18. Algorithm for O_GROUP */
 
-// 在特定的上下文下为 Group 找到最好的执行计划
+//find the best plan for a group with certain context
 O_GROUP::perform( context ) {
-  If ( Group 的下界 > context 中的上界)
-    return;                                 // 不可能的目标
+If ( lower bound of the group greater than upper bound in the context)
+ return;                                    // impossible goal
+If ( there is a winner for the context )
+ return;                                   // done, no further optimization needed
 
-  If ( context 存在 winner )
-    return;                                 // 完成，无需进一步优化
+// else, more search needed
 
-  // 否则，需要更多的搜索
-    
-  // 优化相同 context 中所有的逻辑 mexprs
-  For ( each logical log_mexpr in the group )
-    PTasks.push (new O_EXPR( log_mexpr, context ) );
+// optimize all the logical mexprs with the same context
+For ( each logical log_mexpr in the group )
+ PTasks.push (new O_EXPR( log_mexpr, context ) );
 
-  // cost all the physical mexprs with the same context
-  For ( each physical phys_mexpr in the group )
-    PTasks.push ( new O_INPUTS( phys_mexpr , context ) ) ;
+// cost all the physical mexprs with the same context
+For ( each physical phys_mexpr in the group )
+ PTasks.push ( new O_INPUTS( phys_mexpr , context ) ) ;
 }
 /* 
-注意：由于是将任务压入堆栈，因此 O_INPUTS 任务实际上比 O_EXPR 任务更早调度。这是预期的行为，因为可以更早地产生 winner。
+Note: Since the tasks are pushed into a stack, O_INPUTS tasks are actually scheduled earlier than O_EXPR tasks. It is desired because a winner may be produced earlier. 
 */
 ```
 
-如图 18 所示，Group 中逻辑和物理多表达式的分离有助于此任务中的搜索。执行 `O_GROUP` 任务有两种情况。
+As seen in figure 18, the separation of logical and physical multi-expressions in a group facilitates the search in this task. There are two cases for performing a O_GROUP task.
 
-**首先**，第一次优化 Group（即在 Group 中搜索上下文）：在这种情况下，Group 中只有一个逻辑 **mexpr**（初始 mexpr）。该算法只创建一个任务 `O_EXPR`，即初始 **mexpr**，并将其推入任务栈，`O_EXPR` 将通过应用规则生成其他表达式。
+**First**, the first time optimizing a group (i.e., searching a group for a context): In this case, only one logical mexpr (the initial mexpr) is in the group. By this algorithm, only one task, O_EXPR the intial mexpr, is created and pushed into the task stack, which will generate other expressions by applying rules.
 
-**第二种**情况是在<u>**不同的上下文**</u>下（例如，所需物理属性不同）优化 Group 时：在这种情况下，已优化了 Group，可能有<u>==一些 winner==</u>。因此，组中可能有多个逻辑和物理多表达式。需要做两件事：1）我们需要用新的上下文对每个逻辑多表达式执行 O_EXPR 任务。因为在新的上下文中，规则集中某些不能应用于多表达式的规则变得适用。由于独特的规则集技术，我们不会重复触发同一个规则，从而避免在组中生成重复的多个表达式；2）我们需要使用新的上下文对每个物理多表达式执行 O_INPUTS 任务，以计算物理多表达式的成本，并在可能的情况下为此上下文生成赢家。
+The **second** case occurs when optimizing a group under a different context, e.g., a different required physical property: In this case, the group has been optimized and may have some winners. So there may be more than one logical and physical multi-expression in the group. Two things are needed: 1. We need to perform O_EXPR on each logical multi-expression with the new context. Because under the new context, some rules in the rule set that can not be applied to a mexpr become applicable. Due to the unique rule set technique, we will not fire the same rule twice, thus avoiding duplicate multi-expressions generated into the group; 2. We need to perform O_INPUTS on each physical mexpr with the new context to calculate the cost of the physical mexpr and produce a winner for the context if possible.
 
-在 Cascades 中，优化 Group 的任务不处理物理多表达式。对于组中的所有逻辑多表达式，任务为每个逻辑多表达式创建 O_EXPR 任务，并将其压入堆栈。然后生成所有物理多表达式，并计算成本。 在第二次优化 Group 的情况下，将再次生成所有物理多表达式，以在不同的上下文中计算成本。由于所有逻辑和物理多表达式都存储在一个链表中，因此该方法必须跳过组中所有的物理多表达式。从这个比较来看，Columbia 中优化 Group 的算法比 Cascades 中的优化算法效率更高。
+In Cascades, the task of optimizing a group did not deal with physical multiexpressions. For all the logical multi-expressions in a group, the task creates and pushes the O_EXPR task for each logical multi-expression. Then all the physical multi-expressions will be generated and the costs are calculated. In the case of optimizing a group the second time, all physical multi-expressions would be generated again for cost calculations under a different context. And because all logical and physical multi-expressions are stored in one linked list, this method must skip over all the physical multi-expressions in a group. From this comparison, the algorithm of optimizing a group in Columbia is more efficient than that in Cascades.
 
 ##### 4.2.3.2 E_GROUP - Task to expand the group
 

@@ -542,43 +542,6 @@ Class WINNER {
 
 ##### 4.2.1.4 Expressions
 
-> There are two kinds of expression objects: `EXPR` and `M_EXPR`. An `EXPR` object corresponds to an expression in query optimization, which represents a query or a sub-query in the optimizer. An EXPR object is modeled as an operator with arguments (class OP), plus pointers to input expressions (class EXPR). For convenience, it retains the operator's arity. EXPRs are used to represent the initial and final query and are involved in the definitions and bindings of rules.
->
-> An M_EXPR implements a multi-expression. It is a compact form of EXPR which utilizes sharing. An M_EXPR is modeled as an operator with arguments plus pointers to input GROUPs instead of EXPRs, so an M_EXPR embodies several EXPRs. M_EXPRs are the main component of groups and all searching is done over M_EXPRs. So there must be some state associated with M_EXPRs. Table 3 shows the definition of data members in the class M_EXPR and Table 4 shows the definition of corresponding class EXPR_LIST implementing multi-expressions in Cascades.
->
-> ```c++
-> // Table 3. Data Member Definition of class M_EXPR in Columbia
-> Class M_EXPR {
->   private:
->     OP*         Op;        // Operator
->     GRP_ID*     Inputs;    // input groups
->     GRP_ID      GrpID;     // I reside in this group
->     M_EXPR*     NextMExpr; // link to the next mexpr in the same group
->     M_EXPR *    HashPtr;   // list within hash bucket
->     BIT_VECTOR  RuleMask;  // If the index bit is on, do not fire rule with that index
-> }
-> ```
->
-> ```c++
-> // Table 4. Data Member Definition of class EXPR_LIST in Cascades
-> class EXPR_LIST {
->   private:
->     OP_ARG*       op_arg;         // operator
->     GROUP_NO*     input_group_no; // input groups
->     GROUP_NO      group_no;       // I reside in this group
->     EXPR_LIST*    group_next;     // list within group
->     EXPR_LIST*    bucket_next;    // list within hash bucket
->     BIT_VECTOR    dont_fire;      //If the index bit is on, do not fire rule with that index
->     int           arity;          // cache arity of the operator
->     int           task_no;        //Task that created me, for book keeping
->     PROPERTY_SET* phys_prop;      // phys props of the mexpr if it is physical
->     COST*         cost;           // cost of the mexpr if it is physical
-> }
-> ```
->
-> Table 3 and 4 illustrate the two class implementations of multi-expressions in Columbia and Cascades. We can see that comparing to the corresponding class EXPR_LIST in Cascades, class M_EXPR has fewer data members. The extra data members in EXPR_LIST are not needed in M_EXPR: The arity of the mexpr can be gotten from the operator. There is no need to keep track of the tasks which created the mexpr and store the physical properties and cost of the physical mexpr because they are no longer used anywhere once they are calculated and the decision is made. Since multi-expressions occupy the main part of the search space memory, it is very critical to make this data structure as succinct as possible. For example, an M_EXPR object takes 24 bytes of memory while an EXPR_LIST object takes 40 bytes of memory. The memory usage ratio between class EXPR_LIST and M_EXPR is about 1.67 : 1. If the initial query is a join of 10 tables, there are at least 57k logical multi-expressions according to Table 1 shown in Section 2.5. In Columbia these logical multi-expression may take up to 24*57k = 1368k bytes of memory. In Cascades, they may take up to 40*57k = 2280k bytes of memory. So this succinct data structure in Columbia causes a big saving in memory.
->
-
 表达式对象有两种：`EXPR` 和 `M_EXPR`。`EXPR` 对象对应于查询优化中的**表达式**，代表优化器中的**查询**或**子查询**。`EXPR` 对象被建模为<u>带参数的运算符</u>（`OP` 类），**且**含有指向<u>输入表达式</u>（`EXPR` 类）的指针。为方便起见，它保留了运算符参数的个数。`EXPR` 用于表示初始查询和最终查询，并参与规则的定义和绑定。
 
 `M_EXPR` 实现了多重表达式，是 `EXPR` 的一种紧凑形式，利用了共享。M_EXPR 被建模为带参数的运算符，**且**含有指向输入 `GROUP` 的指针（不是指向 `EXPR` 的指针），因此 `M_EXPR` 包含了多个 `EXPR`。`M_EXPR` 是 **Group** 的主要组成部分，所有搜索都在 `M_EXPR` 上完成。因此，必须有一些与 `M_EXPR` 相关的状态。表 3 是 `M_EXPR` 类数据成员的定义，表 4 是 Cascade 中对应实现多重表达式的类 `EXPR_LIST` 的定义。
@@ -617,23 +580,6 @@ class EXPR_LIST {
 
 #### 4.2.2 Rules
 
-> Rules by which the optimizing search is guided are defined in a **rule set** which is independent of the search structure and algorithm. The rule set can be modified independently by adding or removing some rules. Appendix C shows a simple rule set used for optimizing simple join queries.
->
-> All rules are instances of the class RULE, which provides for rule name, an antecedent (the “pattern”), and a consequent (the “substitute”). Pattern and substitute are represented as expressions (EXPR objects) which contain leaf operators. A leaf operator is a special operator only used in rules. It has no input and is a leaf in a pattern or substitute expression tree. During the matching of a rule, a leaf operator node of the pattern matches any sub-tree. For example, the Left To Right (LTOR) join associative rule has these member data, in which L(i) stands for Leaf operator i:
->
-> 1. Pattern: ( L(1) join L(2) ) join L(3)
->
-> 2. Substitute: L(1) join ( L(2) join L(3) )
->
->
-> The pattern and substitute describe how to produce new multi-expressions in the search space. The production of these new multi-expressions is done by `APPLY_RULE::perform()`, in two parts: First a BINDERY object produces a binding of the pattern to an EXPR in the search space; Then `RULE::next_substitute()` produces the new expression, which is integrated into the search space by `SSP::copy_in()`.
->
-> There are other methods in the class `RULE` to facilitate the operations of rules. The method `top_match()` checks whether the top operator of a rule matches the top operator of the current expression wanted to apply the rule. This top matching is done before the actual binding of the rule, hence eliminates a lot of obviously non-match expressions.
->
-> The method `promise()` is used to decide the order in which rules are applied, or even do not apply the rule. The promise() method returns <u>**a promise value**</u> of the rule according to the optimizing context, e.g., the required physical properties we are considering. So it is a run time value and informs the optimizer how useful the rule might be. A promise value of 0 or less means not to schedule this rule here. Higher promise values mean schedule this rule earlier. By default, an implementation rule has a promise of 2 and others a promise of 1, indicating implementation rules are always scheduled earlier. This rule scheduling mechanism allows the optimizer to control search order and benefit from it by scheduling rules to obtain searching bounds as quick as possible, as low as possible.
->
-> Columbia inherited the basic design of rule mechanism from Cascades but made several improvements, including the binding algorithm and the handling of **<u>enforcers</u>**. The following sections will discuss these improvements in detail.
-
 **规则集**中定义了引导优化搜索的**<u>规则</u>**，**规则集**与搜索结构和算法无关。通过添加或删除一些规则，可以独立地修改规则集。附录 C 是一个简单规则集，用于优化简单的联接查询。
 
 所有规则都是 `RULE` 类的实例，它提供了<u>**规则名称**</u>，一个<u>**模式**</u>和一个<u>**替换项**</u>。<u>**模式**</u>和<u>**替换项**</u>表示为包含<u>叶运算符</u>的表达式（`EXPR` 对象）。叶运算符是只在规则中使用的**特殊运算符**。它没有输入，是**模式**或**替换项**<u>表达式树</u>中的叶节点。在匹配规则期间，模式的<u>叶运算符节点</u>会**匹配**<u>任何子树</u>。如，从左到右（`LTOR`）联接规则具有以下成员数据，其中 $L(i)$ 表示叶运算符 $i$：
@@ -651,89 +597,6 @@ class EXPR_LIST {
 Columbia 从 Cascade 继承了规则机制的基本设计，但做了一些改进，包括绑定算法和**<u>强制规则</u>**的处理。以下各节将详细讨论这些改进。
 
 ##### 4.2.2.1 Rule Binding
-
-> All rule-based optimizers must bind patterns to expressions in the search space. For example, consider the LTOR join associative rule, which includes these two member data. Here L(i) stands for the LEAF_OP with index i:
->
-> Pattern: (L(1) join L(2)) join L(3)
->
-> Substitute: L(1) join (L(2) join L(3))
->
-> Each time the optimizer applies this rule, it must bind the pattern to an expression in the search space. A sample binding is to the expression
->
-> $(G_7 \Join G_4 ) \Join G_{10}$
->
->  where G~i~ is the group with GROUP_NO i.
->
-> A **BINDERY** object (a bindery) performs the nontrivial task of identifying all bindings for a given pattern. A BINDERY object will, over its lifetime, produce all such bindings. In order to produce a binding, a bindery must spawn one bindery for each input subgroup. For instance, consider a bindery for the LTOR associativity rule. It will spawn a bindery for the left input, which will seek all bindings to the pattern L(1) join L(2) and a bindery for the right input, which will seek all bindings for the pattern L(3). The right bindery will find only one binding, to the entire right input group. The left bindery will typically find many bindings, one per join in the left input group.
->
-> `BINDERY` objects (binderies) are of two types: expression bindery and group bindery. Expression binderies bind the pattern to only one multi-expression in a group. An expression bindery is used by a rule in the top group, to bind a single expression. Group binderies, which are spawned for use in input groups, bind to all multi-expressions in a group. Because Columbia and its predecessors apply rules only to logical multi-expressions, binderies bind logical operators only.
->
-> Because of the huge number of multi-expressions in the search space, rule binding is a time-consuming task. In fact, in Cascades, the function BINDERY::advance() which finds a binding is the most expensive among all the functions in the optimizer system. Any improvement on the algorithm of rule binding will surely result in the performance improvement of the optimizer. Columbia refined the BINDERY class and binding algorithm to make rule binding more efficient.
->
-> Since a bindery may bind several EXPRs in the search space, it will go through several stages, basically they are: start, then loop over several valid bindings, then finish. In Columbia, these stages are represented by three binding states, each of which is a value of an enum type BINDERY_STATE. It is shown in the following C++ type definition:
->
-> ```c++
-> typedef enum BINDERY_STATE { 
->   start,         // This is a new MExpression
->   valid_binding, // A binding was found.
->   finished,      // Finished with this expression
-> } BINDERY_STATE;
-> ```
->
-> In Cascades, the binding algorithm used more states to keep track of all the binding stages, hence complicating the algorithm and consuming more CPU time. In Cascades, the binding stages are represented by six binding states. The following is the Cascades version of the binding state definition:
->
-> ```c++
-> typedef enum BINDING_STATE {
->   start_group,      // newly created for an entire group
->   start_expr,       // newly created for a single expression
->   valid_binding,    // last binding was succeeded
->   almost_exhausted, // last binding succeeded, but no further ones
->   finished,         // iteration through bindings is exhausted
->   expr_finished     // current expr is finished; in advance() only
-> } BINDING_STATE;
-> ```
->
-> In Columbia, the binding algorithm is implemented in the function `BINDERY::advance()`, which is called by `APPLY_RULE::perform()`. The binding function walks the many trees embedded in the search space structure in order to find possible bindings. The walking is done with a finite state machine, as shown in Figure 15.
->
-> ```c
-> /*Figure 15. Finite State Machine for BINDERY::advance()*/
-> 
-> State start:
->   If the pattern is a leaf, we are done.
->     State = finished
->     Return TRUE
->   Skip over non-logical, non-matching expressions.
->     State = finished
->     break
->   Create a group bindery for each input and try to create a binding for each input.
->   If successful
->     State = valid_binding
->     Return TRUE
->   else
->     delete input binderys
->     State = finished
->     Break
-> 
-> State valid_binding:
->     Increment input bindings in right-to-left order.
->     If we found a next binding,
->       State = valid_binding
->       return TRUE
->     else
->       delete input binderys
->       state = finished
->       break
-> 
-> State finished:
->   If pattern is a leaf OR         // second time through, so we are done     
->      this is an expr bindery OR   // we finished the first expression, so done     
->      there is no next expression
->      return FALSE
->   else
->     state = start
->   break
-> ```
-> Since the finite state machine only has three states, the algorithm in Columbia obtains its simplicity and efficiency compared to the more complex finite state machine in Cascades with six states. Moreover, as mentioned in section 4.2.1.3, the separation of logical and physical multi-expressions into two link lists in Columbia made the binding much faster because there is no need to skip over all the physical expressions in the group.
 
 所有基于规则的优化器都必须将模式绑定到搜索空间中的表达式。例如，联接规则 `LTOR` 包括两个成员数据。这里$L(i)$ 代表索引为 *i* 的 `LEAF_OP`：
 
@@ -849,29 +712,6 @@ Cascades 和 Columbia 在处理强制执行规则上有两个不同之处。
 
 #### 4.2.3 Tasks -- Searching Algorithm
 
-> A **task** is an activity within the search process. The original task is to optimize the entire query. Tasks create and schedule each other; when no undone tasks remain, optimization terminates. Each task is associated with a certain context and has a method `perform`() which actually performs the task. Class `TASK` is an abstract class from which specific tasks are inherited. It contains a pointer to the context, the parent tasks number which creates this task, and a pure virtual function “perform()” needed to be implemented in the subclasses. Class `PTASKS` contains a collection of undone tasks needed to be scheduled and performed. PTASKS is currently implemented as a stack structure which has method “pop()” to remove a task for performing and method “push()” to store a task into the stack structure. A PTASKS object “PTasks” is created at the beginning of the optimization and the original task of optimizing the top group is pushed into PTasks. When optimization begins, the original task is popped out and the perform() method in the task is invoked to begin the actual optimization. The optimization will create follow-up tasks which will be pushed into PTasks for further scheduling. Figure 16 shows the pseudo-code for the main optimization process. By using the abstract class, we can see that a simple and clean programming structure is achieved.
->
-> ```c++
-> // Figure 16. Main Loop of Optimization in Columbia
-> optimize() {
->   // start optimization with top group
->   PTasks.push ( new O_GROUP ( TopGroup ) );
->   // main loop of optimization
->   // while there are tasks undone, do one
->   while (! PTasks.empty ()) {
->     TASK * NextTask = PTasks.pop (); // get the next task
->     NextTask -> perform (); // perform it
->   }
->   // optimization completed, copy out the best plan
->   Ssp.CopyOut() ;
-> }
-> ```
->
-> The whole search algorithm is performed by all the specific tasks in the optimizer. The tasks in Columbia are: group optimization (O_GROUP), group exploration (E_GROUP), expression optimization (O_EXPR), input optimization (O_INPUTS), rule application (APPLY_RULE). Figure 17 shows the relationship between these tasks. Arrows indicate which type of task schedules (invokes) which other type. The remainder of this section will describe the Columbia implementation of each task in detail. In the description of each task, a comparison with Cascades is discussed.
->
-> > - [x] Figure 17. Relationship between Tasks
->
-
 **任务**是搜索过程中的活动。原始任务是优化整个查询。任务相互创建和调度；当没有未完成的剩余任务时，结束优化。每个任务都与特定的上下文相关联，并有一个实际执行任务 `perform()` 方法。类 `TASK` 是一个抽象类，特定的任务从该类继承。它包含一个指向上下文的指针、创建此任务的父任务编号，及需要在子类中实现的纯虚拟函数  `perform()`。类 `PTASKS` 包含<u>需要调度执行的未完成任务</u>的集合。`PTASKS` 目前被实现为一个堆栈，其中 `pop()` 弹出要执行的任务，`push()` 用于将任务存储到堆栈中。优化开始时创建 `PTASKS` 对象 `PTasks` ，将优化顶层 Group 的原始任务推入 `PTASKS`。优化开始后，会弹出原始任务，并调用任务的 `perform()` 方法开始实际的优化。优化将创建后续任务，这些任务将被 `push` 到 `PTasks` 中以便进一步调度。图 16 显示了主要优化过程的伪代码。通过使用抽象类，我们实现了一个简单而干净的编程结构。
 
 ```c++
@@ -898,46 +738,6 @@ optimize() {
 </p>
 
 ##### 4.2.3.1 O_GROUP - Task to Optimize a Group
-
-> This task finds the cheapest plan in this group, for a given set of contexts, and stores it (with the contexts) in the group's winner structure. If there is no cheapest plan (e.g. the upper bound cannot be met), the context with a null plan is stored in the winner structure. This task generates all relevant logical and physical expressions in the group, costs all the physical expressions and chooses the cheapest one. Two other types of tasks are created by O_GROUP task to generate and optimize the expressions in a group: O_EXPR and O_INPUTS.
->
-> Dynamic programming and memoization are used in this task. Before initiating optimization of all of a groups’ expressions, it checks whether the same optimization goal (i.e., same searching context) has been pursued already; if so, it simply returns the plan found in the earlier search. Reusing plans derived earlier is the crucial aspect of dynamic programming and memoization.
->
-> Figure 18 illustrates the process in O_GROUP task. It is implemented by `O_GROUP::perform()` method.
->
-> ```c++
-> /* Figure 18. Algorithm for O_GROUP */
-> 
-> //find the best plan for a group with certain context
-> O_GROUP::perform( context ) {
->   If ( lower bound of the group greater than upper bound in the context)
->     return;                                    // impossible goal
->   If ( there is a winner for the context )
->     return;                                   // done, no further optimization needed
-> 
->   // else, more search needed
->     
->   // optimize all the logical mexprs with the same context
->   For ( each logical log_mexpr in the group )
->     PTasks.push (new O_EXPR( log_mexpr, context ) );
-> 
->   // cost all the physical mexprs with the same context
->   For ( each physical phys_mexpr in the group )
->     PTasks.push ( new O_INPUTS( phys_mexpr , context ) ) ;
-> }
-> /* 
->   Note: Since the tasks are pushed into a stack, O_INPUTS tasks are actually scheduled earlier than O_EXPR tasks. It is desired because a winner may be produced earlier. 
-> */
-> ```
->
-> As seen in figure 18, the separation of logical and physical multi-expressions in a group facilitates the search in this task. There are two cases for performing a O_GROUP task.
->
-> **First**, the first time optimizing a group (i.e., searching a group for a context): In this case, only one logical mexpr (the initial mexpr) is in the group. By this algorithm, only one task, O_EXPR the intial mexpr, is created and pushed into the task stack, which will generate other expressions by applying rules.
->
-> The **second** case occurs when optimizing a group under a different context, e.g., a different required physical property: In this case, the group has been optimized and may have some winners. So there may be more than one logical and physical multi-expression in the group. Two things are needed: 1. We need to perform O_EXPR on each logical multi-expression with the new context. Because under the new context, some rules in the rule set that can not be applied to a mexpr become applicable. Due to the unique rule set technique, we will not fire the same rule twice, thus avoiding duplicate multi-expressions generated into the group; 2. We need to perform O_INPUTS on each physical mexpr with the new context to calculate the cost of the physical mexpr and produce a winner for the context if possible.
->
-> In Cascades, the task of optimizing a group did not deal with physical multiexpressions. For all the logical multi-expressions in a group, the task creates and pushes the O_EXPR task for each logical multi-expression. Then all the physical multi-expressions will be generated and the costs are calculated. In the case of optimizing a group the second time, all physical multi-expressions would be generated again for cost calculations under a different context. And because all logical and physical multi-expressions are stored in one linked list, this method must skip over all the physical multi-expressions in a group. From this comparison, the algorithm of optimizing a group in Columbia is more efficient than that in Cascades.
->
 
 该任务在给定的一组上下文中，找到**组**中成本最低的计划，并将其（与上下文一起）存储在组的 **winner** 结构中。如果没有成本最低的计划（例如无法满足上限），那么带有空计划的上下文存储在 winner 结构中。该任务生成组中所有相关的逻辑和物理表达式，计算所有物理表达式的开销，并选择成本最低的计划。`O_GROUP` 创建两种其他类型的任务：`O_EXPR` 和 `O_INPUTS` 来生成和优化 **==Group==** 中的表达式。
 
@@ -975,7 +775,7 @@ O_GROUP::perform( context ) {
 
 **首先**，第一次优化 Group（即在 Group 中搜索上下文）：在这种情况下，Group 中只有一个逻辑 **mexpr**（初始 mexpr）。该算法只创建一个任务 `O_EXPR`，即初始 **mexpr**，并将其推入任务栈，`O_EXPR` 将通过应用规则生成其他表达式。
 
-**第二种**情况是在<u>**不同的上下文**</u>下（例如，所需物理属性不同）优化 Group 时：在这种情况下，已优化了 Group，可能有<u>==一些 winner==</u>。因此，组中可能有多个逻辑和物理多重表达式。需要做两件事：1）我们需要用新的上下文对每个逻辑多重表达式执行 O_EXPR 任务。因为在新的上下文中，规则集中某些不能应用于多重表达式的规则变得适用。由于独特的规则集技术，我们不会重复触发同一个规则，从而避免在组中生成重复的多个表达式；2）我们需要使用新的上下文对每个物理多重表达式执行 O_INPUTS 任务，以计算物理多重表达式的成本，并在可能的情况下为此上下文生成赢家。
+**more efficient than that in Cascades.第二种**情况是在<u>**不同的上下文**</u>下（例如，所需物理属性不同）优化 Group 时：在这种情况下，已优化了 Group，可能有<u>==一些 winner==</u>。因此，组中可能有多个逻辑和物理多重表达式。需要做两件事：1）我们需要用新的上下文对每个逻辑多重表达式执行 O_EXPR 任务。因为在新的上下文中，规则集中某些不能应用于多重表达式的规则变得适用。由于独特的规则集技术，我们不会重复触发同一个规则，从而避免在组中生成重复的多个表达式；2）我们需要使用新的上下文对每个物理多重表达式执行 O_INPUTS 任务，以计算物理多重表达式的成本，并在可能的情况下为此上下文生成赢家。
 
 在 Cascades 中，优化 Group 的任务不处理物理多重表达式。对于组中的所有逻辑多重表达式，任务为每个逻辑多重表达式创建 O_EXPR 任务，并将其压入堆栈。然后生成所有物理多重表达式，并计算成本。在第二次优化 Group 的情况下，将再次生成所有物理多重表达式，以在不同的上下文中计算成本。由于所有逻辑和物理多重表达式都存储在一个链表中，因此该方法必须跳过组中所有的物理多重表达式。从这个比较来看，Columbia 中优化 Group 的算法比 Cascades 中的优化算法效率更高。
 
