@@ -361,70 +361,43 @@ Figure 9 illustrates the interface of the Columbia optimizer. Columbia takes an 
 
 #### 4.1.1 The Optimizer Input
 
-> In Columbia, the optimizer input is a text file which contains the initial query tree in the LISP style tree representation. A tree consists of a top operator and (if they exist) its inputs, which are represented as sub trees. Each tree or sub tree is parenthesized for separation.
->
-> Table 2 shows the BNF definition of the query tree in text format. In the query text file, comments are allowed and begun with “ `//` ” in each comment line. The query parser will ignore the comment lines. Sometimes comments are very helpful for the people writing and/or reading the query text file, since they provide additional more readable information. Each query text file represents only one query tree. Our current implementation of logical operators includes GET, EQJOIN, PROJECT and SELECT, which is enough to represent most typical Select-Project-Join queries. ==**This design also allows easy extension to support other logical operators**==.
->
-> > - [x] Table 2
->
-> The Query Parser of the Optimizer reads in the query text file and stores it as an expression tree. The expression tree is implemented as a recursive data structure, an object of class `EXPR` which consists of an operator and none or more EXPR objects as inputs. Thus, the query expression tree can be traversed from the root (top) expression. The expression tree serves as an intermediate format which is finally copied into the search space by the optimizer when the search space is initialized. This kind of module separation permits a high level of extensibility. The query parser has a loose relation with optimization (it takes a query text file as input and outputs a query expression), hence more operations can be easily added into the parser to support more functionality, such as schema checking, query re-write, etc. In Cascades, the initial query is represented as an expression tree directly written in C++ code and embedded into the code of the optimizer. If another initial query is to be optimized, the whole code of the optimizer needs to be compiled to include the changes to the initial query expression. In Columbia, only the query text file needs to be rewritten to represent the new initial query and there is no need to compile code.
->
-> Figure 10 shows an example of the content of a query text file and the corresponding query expression tree.
->
-> > - [x] Figure 10
->
-> As shown in Figure 10, the predicate of the `SELECT` is represented as an expression tree serving as one of the inputs of the `SELECT` operator. In Columbia, in addition to logical and physical operators, there are **item operators** inherited from Cascades. **Item operators** are distinguished from bulk operators (the logical and physical operators) in that they operate on a fixed number (usually one) of tuples, while bulk operators operate on an arbitrary number of tuples [Bil97]. Generally item operators can be thought of as functions either of <u>a fixed number of tuples, or of a fixed number of (atomic) values</u>. A predicate is represented as an expression tree of item operators, returning a Boolean value. Tree representation of predicates provides easy predicate manipulation, such as pushing predicate components (sub trees of item operators) through joins [Gra95].
->
+In Columbia, the optimizer input is a text file which contains the initial query tree in the LISP style tree representation. A tree consists of a top operator and (if they exist) its inputs, which are represented as sub trees. Each tree or sub tree is parenthesized for separation.
 
-在 Columbia 中，优化器的输入是一个文本文件，其中包含 LISP 样式树表示中的初始查询树。树由顶部运算符和其输入（如果存在的话）组成，这些输入表示为子树。每个树或子树都用括号括起来进行分隔。
-
-表 2 以文本格式显示了查询树的 BNF 定义。查询文本文件中允许注释，每个注释行以 `//` 开头，查询解析器将忽略注释行。有时注释对于编写和/或阅读查询文本文件的人非常有帮助，因为它们提供了更多可读的信息。每个查询文本文件只表示一个查询树。当前逻辑运算符实现包括 `GET`、`EQJOIN`、`PROJECT` 和 `SELECT`，足以表示最典型的 Select-Project-Join 查询。==**这种设计还允许轻松扩展以支持其他逻辑运算符**==。
+Table 2 shows the BNF definition of the query tree in text format. In the query text file, comments are allowed and begun with “ `//` ” in each comment line. The query parser will ignore the comment lines. Sometimes comments are very helpful for the people writing and/or reading the query text file, since they provide additional more readable information. Each query text file represents only one query tree. Our current implementation of logical operators includes GET, EQJOIN, PROJECT and SELECT, which is enough to represent most typical Select-Project-Join queries. ==**This design also allows easy extension to support other logical operators**==.
 
 <p align="center">
  <img src="./EFFICIENCY IN THE COLUMBIA DATABASE QUERY OPTIMIZER/table_2.png" />
-表 2. Grammar of the Query Tree
+Table 2. Grammar of the Query Tree
 </p>
 
-优化器的查询解析器读取查询文本文件，并将其存储为表达式树。表达式树被实现为一个**递归数据结构**，是 `EXPR` 类的一个对象，由一个运算符和一个或多个 `EXPR` 对象作为输入组成。因此，可以从根（顶部）表达式遍历查询表达式树。表达式树作为一种中间格式，初始化搜索空间时，优化器将其复制到搜索空间中。这种模块分离允许高度的可扩展性。查询解析器与优化器的关系松散（解析器以查询文本文件作为输入并输出查询表达式），因此很容易向解析器中添加更多的运算，以支持更多的功能，如 schema检查、查询重写等。在 Cascades 中，初始查询被表示为直接用 C++ 代码编写的表达式树，并嵌入到优化器代码中。如果要优化另一个初始查询，则需要编译优化器的整个代码，以包含对初始查询表达式的更改。在 Columbia 中，只需要重写查询文本文件来表示新的初始查询，不需要编译代码。
+The Query Parser of the Optimizer reads in the query text file and stores it as an expression tree. The expression tree is implemented as a recursive data structure, an object of class `EXPR` which consists of an operator and none or more EXPR objects as inputs. Thus, the query expression tree can be traversed from the root (top) expression. The expression tree serves as an intermediate format which is finally copied into the search space by the optimizer when the search space is initialized. This kind of module separation permits a high level of extensibility. The query parser has a loose relation with optimization (it takes a query text file as input and outputs a query expression), hence more operations can be easily added into the parser to support more functionality, such as schema checking, query re-write, etc. In Cascades, the initial query is represented as an expression tree directly written in C++ code and embedded into the code of the optimizer. If another initial query is to be optimized, the whole code of the optimizer needs to be compiled to include the changes to the initial query expression. In Columbia, only the query text file needs to be rewritten to represent the new initial query and there is no need to compile code.
 
-图 10 是查询内容和相应的查询表达式树的示例。
+Figure 10 shows an example of the content of a query text file and the corresponding query expression tree.
 
-<p align="center">
+> <p align="center">
  <img src="./EFFICIENCY IN THE COLUMBIA DATABASE QUERY OPTIMIZER/Figure_10.png" />
- 图 10. An Example of Query Text File and Query Expression Tree
+ Figure 10. An Example of Query Text File and Query Expression Tree
 </p>
 
-
-如图 10 所示，`SELECT` 的谓词表示为表达式树，作为 SELECT 运算符的输入之一。 在 Columbia 中，除了逻辑和物理运算符外，还有从 Cascades 继承的 **item 运算符**。与 bulk 运算符（逻辑和物理运算符）的区别是，**item 运算符**对固定数量（通常是一个）的元组进行操作，而 bulk 运算符对任意数量的元组进行操作 [Bil97]。通常，**item 运算符**可以被认为是<u>具有固定数量元组，或固定数量（原子）值</u>的函数。 返回布尔值的谓词，表示为 **item 运算符**的表达式树。将谓词表示为树简化了谓词处理，例如，将谓词（**item 运算符**的子树）推到 Join 下[Gra95]。
+As shown in Figure 10, the predicate of the `SELECT` is represented as an expression tree serving as one of the inputs of the `SELECT` operator. In Columbia, in addition to logical and physical operators, there are **item operators** inherited from Cascades. **Item operators** are distinguished from bulk operators (the logical and physical operators) in that they operate on a fixed number (usually one) of tuples, while bulk operators operate on an arbitrary number of tuples [Bil97]. Generally item operators can be thought of as functions either of <u>a fixed number of tuples, or of a fixed number of (atomic) values</u>. A predicate is represented as an expression tree of item operators, returning a Boolean value. Tree representation of predicates provides easy predicate manipulation, such as pushing predicate components (sub trees of item operators) through joins [Gra95].
 
 #### 4.1.2. The Optimizer Output
 
-> The optimal plan of a query is found during the optimization process and copied out by the optimizer. The optimal plan is printed out in a format of indented tree representation of physical expressions with costs related to the expressions. The final cost is optimal relative to a specific catalog and cost model. Different catalogs and cost models yield different optimal plans for the same query. Figure 11 shows two examples of the optimizer’s output, both of which are the optimal plans of the query shown in Figure 10, relative to different catalogs.
->
-> An implementation algorithm of SELECT operator is FILTER, which evaluates each tuple of the input table against the predicate. As shown in Figure 11, different catalogs yield very different costs and optimal plans. It is reasonable that the plan using an index is much cheaper.
->
-> > - [x] Figure 11
->
+The optimal plan of a query is found during the optimization process and copied out by the optimizer. The optimal plan is printed out in a format of indented tree representation of physical expressions with costs related to the expressions. The final cost is optimal relative to a specific catalog and cost model. Different catalogs and cost models yield different optimal plans for the same query. Figure 11 shows two examples of the optimizer’s output, both of which are the optimal plans of the query shown in Figure 10, relative to different catalogs.
 
-查询的最佳计划是在优化过程中找到的，并由优化器复制出来。最佳计划以物理表达式的缩进树表示格式打印出来，该格式包含与表达式相关的成本。相对于特定 catalog 和成本模型，最终成本是最优的。对于同一查询，不同的 catalog 和成本模型会产生不同的最佳计划。图 11 显示了优化器输出的两个示例，它们都是图 10 中所示查询相对于不同 catalog 的最佳计划。
-
-`SELECT` 运算符的实现算法是 `FILTER`，它根据谓词计算输入表的每个元组。如图 11 所示，不同 catalog 产生非常不同的成本和最佳计划。使用索引的计划要便宜得多，这是合理的。
+An implementation algorithm of SELECT operator is FILTER, which evaluates each tuple of the input table against the predicate. As shown in Figure 11, different catalogs yield very different costs and optimal plans. It is reasonable that the plan using an index is much cheaper.
 
 <p align="center">
  <img src="./EFFICIENCY IN THE COLUMBIA DATABASE QUERY OPTIMIZER/Figure_11.png" />
- 图 10. Two Optimal Plans for one Query with different Catalogs
+ Figure 11. Two Optimal Plans for one Query with different Catalogs
 </p>
+
 
 #### 4.1.3 The External Dependence of Optimizer
 
-> Section 4.1.2 illustrates that the optimizer depends on two kinds of information: catalog and cost model. In Columbia, catalog and cost model are also described in text files to provide the features of extensibility and ease-of-use. The catalog parser and cost model parser read in the catalog and cost model information, then store them in global objects “Cat” and “Cm” (instances of class CAT and class CM respectively). During the optimization process, the optimizer will fetch information from these global objects and operate accordingly.
->
-> Currently Columbia supports a simple version of catalogs and cost models. These text file models allow further extension to catalogs and cost models which support more catalog information and more complex cost model. For instance, it is easy to add functional dependency information to the catalog by adding a new entry in the catalog text file and modifying the catalog accordingly. Moreover, by only editing the text files, users of the optimizer can easily change the catalog and cost model information to experience different optimizations. In Cascades, both catalog and cost model are hard-coded as C++ code into the optimizer system, like the hard-coded query expression, thus any changes to them require compilation and linking of all the code. To illustrate the simple and extensible format, Appendix A and B give examples of catalog and cost model text files.
->
+Section 4.1.2 illustrates that the optimizer depends on two kinds of information: catalog and cost model. In Columbia, catalog and cost model are also described in text files to provide the features of extensibility and ease-of-use. The catalog parser and cost model parser read in the catalog and cost model information, then store them in global objects “Cat” and “Cm” (instances of class CAT and class CM respectively). During the optimization process, the optimizer will fetch information from these global objects and operate accordingly.
 
-[4.1.2 节](# 4.1.2. The Optimizer Output)说明优化器依赖于两种信息：Catalog 和成本模型。在 Columbia 中，Catalog 和成本模型也在文本文件中描述，以提供可扩展性和易用性的特性。catalog 解析器和成本模型解析器读取目录和成本模型信息，然后将它们存储在全局对象 `Cat` 和 `Cm` 中（分别是 `CAT` 和 `CM` 类的实例）。优化过程，优化器将从这些全局对象中获取信息并进行相应的操作。
-
-目前 Columbia 支持的目录和成本模型比较简单。这些文本文件模型允许进一步扩展 Catalog 和成本模型，支持更多的 Catalog 信息和更复杂的成本模型。例如，通过在 Catalog 文本文件中添加一个新条目并相应地修改 Catalog，可以很容易地将功能依赖信息添加到 Catalog 中。此外，通过只编辑文本文件，优化器用户可以轻松地更改目录和成本模型信息，以体验不同的优化。在 Cascades 中，目录和成本模型都作为 C++ 代码硬编码到优化器系统中，就像硬编码查询表达式一样，因此对它们的任何更改都需要编译和链接所有代码。为了说明简单且可扩展的格式，附录 A 和 B 给出了 Catalog 和成本模型文本文件的示例。
+Currently Columbia supports a simple version of catalogs and cost models. These text file models allow further extension to catalogs and cost models which support more catalog information and more complex cost model. For instance, it is easy to add functional dependency information to the catalog by adding a new entry in the catalog text file and modifying the catalog accordingly. Moreover, by only editing the text files, users of the optimizer can easily change the catalog and cost model information to experience different optimizations. In Cascades, both catalog and cost model are hard-coded as C++ code into the optimizer system, like the hard-coded query expression, thus any changes to them require compilation and linking of all the code. To illustrate the simple and extensible format, Appendix A and B give examples of catalog and cost model text files.
 
 ### 4.2 The Search Engine
 
@@ -640,309 +613,159 @@ class EXPR_LIST {
 
 #### 4.2.2 Rules
 
-> Rules by which the optimizing search is guided are defined in a **rule set** which is independent of the search structure and algorithm. The rule set can be modified independently by adding or removing some rules. Appendix C shows a simple rule set used for optimizing simple join queries.
->
-> All rules are instances of the class RULE, which provides for rule name, an antecedent (the “pattern”), and a consequent (the “substitute”). Pattern and substitute are represented as expressions (EXPR objects) which contain leaf operators. A leaf operator is a special operator only used in rules. It has no input and is a leaf in a pattern or substitute expression tree. During the matching of a rule, a leaf operator node of the pattern matches any sub-tree. For example, the Left To Right (LTOR) join associative rule has these member data, in which L(i) stands for Leaf operator i:
->
-> 1. Pattern: ( L(1) join L(2) ) join L(3)
->
-> 2. Substitute: L(1) join ( L(2) join L(3) )
->
->
-> The pattern and substitute describe how to produce new multi-expressions in the search space. The production of these new multi-expressions is done by `APPLY_RULE::perform()`, in two parts: First a BINDERY object produces a binding of the pattern to an EXPR in the search space; Then `RULE::next_substitute()` produces the new expression, which is integrated into the search space by `SSP::copy_in()`.
->
-> There are other methods in the class `RULE` to facilitate the operations of rules. The method `top_match()` checks whether the top operator of a rule matches the top operator of the current expression wanted to apply the rule. This top matching is done before the actual binding of the rule, hence eliminates a lot of obviously non-match expressions.
->
-> The method `promise()` is used to decide the order in which rules are applied, or even do not apply the rule. The promise() method returns <u>**a promise value**</u> of the rule according to the optimizing context, e.g., the required physical properties we are considering. So it is a run time value and informs the optimizer how useful the rule might be. A promise value of 0 or less means not to schedule this rule here. Higher promise values mean schedule this rule earlier. By default, an implementation rule has a promise of 2 and others a promise of 1, indicating implementation rules are always scheduled earlier. This rule scheduling mechanism allows the optimizer to control search order and benefit from it by scheduling rules to obtain searching bounds as quick as possible, as low as possible.
->
-> Columbia inherited the basic design of rule mechanism from Cascades but made several improvements, including the binding algorithm and the handling of **<u>enforcers</u>**. The following sections will discuss these improvements in detail.
+Rules by which the optimizing search is guided are defined in a **rule set** which is independent of the search structure and algorithm. The rule set can be modified independently by adding or removing some rules. Appendix C shows a simple rule set used for optimizing simple join queries.
 
-**规则集**中定义了引导优化搜索的**<u>规则</u>**，**规则集**与搜索结构和算法无关。通过添加或删除一些规则，可以独立地修改规则集。附录 C 是一个简单规则集，用于优化简单的联接查询。
+All rules are instances of the class RULE, which provides for rule name, an antecedent (the “pattern”), and a consequent (the “substitute”). Pattern and substitute are represented as expressions (EXPR objects) which contain leaf operators. A leaf operator is a special operator only used in rules. It has no input and is a leaf in a pattern or substitute expression tree. During the matching of a rule, a leaf operator node of the pattern matches any sub-tree. For example, the Left To Right (LTOR) join associative rule has these member data, in which L(i) stands for Leaf operator i:
 
-所有规则都是 `RULE` 类的实例，它提供了<u>**规则名称**</u>，一个<u>**模式**</u>和一个<u>**替换项**</u>。 <u>**模式**</u>和<u>**替换项**</u>表示为包含<u>叶运算符</u>的表达式（`EXPR` 对象）。叶运算符是只在规则中使用的**特殊运算符**。它没有输入，是**模式**或**替换项**<u>表达式树</u>中的叶节点。在匹配规则期间，模式的<u>叶运算符节点</u>会**匹配**<u>任何子树</u>。 如，从左到右（`LTOR`）联接规则具有以下成员数据，其中 $L(i)$ 表示叶运算符 $i$：
+1. Pattern: ( L(1) join L(2) ) join L(3)
 
-1. 模式：$( L(1) \Join L(2) ) \Join L(3)$
+2. Substitute: L(1) join ( L(2) join L(3) )
 
-2. 替换：$L(1) \Join ( L(2) \Join L(3) )$
 
-模式和替代描述了如何在搜索空间中产生新的多表达式。这些新的多表达式由 `APPLY_RULE::perform()` 分为两步生成：首先，一个 `BINDERY` 对象在搜索空间中将模式绑定到 `EXPR`。然后 `RULE::next_substitute()`  产生新的表达式，该表达式通过 `SSP::copy_in()` 集成到搜索空间中。
+The pattern and substitute describe how to produce new multi-expressions in the search space. The production of these new multi-expressions is done by `APPLY_RULE::perform()`, in two parts: First a BINDERY object produces a binding of the pattern to an EXPR in the search space; Then `RULE::next_substitute()` produces the new expression, which is integrated into the search space by `SSP::copy_in()`.
 
-`RULE` 类中还有其他方法可以方便规则的操作。`top_match()` 检查规则的顶层的运算符，是否与<u>要应用规则的当前表达式</u>的顶层运算符匹配。顶层匹配是在规则的实际绑定之前完成的，因此消除了许多明显不匹配的表达式。
+There are other methods in the class `RULE` to facilitate the operations of rules. The method `top_match()` checks whether the top operator of a rule matches the top operator of the current expression wanted to apply the rule. This top matching is done before the actual binding of the rule, hence eliminates a lot of obviously non-match expressions.
 
-方法 `promise()` 用于确定应用规则的顺序，或者不应用规则。`promise()`  会根据优化的上下文（例如所需的物理属性）返回规则的<u>**承诺**</u>值。因此，它是一个运行时值，并通知优化器该规则可能多有用。该值等于或小于 0 意味着不在此处应用此规则。较高的**<u>承诺</u>**值意味着可以更早地应用此规则。默认情况下，<u>**==实现规则==**</u>的承诺值为 2，其他规则的承诺值为 1，表示总是更早应用<u>**==实现规则==**</u>。这种规则调度机制使得优化器可以控制搜索顺序，并通过规则调度，以尽可能快的速度、尽可能低的成本获得搜索边界，从而从中获益。
+The method `promise()` is used to decide the order in which rules are applied, or even do not apply the rule. The promise() method returns <u>**a promise value**</u> of the rule according to the optimizing context, e.g., the required physical properties we are considering. So it is a run time value and informs the optimizer how useful the rule might be. A promise value of 0 or less means not to schedule this rule here. Higher promise values mean schedule this rule earlier. By default, an implementation rule has a promise of 2 and others a promise of 1, indicating implementation rules are always scheduled earlier. This rule scheduling mechanism allows the optimizer to control search order and benefit from it by scheduling rules to obtain searching bounds as quick as possible, as low as possible.
 
-Columbia 从 Cascade 继承了规则机制的基本设计，但做了一些改进，包括绑定算法和**<u>强制规则</u>**的处理。以下各节将详细讨论这些改进。
+Columbia inherited the basic design of rule mechanism from Cascades but made several improvements, including the binding algorithm and the handling of **<u>enforcers</u>**. The following sections will discuss these improvements in detail.
 
 ##### 4.2.2.1 Rule Binding
 
-> All rule-based optimizers must bind patterns to expressions in the search space. For example, consider the LTOR join associative rule, which includes these two member data. Here L(i) stands for the LEAF_OP with index i:
->
-> Pattern: (L(1) join L(2)) join L(3)
->
-> Substitute: L(1) join (L(2) join L(3))
->
-> Each time the optimizer applies this rule, it must bind the pattern to an expression in the search space. A sample binding is to the expression
->
-> $(G_7 \Join G_4 ) \Join G_{10}$
->
->  where G~i~ is the group with GROUP_NO i.
->
-> A **BINDERY** object (a bindery) performs the nontrivial task of identifying all bindings for a given pattern. A BINDERY object will, over its lifetime, produce all such bindings. In order to produce a binding, a bindery must spawn one bindery for each input subgroup. For instance, consider a bindery for the LTOR associativity rule. It will spawn a bindery for the left input, which will seek all bindings to the pattern L(1) join L(2) and a bindery for the right input, which will seek all bindings for the pattern L(3). The right bindery will find only one binding, to the entire right input group. The left bindery will typically find many bindings, one per join in the left input group.
->
-> `BINDERY` objects (binderies) are of two types: expression bindery and group bindery. Expression binderies bind the pattern to only one multi-expression in a group. An expression bindery is used by a rule in the top group, to bind a single expression. Group binderies, which are spawned for use in input groups, bind to all multi-expressions in a group. Because Columbia and its predecessors apply rules only to logical multi-expressions, binderies bind logical operators only.
->
-> Because of the huge number of multi-expressions in the search space, rule binding is a time-consuming task. In fact, in Cascades, the function BINDERY::advance() which finds a binding is the most expensive among all the functions in the optimizer system. Any improvement on the algorithm of rule binding will surely result in the performance improvement of the optimizer. Columbia refined the BINDERY class and binding algorithm to make rule binding more efficient.
->
-> Since a bindery may bind several EXPRs in the search space, it will go through several stages, basically they are: start, then loop over several valid bindings, then finish. In Columbia, these stages are represented by three binding states, each of which is a value of an enum type BINDERY_STATE. It is shown in the following C++ type definition:
->
-> ```c++
-> typedef enum BINDERY_STATE { 
->   start,         // This is a new MExpression
->   valid_binding, // A binding was found.
->   finished,      // Finished with this expression
-> } BINDERY_STATE;
-> ```
->
-> In Cascades, the binding algorithm used more states to keep track of all the binding stages, hence complicating the algorithm and consuming more CPU time. In Cascades, the binding stages are represented by six binding states. The following is the Cascades version of the binding state definition:
->
-> ```c++
-> typedef enum BINDING_STATE {
->   start_group,      // newly created for an entire group
->   start_expr,       // newly created for a single expression
->   valid_binding,    // last binding was succeeded
->   almost_exhausted, // last binding succeeded, but no further ones
->   finished,         // iteration through bindings is exhausted
->   expr_finished     // current expr is finished; in advance() only
-> } BINDING_STATE;
-> ```
->
-> In Columbia, the binding algorithm is implemented in the function `BINDERY::advance()`, which is called by `APPLY_RULE::perform()`. The binding function walks the many trees embedded in the search space structure in order to find possible bindings. The walking is done with a finite state machine, as shown in Figure 15.
->
-> ```c
-> /*Figure 15. Finite State Machine for BINDERY::advance()*/
-> 
-> State start:
->   If the pattern is a leaf, we are done.
->     State = finished
->     Return TRUE
->   Skip over non-logical, non-matching expressions.
->     State = finished
->     break
->   Create a group bindery for each input and try to create a binding for each input.
->   If successful
->     State = valid_binding
->     Return TRUE
->   else
->     delete input binderys
->     State = finished
->     Break
-> 
-> State valid_binding:
->     Increment input bindings in right-to-left order.
->     If we found a next binding,
->       State = valid_binding
->       return TRUE
->     else
->       delete input binderys
->       state = finished
->       break
-> 
-> State finished:
->   If pattern is a leaf OR         // second time through, so we are done     
->      this is an expr bindery OR   // we finished the first expression, so done     
->      there is no next expression
->      return FALSE
->   else
->     state = start
->   break
-> ```
-> Since the finite state machine only has three states, the algorithm in Columbia obtains its simplicity and efficiency compared to the more complex finite state machine in Cascades with six states. Moreover, as mentioned in section 4.2.1.3, the separation of logical and physical multi-expressions into two link lists in Columbia made the binding much faster because there is no need to skip over all the physical expressions in the group.
+All rule-based optimizers must bind patterns to expressions in the search space. For example, consider the LTOR join associative rule, which includes these two member data. Here L(i) stands for the LEAF_OP with index i:
 
-所有基于规则的优化器都必须将模式绑定到搜索空间中的表达式。 例如，联接规则 `LTOR` 包括两个成员数据。这里$L(i)$ 代表索引为 *i* 的 `LEAF_OP`：
+Pattern: (L(1) join L(2)) join L(3)
 
-1. 模式：$( L(1) \Join L(2) ) \Join L(3)$
-2. 替换：$L(1) \Join ( L(2) \Join L(3) )$
+Substitute: L(1) join (L(2) join L(3))
 
-每次优化器应用此规则时，都必须将模式绑定到搜索空间中的表达式。 绑定表达式的例子为：
+Each time the optimizer applies this rule, it must bind the pattern to an expression in the search space. A sample binding is to the expression
 
 $(G_7 \Join G_4 ) \Join G_{10}$
 
-其中 G~i~ 是 `GROUP_NO`  为 $i$ 的 Group。
+where G~i~ is the group with GROUP_NO i.
 
-`BINDERY` 对象的重要任务是**识别**<u>给定模式所有绑定</u>，将在其生命周期内产生所有此类绑定。为了产生绑定，必须为每个输入子 Group 生成一个 `BINDERY` 实例。
+A **BINDERY** object (a bindery) performs the nontrivial task of identifying all bindings for a given pattern. A BINDERY object will, over its lifetime, produce all such bindings. In order to produce a binding, a bindery must spawn one bindery for each input subgroup. For instance, consider a bindery for the LTOR associativity rule. It will spawn a bindery for the left input, which will seek all bindings to the pattern L(1) join L(2) and a bindery for the right input, which will seek all bindings for the pattern L(3). The right bindery will find only one binding, to the entire right input group. The left bindery will typically find many bindings, one per join in the left input group.
 
-例如，考虑联接规则 `LTOR`  的 bindery。它将为左输入生成一个 bindery，该 bindery 将查找模式 $L(1) \Join L(2)$ 的所有绑定，并为右输入生成一个 bindery，该 bindery 将查找模式 L(3) 的所有绑定。右侧的 bindery 只会找到整个右输入组的一个绑定。左侧的 bindery 通常会找到许多绑定，左输入组中每个联接一个绑定。
+`BINDERY` objects (binderies) are of two types: expression bindery and group bindery. Expression binderies bind the pattern to only one multi-expression in a group. An expression bindery is used by a rule in the top group, to bind a single expression. Group binderies, which are spawned for use in input groups, bind to all multi-expressions in a group. Because Columbia and its predecessors apply rules only to logical multi-expressions, binderies bind logical operators only.
 
-`BINDERY` 对象有两种类型：表达式 `BINDERY` 和 Group `BINDERY`。表达式 `BINDERY`  只将模式绑定到 Group 中的一个<u>==多表达式==</u>。<u>顶层 Group 中的规则使用表达式 `BINDERY` 来绑定单个表达式</u>。为每个输入 Group 生成一个 Group `BINDERY`，用于绑定 Group 中所有的<u>==多表达式==</u>。因为 Columbia 及其前身只对逻辑多表达式应用规则，所以 `BINDERY` 只绑定逻辑运算符。
+Because of the huge number of multi-expressions in the search space, rule binding is a time-consuming task. In fact, in Cascades, the function BINDERY::advance() which finds a binding is the most expensive among all the functions in the optimizer system. Any improvement on the algorithm of rule binding will surely result in the performance improvement of the optimizer. Columbia refined the BINDERY class and binding algorithm to make rule binding more efficient.
 
-由于搜索空间中有大量的<u>==多表达式==</u>，规则绑定是一项耗时的任务。实际上，查找绑定的函数 `BINDERY::advance()` 是 Cascade 优化器所有函数中最耗时的。对规则绑定算法的任何改进都必然导致优化器性能的提高。Columbia 改进了 `BINDERY` 类及其绑定算法，使规则绑定更加高效。
-
-由于一个 `BINDERY` 可以在搜索空间中绑定多个 `EXPR`，它将经历几个阶段，基本上是：**开始**，然后在几个有效绑定中**循环**，最后**结束**。在 Columbia 中，这些阶段由三个绑定状态表示，每个绑定状态对应枚举类型 `BINDERY_STATE` 。其 C ++ 类型定义如下：
+Since a bindery may bind several EXPRs in the search space, it will go through several stages, basically they are: start, then loop over several valid bindings, then finish. In Columbia, these stages are represented by three binding states, each of which is a value of an enum type BINDERY_STATE. It is shown in the following C++ type definition:
 
 ```c++
 typedef enum BINDERY_STATE { 
-  start,         // 新的 MExpression
-  valid_binding, // 发现一个有效的绑定
-  finished,      // 完成此表达式
+start,         // This is a new MExpression
+valid_binding, // A binding was found.
+finished,      // Finished with this expression
 } BINDERY_STATE;
 ```
 
-Cascade 中，绑定算法使用更多状态来跟踪所有绑定阶段，使的算法更加复杂，并消耗更多的CPU时间。Cascade 的绑定阶段由 6 个绑定状态表示。Cascade 的绑定状态定义如下：
+In Cascades, the binding algorithm used more states to keep track of all the binding stages, hence complicating the algorithm and consuming more CPU time. In Cascades, the binding stages are represented by six binding states. The following is the Cascades version of the binding state definition:
 
 ```c++
 typedef enum BINDING_STATE {
-  start_group,      // 为整个 Group 新建
-  start_expr,       // 为单个表达式新建
-  valid_binding,    // 上次绑定成功
-  almost_exhausted, // 上次绑定成功，没有其他绑定了
-  finished,         // 绑定的迭代已完成
-  expr_finished     // 当前表达式已完成；仅限于 advance()
+start_group,      // newly created for an entire group
+start_expr,       // newly created for a single expression
+valid_binding,    // last binding was succeeded
+almost_exhausted, // last binding succeeded, but no further ones
+finished,         // iteration through bindings is exhausted
+expr_finished     // current expr is finished; in advance() only
 } BINDING_STATE;
 ```
-Columbia 中的绑定算法在函数 `BINDERY::advance()` 中实现，该函数由 `APPLY_RULE::perform()` 调用。绑定函数**遍历**包含在搜索空间中的查询树，以找到可能的绑定。遍历是通过有限状态机完成的，如图 15 所示。
+
+In Columbia, the binding algorithm is implemented in the function `BINDERY::advance()`, which is called by `APPLY_RULE::perform()`. The binding function walks the many trees embedded in the search space structure in order to find possible bindings. The walking is done with a finite state machine, as shown in Figure 15.
 
 ```c
-/*Figure 15. BINDERY::advance() 的有限状态自动机 */
+/*Figure 15. Finite State Machine for BINDERY::advance()*/
+
 State start:
-  If the pattern is a leaf, we are done.
-    State = finished
-    Return TRUE
-  Skip over non-logical, non-matching expressions.
-    State = finished
-    break
-  Create a group bindery for each input and try to create a binding for each input.
-  If successful
-    State = valid_binding
-    Return TRUE
-  else
-    delete input binderys
-    State = finished
-    Break
+If the pattern is a leaf, we are done.
+ State = finished
+ Return TRUE
+Skip over non-logical, non-matching expressions.
+ State = finished
+ break
+Create a group bindery for each input and try to create a binding for each input.
+If successful
+ State = valid_binding
+ Return TRUE
+else
+ delete input binderys
+ State = finished
+ Break
 
 State valid_binding:
-    Increment input bindings in right-to-left order.
-    If we found a next binding,
-      State = valid_binding
-      return TRUE
-    else
-      delete input binderys
-      state = finished
-      break
+ Increment input bindings in right-to-left order.
+ If we found a next binding,
+   State = valid_binding
+   return TRUE
+ else
+   delete input binderys
+   state = finished
+   break
 
 State finished:
-  If pattern is a leaf OR         // 第二次通过，所以完成了 
-     this is an expr bindery OR   // 我们完成了第一个表达式，所以完成了
-     there is no next expression
-     return FALSE
-  else
-    state = start
-  break
+If pattern is a leaf OR         // second time through, so we are done     
+  this is an expr bindery OR   // we finished the first expression, so done     
+  there is no next expression
+  return FALSE
+else
+ state = start
+break
 ```
-由于有限状态机只有三个状态，因此与有 6 个状态的 Cascade 中更复杂的有限状态机相比，Columbia 的算法具有简单、高效的特点。此外，如第4.2.1.3节所述，Columbia 将逻辑和物理多表达式分离为两个链接列表，因为不需要跳过组中的所有物理表达式，所以绑定速度更快。
+Since the finite state machine only has three states, the algorithm in Columbia obtains its simplicity and efficiency compared to the more complex finite state machine in Cascades with six states. Moreover, as mentioned in section 4.2.1.3, the separation of logical and physical multi-expressions into two link lists in Columbia made the binding much faster because there is no need to skip over all the physical expressions in the group.
 
 ##### 4.2.2.2 Enforcer Rule
 
-> An **enforcer rule** is a special kind of rule that inserts physical operators that enforce or guarantee desired physical properties. The physical operator inserted by an enforcer rule is called an enforcer. Typically, an enforcer takes a group as input and outputs the same group but with a different physical property. For instance, the QSORT physical operator is an enforcer, which implements the QSORT algorithm over a collection of tuples represented by a group in the search space. The rule SORT_RULE is an enforcer rule, which inserts the QSORT operator into the substitute. It can be represented as:
->
-> ```
-> Pattern: L(1) 
-> Substitute: QSORT L(1) 
-> Where L(i) stands for the LEAF_OP with index i.
-> ```
->
-> An enforcer rule is fired when and only when a search context requires a sorted physical property. For example, when a merge-join is being optimized, **the search context for its inputs** has a required physical property which requires the input is sorted on the merge-join attributes. Consider the multi-expression
->
-> ```
-> MERGE_JOIN(A.X, B.X), G1, G2.
-> ```
->
-> When we are optimizing this multi-expression using the top-down approach, the inputs are to be optimized first with certain contexts. For the left input group G1, the required physical property in the searching context is sorted on A.X, while the right input group G2 will have a required physical property sorted on B.X. When the searching requires a sorted property, the SORT_RULE is fired to insert the QSORT operator to force the input groups to have the required properties.
->
-> It is similar with other enforcer rules, for example, HASH_RULE, which enforces a hashed physical property. Whether an enforcer rule is fired or not is determined by the promise() method in the rule object. ==The promise() method returns a positive promise value if and only if the search context has a required physical property, for example, sorted or hashed==. ==If there is no required physical property, a zero promise value is returned indicating that the enforcer rule will not be fired==.
->
-> There are two differences in the handling of enforcer rules between Cascades and Columbia.
-> 
-> **First, excluded property**. Cascades used excluded properties in the promise() function to determine the promise value of an enforcer. When both the required physical property set and excluded physical property set are not empty, the promise() function return a non-zero promise value. The purpose of using an excluded property is to avoid repeatedly applying an enforcer rule for a group. But those excluded properties are difficult to track and use more memory (it requires that a search context include a pointer to an excluded property), and also make the search algorithm complicated to handle enforcers. Instead, Columbia does not use excluded properties at all. A context only includes a required property and an upper bound. The promise() function determines a rule’s promise only by the required physical property. To avoid the potential problem of repeatedly applying an enforcer rule, **the unique rule set technique is applied to enforcer rules**. That is, the RuleMask data member in each M_EXPR has a bit for each enforcer rule. When an enforcer rule has been fired, the bit associated to this rule is set to on, which means the enforcer rule has been fired for this multi-expression. The other time the enforcer rule is to be fired, the rule mask bit is checked and the rule will not be fired repeatedly. On the other hand, this simple approach raises a potential problem: if a group has been optimized and we are optimizing it for a different property, an enforcer rule bit in a multi-expression may have been set to on because of the last optimization. In this new optimization phrase, the enforcer rule will not have a chance to be fired for the different property, even it has a very good promise for this new physical property. Thus, the optimizer may give a wrong answer for this optimization phrase. The solution to this problem yields another improvement of Columbia over Cascades. It is discussed in the following paragraph as the second difference than Cascades.
->
-> **Second, representation of enforcers**. In Cascades, an enforcer is represented as a physical operator with some parameters. For example, a QSORT operator has two parameters: one is the attributes needed to sort on, the other is the sorting order (ascending or descending). The method QSORT::input_reqd_prop() ==returns no required physical property and a sorted excluded property for inputs==. It provides the searching contexts for inputs when optimizing a multi-expression downward. An enforcer is actually generated by an enforcer rule. After an enforcer rule is successfully bound to an expression, method RULE::next_substitute() is invoked to produce a new expression where the enforcer is inserted. The parameters of the enforcer are produced according to the required physical properties of the searching context. For example, if the search context has a required physical property of being sorted on attributes <A.X, A.Y>, the enforcer generated will be a QSORT with parameter <A.X,A.Y>, denoted as QSORT(<A.X,A.Y>). This new expression with the enforcer will be included into the same group as the “before” expression in the search space. Since enforcers have parameters, enforcers with the same name but different parameters are treated as different enforcers. We can see from this that if the searches come with many different required physical properties, such as sorted on different attributes, there may be many enforcers with the same name but different parameters in a group in the search space. This could be a potential waste.
->
-> In Columbia, instead, an enforcer is represented as a physical operator without any parameter. For example, a QSORT enforcer is denoted as QSORT(), which does not contain any parameter. Only one QSORT operator will be generated and included into a group during the whole optimizing process because after the first SORT_RULE is fired, the corresponding rule bit in the expression is set to on and prevents the future SORT_RULE applications. This approach is safe because we assume that sorting of an input stream costs same regardless of sort keys. Here is how the Columbia optimizer works: If a group has been optimized for a property, an enforcer multi-expression has been added into the group. Now that we are optimizing it for a different property, then the same enforcer will not be generated because the corresponding rule bit has been set. Thus the enforcer rule will not be fired. On the other hand, all the physical multiexpressions in the group (including the enforcer multi-expression) will be checked to see whether the desired property is satisfied and costs will be calculated directly under the new context with the new required physical property. Since the enforcer has no parameter, it satisfies the new physical property and hence the cost of this enforcer multi-expression will be calculated out under the new physical property. If an enforcer multi-expression becomes the winner for a physical property, it and the physical property are stored in the winner structure just like the normal multi-expression winners.
->
-> When the optimizer is going to copy out the optimal plan, the enforcer winners need a special treatment which is to append the parameters to them according to the corresponding required physical properties, since the actual enforcer implementation requires parameters. For example, suppose the enforcer multi-expression “QSORT(), G1” is a winner for the physical property “sorted on A.X”. When we copy out this winner, the actual plan is “QSORT(A.X), G1” which appends the actual parameter to the enforcer.
->
-
-**Enforcer** 规则是一种特殊规则，它插入物理运算符，强制或保证所需的物理属性。强制执行器规则插入的物理运算符称为**强制执行器**。通常，强制执行器将**组**作为输入，并输出<u>结果相同但物理属性不同</u>的**组**。例如，`QSORT` 物理运算符是一个强制执行器，它==在搜索空间中由组表示的元组集合上==实现 QSORT 算法。`SORT_RULE` 规则是一个强制规则，它将 QSORT 运算符插入到==替换==中。它可以表示为:
+An **enforcer rule** is a special kind of rule that inserts physical operators that enforce or guarantee desired physical properties. The physical operator inserted by an enforcer rule is called an enforcer. Typically, an enforcer takes a group as input and outputs the same group but with a different physical property. For instance, the QSORT physical operator is an enforcer, which implements the QSORT algorithm over a collection of tuples represented by a group in the search space. The rule SORT_RULE is an enforcer rule, which inserts the QSORT operator into the substitute. It can be represented as:
 
 ```
 Pattern: L(1) 
 Substitute: QSORT L(1) 
-其中 L(i) 代表索引为 i 的 LEAF_OP。
+Where L(i) stands for the LEAF_OP with index i.
 ```
 
-当且仅当搜索上下文需要排序的物理属性时，才会触发强制执行器规则。例如，考虑用 merge-join 优化时，对**其输入搜索上下文的物理属性**要求是，要按 merge-join 的属性对输入排序。考虑如下的多表达式：
+An enforcer rule is fired when and only when a search context requires a sorted physical property. For example, when a merge-join is being optimized, **the search context for its inputs** has a required physical property which requires the input is sorted on the merge-join attributes. Consider the multi-expression
 
 ```
 MERGE_JOIN(A.X, B.X), G1, G2.
 ```
 
-当使用自顶向下方法优化这个多表达式时，首先根据特定的上下文优化输入。左侧输入组 G1，搜索上下文中所需的物理属性是在 A.X 上排序，而右侧输入组 G2 所需的物理属性是在 B.X 上排序。搜索算法需要输入有序，触发 `SORT_RULE` 插入 QSORT 运算符，以强制输入**组**具有所需的属性。
+When we are optimizing this multi-expression using the top-down approach, the inputs are to be optimized first with certain contexts. For the left input group G1, the required physical property in the searching context is sorted on A.X, while the right input group G2 will have a required physical property sorted on B.X. When the searching requires a sorted property, the SORT_RULE is fired to insert the QSORT operator to force the input groups to have the required properties.
 
-其他强制规则类似，例如 HASH_RULE，它强制执行哈希物理属性。是否触发**Enforcer** 规则，由规则对象中的 `promise()` 方法决定。当且仅当搜索上下文具有所需的物理属性（例如，已排序或已散列）时，`promise()` 方法才返回正的承诺值。如果没有必需的物理属性，则承诺值返回零，表示不会触发强制执行器规则。
+It is similar with other enforcer rules, for example, HASH_RULE, which enforces a hashed physical property. Whether an enforcer rule is fired or not is determined by the promise() method in the rule object. ==The promise() method returns a positive promise value if and only if the search context has a required physical property, for example, sorted or hashed==. ==If there is no required physical property, a zero promise value is returned indicating that the enforcer rule will not be fired==.
 
-Cascades 和 Columbia 在处理强制执行规则上有两个不同之处。
+There are two differences in the handling of enforcer rules between Cascades and Columbia.
 
-**第一，排除属性**。Cascades 使用 `promise()` 函数中排除的属性来确定强制执行器的承诺值。当所需的物理属性集和排除的物理属性集都不为空时，`promise()` 函数返回一个非零的承诺值。使用排除属性的目的是避免对**组**重复应用**强制器规则**。但是很难跟踪那些被排除的属性，并且会占用更多内存（它要求搜索上下文包含一个指向被排除属性的指针），而且还会使搜索算法处理强制执行器变得复杂。相反，Columbia 不使用排除属性。上下文只包括必需的属性和上限。`promise()` 函数仅根据所需的物理属性确定规则的承诺（值）。为了避免可能重复应用强制器规则的问题，将唯一规则集技术应用于强制器规则。也就是说，每个 `M_EXPR` 中的 `RuleMask` 数据成员对于每个强制器规则都有一个比特。当某个强制器执行规则被触发时，与此规则相关联的位被设置为 **on**，这意味着已为此多表达式触发了执行器规则。再次触发此强制执行器规则时，会检查规则掩码位，以保证不会重复触发该规则。另一方面，这种简单的方法会引发一个潜在的问题：如果一个组已经被优化，而我们正在为不同的属性对它进行优化，那么由于上次的优化，多表达式中的强制执行规则位可能已经被设置为 On。在这个新的优化阶段，**强制器规则**不会有机会为不同的属性触发，即使它对这个新的物理属性有很好的承诺。因此，优化器可能会给这个优化阶段一个错误的答案。这个问题的解决方案产生了 Columbia 对 Cascades 的另一个改进。下面一段将讨论它与 Cascades 的第二个不同之处。
+**First, excluded property**. Cascades used excluded properties in the promise() function to determine the promise value of an enforcer. When both the required physical property set and excluded physical property set are not empty, the promise() function return a non-zero promise value. The purpose of using an excluded property is to avoid repeatedly applying an enforcer rule for a group. But those excluded properties are difficult to track and use more memory (it requires that a search context include a pointer to an excluded property), and also make the search algorithm complicated to handle enforcers. Instead, Columbia does not use excluded properties at all. A context only includes a required property and an upper bound. The promise() function determines a rule’s promise only by the required physical property. To avoid the potential problem of repeatedly applying an enforcer rule, **the unique rule set technique is applied to enforcer rules**. That is, the RuleMask data member in each M_EXPR has a bit for each enforcer rule. When an enforcer rule has been fired, the bit associated to this rule is set to on, which means the enforcer rule has been fired for this multi-expression. The other time the enforcer rule is to be fired, the rule mask bit is checked and the rule will not be fired repeatedly. On the other hand, this simple approach raises a potential problem: if a group has been optimized and we are optimizing it for a different property, an enforcer rule bit in a multi-expression may have been set to on because of the last optimization. In this new optimization phrase, the enforcer rule will not have a chance to be fired for the different property, even it has a very good promise for this new physical property. Thus, the optimizer may give a wrong answer for this optimization phrase. The solution to this problem yields another improvement of Columbia over Cascades. It is discussed in the following paragraph as the second difference than Cascades.
 
-**第二，强制执行器的表示**。在 Cascades 中，强制执行器被表示为带有一些参数的物理运算符。例如，QSORT 运算符有两个参数：一个是需要排序的属性，另一个是排序顺序（升序或降序）。方法 `QSORT::input_reqd_prop()` ==返回不需要的物理属性和输入已排序的排除属性==。当向下优化多表达式时，它为输入提供搜索上下文。强制执行器实际上是由强制执行器规则生成。当强制执行器规则成功绑定表达式之后，将调用方法 `RULE::next_substitute()` 以生成插入了强制执行器的新表达式。根据搜索上下文所需的物理属性生成强制执行器的参数。例如，如果搜索上下文必需的物理属性是在属性 `<A.X, A.Y>` 上排序，则生成的强制执行器将是带有参数 <A.X,A.Y> 的 QSORT，表示为 QSORT(<A.X,A.Y>)。这个带有强制执行器的新表达式将与搜索空间中（未带有强制执行器之前）的表达式包含在同一个组中。由于强制执行器有参数，因此名称相同但参数不同的强制执行器被视为不同的强制执行器。从这我们可以看出，如果搜索带有大量不同的且必需的物理属性，例如按不同的属性排序，则搜索空间中可能会有许多名称相同，但参数不同的强制执行器。这可能是一种潜在的浪费。
+**Second, representation of enforcers**. In Cascades, an enforcer is represented as a physical operator with some parameters. For example, a QSORT operator has two parameters: one is the attributes needed to sort on, the other is the sorting order (ascending or descending). The method QSORT::input_reqd_prop() ==returns no required physical property and a sorted excluded property for inputs==. It provides the searching contexts for inputs when optimizing a multi-expression downward. An enforcer is actually generated by an enforcer rule. After an enforcer rule is successfully bound to an expression, method RULE::next_substitute() is invoked to produce a new expression where the enforcer is inserted. The parameters of the enforcer are produced according to the required physical properties of the searching context. For example, if the search context has a required physical property of being sorted on attributes <A.X, A.Y>, the enforcer generated will be a QSORT with parameter <A.X,A.Y>, denoted as QSORT(<A.X,A.Y>). This new expression with the enforcer will be included into the same group as the “before” expression in the search space. Since enforcers have parameters, enforcers with the same name but different parameters are treated as different enforcers. We can see from this that if the searches come with many different required physical properties, such as sorted on different attributes, there may be many enforcers with the same name but different parameters in a group in the search space. This could be a potential waste.
 
-相反，在 Columbia 中，强制执行器被表示为不带任何参数的物理操作符。例如，QSORT 执行器表示为 QSORT()，它不包含任何参数。整个优化过程中只会生成一个 QSORT 算子并将其包含在一个组中，因为在触发第一个 SORT_RULE 后，表达式中相应的规则位被设置为 on，将阻止未来再次触发 SORT_RULE。这种方法是安全的，==因为我们假设不管排序 Key 是什么，对输入流的排序成本都是相同的==。Columbia 优化器的工作原理如下： 如果**组**已针对某个属性进行了优化，那么<u>强制器多表达式</u>就会被添加到该组中。既然我们正在为不同的属性优化它，那么将不会生成相同的强制执行器，因为相应的规则位已设置。因此，不会触发执行者规则。另一方面，将检查组中的所有物理多表达式（包括强制执行器多表达式）以查看是否满足所需的属性，并且将直接在新上下文下使用新的所需物理属性计算成本。由于强制执行器没有参数，它满足新的物理属性，因此在新的物理属性下计算这个强制执行器多表达式的成本。如果强制执行器多表达式成为物理属性的赢家，那么它和物理属性将存储在赢家结构中，就像普通的多表达式赢家一样。
+In Columbia, instead, an enforcer is represented as a physical operator without any parameter. For example, a QSORT enforcer is denoted as QSORT(), which does not contain any parameter. Only one QSORT operator will be generated and included into a group during the whole optimizing process because after the first SORT_RULE is fired, the corresponding rule bit in the expression is set to on and prevents the future SORT_RULE applications. This approach is safe because we assume that sorting of an input stream costs same regardless of sort keys. Here is how the Columbia optimizer works: If a group has been optimized for a property, an enforcer multi-expression has been added into the group. Now that we are optimizing it for a different property, then the same enforcer will not be generated because the corresponding rule bit has been set. Thus the enforcer rule will not be fired. On the other hand, all the physical multiexpressions in the group (including the enforcer multi-expression) will be checked to see whether the desired property is satisfied and costs will be calculated directly under the new context with the new required physical property. Since the enforcer has no parameter, it satisfies the new physical property and hence the cost of this enforcer multi-expression will be calculated out under the new physical property. If an enforcer multi-expression becomes the winner for a physical property, it and the physical property are stored in the winner structure just like the normal multi-expression winners.
 
-当优化器要复制出最优计划时，需要特殊处理强制执行器赢家，即根据相应所需的物理属性向其添加参数，因为实际的强制执行器实现需要参数。例如，假设强制执行器多表达式 `QSORT(), G1` 是物理属性**在 A.X 上排序**的赢家。当我们复制出这个赢家时，实际的计划是 `QSORT(A.X), G1`，它将实际的参数添加到强制执行器。
+When the optimizer is going to copy out the optimal plan, the enforcer winners need a special treatment which is to append the parameters to them according to the corresponding required physical properties, since the actual enforcer implementation requires parameters. For example, suppose the enforcer multi-expression “QSORT(), G1” is a winner for the physical property “sorted on A.X”. When we copy out this winner, the actual plan is “QSORT(A.X), G1” which appends the actual parameter to the enforcer.
 
 #### 4.2.3 Tasks -- Searching Algorithm
 
-> A **task** is an activity within the search process. The original task is to optimize the entire query. Tasks create and schedule each other; when no undone tasks remain, optimization terminates. Each task is associated with a certain context and has a method `perform`() which actually performs the task. Class `TASK` is an abstract class from which specific tasks are inherited. It contains a pointer to the context, the parent tasks number which creates this task, and a pure virtual function “perform()” needed to be implemented in the subclasses. Class `PTASKS` contains a collection of undone tasks needed to be scheduled and performed. PTASKS is currently implemented as a stack structure which has method “pop()” to remove a task for performing and method “push()” to store a task into the stack structure. A PTASKS object “PTasks” is created at the beginning of the optimization and the original task of optimizing the top group is pushed into PTasks. When optimization begins, the original task is popped out and the perform() method in the task is invoked to begin the actual optimization. The optimization will create follow-up tasks which will be pushed into PTasks for further scheduling. Figure 16 shows the pseudo-code for the main optimization process. By using the abstract class, we can see that a simple and clean programming structure is achieved.
->
-> ```c++
-> // Figure 16. Main Loop of Optimization in Columbia
-> optimize() {
->   // start optimization with top group
->   PTasks.push ( new O_GROUP ( TopGroup ) );
->   // main loop of optimization
->   // while there are tasks undone, do one
->   while (! PTasks.empty ()) {
->     TASK * NextTask = PTasks.pop (); // get the next task
->     NextTask -> perform (); // perform it
->   }
->   // optimization completed, copy out the best plan
->   Ssp.CopyOut() ;
-> }
-> ```
->
-> The whole search algorithm is performed by all the specific tasks in the optimizer. The tasks in Columbia are: group optimization (O_GROUP), group exploration (E_GROUP), expression optimization (O_EXPR), input optimization (O_INPUTS), rule application (APPLY_RULE). Figure 17 shows the relationship between these tasks. Arrows indicate which type of task schedules (invokes) which other type. The remainder of this section will describe the Columbia implementation of each task in detail. In the description of each task, a comparison with Cascades is discussed.
->
-> > - [x] Figure 17. Relationship between Tasks
->
-
-**任务**是搜索过程中的活动。原始任务是优化整个查询。任务相互创建和调度；当没有未完成的剩余任务时，结束优化。每个任务都与特定的上下文相关联，并有一个实际执行任务 `perform()` 方法。类 `TASK` 是一个抽象类，特定的任务从该类继承。它包含一个指向上下文的指针、创建此任务的父任务编号，及需要在子类中实现的纯虚拟函数  `perform()`。类 `PTASKS` 包含<u>需要调度执行的未完成任务</u>的集合。 `PTASKS` 目前被实现为一个堆栈，其中 `pop()` 弹出要执行的任务，`push()` 用于将任务存储到堆栈中。优化开始时创建 `PTASKS` 对象 `PTasks` ，将优化顶层 Group 的原始任务推入 `PTASKS`。优化开始后，会弹出原始任务，并调用任务的 `perform()` 方法开始实际的优化。优化将创建后续任务，这些任务将被 `push` 到 `PTasks` 中以便进一步调度。图 16 显示了主要优化过程的伪代码。通过使用抽象类，我们实现了一个简单而干净的编程结构。
+A **task** is an activity within the search process. The original task is to optimize the entire query. Tasks create and schedule each other; when no undone tasks remain, optimization terminates. Each task is associated with a certain context and has a method `perform`() which actually performs the task. Class `TASK` is an abstract class from which specific tasks are inherited. It contains a pointer to the context, the parent tasks number which creates this task, and a pure virtual function “perform()” needed to be implemented in the subclasses. Class `PTASKS` contains a collection of undone tasks needed to be scheduled and performed. PTASKS is currently implemented as a stack structure which has method “pop()” to remove a task for performing and method “push()” to store a task into the stack structure. A PTASKS object “PTasks” is created at the beginning of the optimization and the original task of optimizing the top group is pushed into PTasks. When optimization begins, the original task is popped out and the perform() method in the task is invoked to begin the actual optimization. The optimization will create follow-up tasks which will be pushed into PTasks for further scheduling. Figure 16 shows the pseudo-code for the main optimization process. By using the abstract class, we can see that a simple and clean programming structure is achieved.
 
 ```c++
-// Figure 16. Columbia 优化的主循环
+// Figure 16. Main Loop of Optimization in Columbia
 optimize() {
-  // 从顶层 Group 开始优化
-  PTasks.push ( new O_GROUP ( TopGroup ) );
-  // 优化的主循环
-  // 当有任务未完成时，继续做
-  while (! PTasks.empty ()) {
-      TASK * NextTask = PTasks.pop (); // 获取下一个任务
-    NextTask -> perform (); // 执行之
-  }
-  // 优化完成，复制出最佳方案
-  Ssp.CopyOut() ;
+// start optimization with top group
+PTasks.push ( new O_GROUP ( TopGroup ) );
+// main loop of optimization
+// while there are tasks undone, do one
+while (! PTasks.empty ()) {
+ TASK * NextTask = PTasks.pop (); // get the next task
+ NextTask -> perform (); // perform it
+}
+// optimization completed, copy out the best plan
+Ssp.CopyOut() ;
 }
 ```
 
-整个搜索算法由优化器中的所有特定任务执行。 Columbia 中的任务包括：Group 优化（**O_GROUP**），Group 探索（**E_GROUP**），表达式优化（**O_EXPR**），输入优化（**O_INPUTS**），规则应用（**APPLY_RULE**）。图 17 显示了这些任务之间的关系。箭头指示哪种类型的任务调度（调用）哪种类型的其他任务。本节的其余部分将详细描述 Columbia 中如何实现每个任务。描述每个任务时，比较了 Cascades 的实现。
+The whole search algorithm is performed by all the specific tasks in the optimizer. The tasks in Columbia are: group optimization (O_GROUP), group exploration (E_GROUP), expression optimization (O_EXPR), input optimization (O_INPUTS), rule application (APPLY_RULE). Figure 17 shows the relationship between these tasks. Arrows indicate which type of task schedules (invokes) which other type. The remainder of this section will describe the Columbia implementation of each task in detail. In the description of each task, a comparison with Cascades is discussed.
 
 <p align="center">
  <img src="./EFFICIENCY IN THE COLUMBIA DATABASE QUERY OPTIMIZER/Figure_17.png" />

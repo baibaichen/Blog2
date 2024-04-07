@@ -1,4 +1,4 @@
-# EFFICIENCY IN THE COLUMBIA DATABASE QUERY OPTIMIZER
+# COLUMBIA 数据库查询优化器的效率
 
 [TOC]
 
@@ -359,23 +359,9 @@ Columbia 基于 Cascades 框架，专注于优化器的效率。本章将详细�
  <img src="./EFFICIENCY IN THE COLUMBIA DATABASE QUERY OPTIMIZER/Figure_9.png" />
  图 9. Interface of Columbia Optimizer
 </p>
-
 #### 4.1.1 The Optimizer Input
 
-> In Columbia, the optimizer input is a text file which contains the initial query tree in the LISP style tree representation. A tree consists of a top operator and (if they exist) its inputs, which are represented as sub trees. Each tree or sub tree is parenthesized for separation.
->
-> Table 2 shows the BNF definition of the query tree in text format. In the query text file, comments are allowed and begun with “ `//` ” in each comment line. The query parser will ignore the comment lines. Sometimes comments are very helpful for the people writing and/or reading the query text file, since they provide additional more readable information. Each query text file represents only one query tree. Our current implementation of logical operators includes GET, EQJOIN, PROJECT and SELECT, which is enough to represent most typical Select-Project-Join queries. ==**This design also allows easy extension to support other logical operators**==.
->
-> > - [x] Table 2
->
-> The Query Parser of the Optimizer reads in the query text file and stores it as an expression tree. The expression tree is implemented as a recursive data structure, an object of class `EXPR` which consists of an operator and none or more EXPR objects as inputs. Thus, the query expression tree can be traversed from the root (top) expression. The expression tree serves as an intermediate format which is finally copied into the search space by the optimizer when the search space is initialized. This kind of module separation permits a high level of extensibility. The query parser has a loose relation with optimization (it takes a query text file as input and outputs a query expression), hence more operations can be easily added into the parser to support more functionality, such as schema checking, query re-write, etc. In Cascades, the initial query is represented as an expression tree directly written in C++ code and embedded into the code of the optimizer. If another initial query is to be optimized, the whole code of the optimizer needs to be compiled to include the changes to the initial query expression. In Columbia, only the query text file needs to be rewritten to represent the new initial query and there is no need to compile code.
->
-> Figure 10 shows an example of the content of a query text file and the corresponding query expression tree.
->
-> > - [x] Figure 10
->
-> As shown in Figure 10, the predicate of the `SELECT` is represented as an expression tree serving as one of the inputs of the `SELECT` operator. In Columbia, in addition to logical and physical operators, there are **item operators** inherited from Cascades. **Item operators** are distinguished from bulk operators (the logical and physical operators) in that they operate on a fixed number (usually one) of tuples, while bulk operators operate on an arbitrary number of tuples [Bil97]. Generally item operators can be thought of as functions either of <u>a fixed number of tuples, or of a fixed number of (atomic) values</u>. A predicate is represented as an expression tree of item operators, returning a Boolean value. Tree representation of predicates provides easy predicate manipulation, such as pushing predicate components (sub trees of item operators) through joins [Gra95].
->
+> 优化器输入
 
 在 Columbia 中，优化器的输入是一个文本文件，其中包含 LISP 样式树表示中的初始查询树。树由顶部运算符和其输入（如果存在的话）组成，这些输入表示为子树。每个树或子树都用括号括起来进行分隔。
 
@@ -400,28 +386,19 @@ Columbia 基于 Cascades 框架，专注于优化器的效率。本章将详细�
 
 #### 4.1.2. The Optimizer Output
 
-> The optimal plan of a query is found during the optimization process and copied out by the optimizer. The optimal plan is printed out in a format of indented tree representation of physical expressions with costs related to the expressions. The final cost is optimal relative to a specific catalog and cost model. Different catalogs and cost models yield different optimal plans for the same query. Figure 11 shows two examples of the optimizer’s output, both of which are the optimal plans of the query shown in Figure 10, relative to different catalogs.
->
-> An implementation algorithm of SELECT operator is FILTER, which evaluates each tuple of the input table against the predicate. As shown in Figure 11, different catalogs yield very different costs and optimal plans. It is reasonable that the plan using an index is much cheaper.
->
-> > - [x] Figure 11
->
+> 优化器输出
 
 查询的最佳计划是在优化过程中找到的，并由优化器复制出来。最佳计划以物理表达式的缩进树表示格式打印出来，该格式包含与表达式相关的成本。相对于特定 catalog 和成本模型，最终成本是最优的。对于同一查询，不同的 catalog 和成本模型会产生不同的最佳计划。图 11 显示了优化器输出的两个示例，它们都是图 10 中所示查询相对于不同 catalog 的最佳计划。
 
-`SELECT` 运算符的实现算法是 `FILTER`，它根据谓词计算输入表的每个元组。如图 11 所示，不同 catalog 产生非常不同的成本和最佳计划。使用索引的计划要便宜得多，这是合理的。
+`SELECT` 运算符的实现算法是 `FILTER`，它根据谓词计算输入表的每个元组。如图 11 所示，不同 catalog 产生非常不同的成本和最佳计划。使用索引的计划成本要低的多，这是合理的。
 
 <p align="center">
  <img src="./EFFICIENCY IN THE COLUMBIA DATABASE QUERY OPTIMIZER/Figure_11.png" />
- 图 10. Two Optimal Plans for one Query with different Catalogs
+ 图 11. Two Optimal Plans for one Query with different Catalogs
 </p>
 
-#### 4.1.3 The External Dependence of Optimizer
 
-> Section 4.1.2 illustrates that the optimizer depends on two kinds of information: catalog and cost model. In Columbia, catalog and cost model are also described in text files to provide the features of extensibility and ease-of-use. The catalog parser and cost model parser read in the catalog and cost model information, then store them in global objects “Cat” and “Cm” (instances of class CAT and class CM respectively). During the optimization process, the optimizer will fetch information from these global objects and operate accordingly.
->
-> Currently Columbia supports a simple version of catalogs and cost models. These text file models allow further extension to catalogs and cost models which support more catalog information and more complex cost model. For instance, it is easy to add functional dependency information to the catalog by adding a new entry in the catalog text file and modifying the catalog accordingly. Moreover, by only editing the text files, users of the optimizer can easily change the catalog and cost model information to experience different optimizations. In Cascades, both catalog and cost model are hard-coded as C++ code into the optimizer system, like the hard-coded query expression, thus any changes to them require compilation and linking of all the code. To illustrate the simple and extensible format, Appendix A and B give examples of catalog and cost model text files.
->
+#### 4.1.3 The External Dependence of Optimizer
 
 [4.1.2 节](# 4.1.2. The Optimizer Output)说明优化器依赖于两种信息：Catalog 和成本模型。在 Columbia 中，Catalog 和成本模型也在文本文件中描述，以提供可扩展性和易用性的特性。catalog 解析器和成本模型解析器读取目录和成本模型信息，然后将它们存储在全局对象 `Cat` 和 `Cm` 中（分别是 `CAT` 和 `CM` 类的实例）。优化过程，优化器将从这些全局对象中获取信息并进行相应的操作。
 
@@ -841,35 +818,6 @@ State finished:
 由于有限状态机只有三个状态，因此与有 6 个状态的 Cascade 中更复杂的有限状态机相比，Columbia 的算法具有简单、高效的特点。此外，如第4.2.1.3节所述，Columbia 将逻辑和物理多重表达式分离为两个链接列表，因为不需要跳过组中的所有物理表达式，所以绑定速度更快。
 
 ##### 4.2.2.2 Enforcer Rule
-
-> An **enforcer rule** is a special kind of rule that inserts physical operators that enforce or guarantee desired physical properties. The physical operator inserted by an enforcer rule is called an enforcer. Typically, an enforcer takes a group as input and outputs the same group but with a different physical property. For instance, the QSORT physical operator is an enforcer, which implements the QSORT algorithm over a collection of tuples represented by a group in the search space. The rule SORT_RULE is an enforcer rule, which inserts the QSORT operator into the substitute. It can be represented as:
->
-> ```
-> Pattern: L(1) 
-> Substitute: QSORT L(1) 
-> Where L(i) stands for the LEAF_OP with index i.
-> ```
->
-> An enforcer rule is fired when and only when a search context requires a sorted physical property. For example, when a merge-join is being optimized, **the search context for its inputs** has a required physical property which requires the input is sorted on the merge-join attributes. Consider the multi-expression
->
-> ```
-> MERGE_JOIN(A.X, B.X), G1, G2.
-> ```
->
-> When we are optimizing this multi-expression using the top-down approach, the inputs are to be optimized first with certain contexts. For the left input group G1, the required physical property in the searching context is sorted on A.X, while the right input group G2 will have a required physical property sorted on B.X. When the searching requires a sorted property, the SORT_RULE is fired to insert the QSORT operator to force the input groups to have the required properties.
->
-> It is similar with other enforcer rules, for example, HASH_RULE, which enforces a hashed physical property. Whether an enforcer rule is fired or not is determined by the promise() method in the rule object. ==The promise() method returns a positive promise value if and only if the search context has a required physical property, for example, sorted or hashed==. ==If there is no required physical property, a zero promise value is returned indicating that the enforcer rule will not be fired==.
->
-> There are two differences in the handling of enforcer rules between Cascades and Columbia.
-> 
-> **First, excluded property**. Cascades used excluded properties in the promise() function to determine the promise value of an enforcer. When both the required physical property set and excluded physical property set are not empty, the promise() function return a non-zero promise value. The purpose of using an excluded property is to avoid repeatedly applying an enforcer rule for a group. But those excluded properties are difficult to track and use more memory (it requires that a search context include a pointer to an excluded property), and also make the search algorithm complicated to handle enforcers. Instead, Columbia does not use excluded properties at all. A context only includes a required property and an upper bound. The promise() function determines a rule’s promise only by the required physical property. To avoid the potential problem of repeatedly applying an enforcer rule, **the unique rule set technique is applied to enforcer rules**. That is, the RuleMask data member in each M_EXPR has a bit for each enforcer rule. When an enforcer rule has been fired, the bit associated to this rule is set to on, which means the enforcer rule has been fired for this multi-expression. The other time the enforcer rule is to be fired, the rule mask bit is checked and the rule will not be fired repeatedly. On the other hand, this simple approach raises a potential problem: if a group has been optimized and we are optimizing it for a different property, an enforcer rule bit in a multi-expression may have been set to on because of the last optimization. In this new optimization phrase, the enforcer rule will not have a chance to be fired for the different property, even it has a very good promise for this new physical property. Thus, the optimizer may give a wrong answer for this optimization phrase. The solution to this problem yields another improvement of Columbia over Cascades. It is discussed in the following paragraph as the second difference than Cascades.
->
-> **Second, representation of enforcers**. In Cascades, an enforcer is represented as a physical operator with some parameters. For example, a QSORT operator has two parameters: one is the attributes needed to sort on, the other is the sorting order (ascending or descending). The method QSORT::input_reqd_prop() ==returns no required physical property and a sorted excluded property for inputs==. It provides the searching contexts for inputs when optimizing a multi-expression downward. An enforcer is actually generated by an enforcer rule. After an enforcer rule is successfully bound to an expression, method RULE::next_substitute() is invoked to produce a new expression where the enforcer is inserted. The parameters of the enforcer are produced according to the required physical properties of the searching context. For example, if the search context has a required physical property of being sorted on attributes <A.X, A.Y>, the enforcer generated will be a QSORT with parameter <A.X,A.Y>, denoted as QSORT(<A.X,A.Y>). This new expression with the enforcer will be included into the same group as the “before” expression in the search space. Since enforcers have parameters, enforcers with the same name but different parameters are treated as different enforcers. We can see from this that if the searches come with many different required physical properties, such as sorted on different attributes, there may be many enforcers with the same name but different parameters in a group in the search space. This could be a potential waste.
->
-> In Columbia, instead, an enforcer is represented as a physical operator without any parameter. For example, a QSORT enforcer is denoted as QSORT(), which does not contain any parameter. Only one QSORT operator will be generated and included into a group during the whole optimizing process because after the first SORT_RULE is fired, the corresponding rule bit in the expression is set to on and prevents the future SORT_RULE applications. This approach is safe because we assume that sorting of an input stream costs same regardless of sort keys. Here is how the Columbia optimizer works: If a group has been optimized for a property, an enforcer multi-expression has been added into the group. Now that we are optimizing it for a different property, then the same enforcer will not be generated because the corresponding rule bit has been set. Thus the enforcer rule will not be fired. On the other hand, all the physical multiexpressions in the group (including the enforcer multi-expression) will be checked to see whether the desired property is satisfied and costs will be calculated directly under the new context with the new required physical property. Since the enforcer has no parameter, it satisfies the new physical property and hence the cost of this enforcer multi-expression will be calculated out under the new physical property. If an enforcer multi-expression becomes the winner for a physical property, it and the physical property are stored in the winner structure just like the normal multi-expression winners.
->
-> When the optimizer is going to copy out the optimal plan, the enforcer winners need a special treatment which is to append the parameters to them according to the corresponding required physical properties, since the actual enforcer implementation requires parameters. For example, suppose the enforcer multi-expression “QSORT(), G1” is a winner for the physical property “sorted on A.X”. When we copy out this winner, the actual plan is “QSORT(A.X), G1” which appends the actual parameter to the enforcer.
->
 
 **Enforcer** 规则是一种特殊规则，它插入物理运算符，强制或保证所需的物理属性。强制执行器规则插入的物理运算符称为**强制执行器**。通常，强制执行器将**组**作为输入，并输出<u>结果相同但物理属性不同</u>的**组**。例如，`QSORT` 物理运算符是一个强制执行器，它==在搜索空间中由组表示的元组集合上==实现 QSORT 算法。`SORT_RULE` 规则是一个强制规则，它将 QSORT 运算符插入到==替换==中。它可以表示为:
 
