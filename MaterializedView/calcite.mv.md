@@ -2349,8 +2349,8 @@ class TopDownRuleDriver implements RuleDriver {
 | -                  | multi-expression    | 在 `VolcanoPlanner` 内部时，`RelNode` 的子节点会被替换成 `RelSubset`（而非具体的 plan），这时该 `RelNode` 也就是所谓的 multi-expression |
 | RelSet             | Group               | relational expression 等价的 plan 集合                       |
 | RelSubset          | -                   | relational expression 和 physical properties 相同的 plan 集合 |
-| TransformationRule | transformation rule | 从 logical plan 到 logical plan 的等价转换规则               |
-| ConverterRule      | implementation rule | 将 logical plan 转化为 physical plan 的转换规则              |
+| TransformationRule | transformation rule | 从逻辑计划到逻辑计划的等价转换规则                           |
+| ConverterRule      | implementation rule | 将逻辑计划转化为物理计划的转换规则                           |
 | RelTrait           | physical properties | 物理属性，典型的就是排序（collation）和分布（distribution）  |
 
 #### `OptimizeGroup`
@@ -2358,9 +2358,9 @@ class TopDownRuleDriver implements RuleDriver {
 `OptimizeGroup` 用于优化一个 `RelSubset`，类似于 Columbia 中的 `O_GROUP`。
 
 1. 递归优化当前 `RelSubset` 中的每个 physical plan（生成 `OptimizeInputs`）
-2. 递归优化当前 `RelSubset` 中的每个 logical plan（生成 `OptimizeMExpr`）
+2. 递归优化当前 `RelSubset` 中的每个逻辑计划（生成 `OptimizeMExpr`）
 
-注意，这里故意先探索 physical plan 再探索 logical plan（即 explore），这是因为搜索 physical plan 的过程中可能生成可行 plan 从而能帮助剪枝。
+注意，这里故意先探索物理计划再探索逻辑计划（即 explore），这是因为搜索物理计划的过程中可能生成可行 plan 从而能帮助剪枝。
 
 #### `OptimizeInputs` 以及 `OptimizeInput1`
 
@@ -2370,21 +2370,21 @@ class TopDownRuleDriver implements RuleDriver {
 
 #### `OptimizeMExpr`
 
-`OptimizeMExpr` 用于优化一个 logical plan，类似于 Columbia 中的 `E_GROUP`。这里 `MExpr` 的命名是借鉴自 Columbia 中的 `M_EXPR`（multi-expression）
+`OptimizeMExpr` 用于优化一个逻辑计划，类似于 Columbia 中的 `E_GROUP`。这里 `MExpr` 的命名是借鉴自 Columbia 中的 `M_EXPR`（multi-expression）
 
 1. 依次 explore 每个子节点 `RelSubset`（生成 `ExploreInput`）
 2. 在当前节点匹配所有可能的规则（生成 `ApplyRules`）
 
 #### `ExploreInput`
 
-`ExploreInput` 为当前 `RelSubset` 中的每个 logical plan 生成 `OptimizeMExpr`。不难看出，它们俩来回调用构成了整个 explore 过程。
+`ExploreInput` 为当前 `RelSubset` 中的每个逻辑计划生成 `OptimizeMExpr`。不难看出，它们俩来回调用构成了整个 explore 过程。
 
 #### `ApplyRules` 以及 `ApplyRule`
 
 故名思义 `ApplyRules` 为当前节点找到所有的 rule match 并生成相应的 `ApplyRule`，后者 apply rule 生成新的 plan。新 plan 产生后必然会进入某个 `RelSubset`，进而又会进一步触发后续的优化任务（这部分位于 `onProduce`）：
 
-- 如果产生的是 logical plan 则生成 `OptimizeMExpr`
-- 如果产生的是 physical plan 则生成 `OptimizeInputs`
+- 如果产生的是逻辑计划则生成 `OptimizeMExpr`
+- 如果产生的是物理计划则生成 `OptimizeInputs`
 
 和上面 `OptimizeGroup` 做的事情如出一辙。
 
@@ -2430,7 +2430,7 @@ Pruning 发生在 `OptimizeInputs` 的过程中：
 
 ### Pass-through 和 derive
 
-回忆一下 Volcano/Cascades 优化器中，递归调用的输入参数不仅包括 logical plan，还包括上层所需的 physical properties。二者共同组成了动态规划的最优子结构。
+回忆一下 Volcano/Cascades 优化器中，递归调用的输入参数不仅包括逻辑计划，还包括上层所需的 physical properties。二者共同组成了动态规划的最优子结构。
 
 但是 Calcite 原本的 `VolcanoPlanner` 中并没有向下传递所需的 physical properties，而是通过临时放置一个 `AbstractConvertor` 作为所需 `RelSubset` 的 placeholder，在之后 apply rule 的过程中如果能“恰好”产生同一 `RelSubset` 的 plan，则可能会作为 best 被选出。这一过程中，apply rule 或是算子并不知道上层需要怎样的 physical properties，因此比较低效。
 
@@ -2494,7 +2494,7 @@ private RelNode convert(RelNode rel, RelSubset group) {
 
 最后再说说 **derive**。我们说过，pass-through 用于**自上而下**传递所需的 physical properties。但是在某些情况下这还不够。例如考虑 broadcast join 的生成过程，其中 Join 算子的 distribution 需要和其中一个输入节点（例如 TableScan）保持一致，另一边则通过 Exchange(broadcast) 将数据重分布到所有 Join 上。注意这里 Join 算子的 distribution 来自于它的子节点 TableScan，这一**自下而上**的传递过程就依赖 derive。
 
-`DeriveTrait` 任务总是在一个 physical plan 生成后被调用，用于调用 derive 接口。如果 derive 产生了新的 trait 则为之生成相应的 `RelSubset`。
+`DeriveTrait` 任务总是在一个物理计划生成后被调用，用于调用 derive 接口。如果 derive 产生了新的 trait 则为之生成相应的 `RelSubset`。
 
 ### 总结
 
@@ -2510,6 +2510,121 @@ private RelNode convert(RelNode rel, RelSubset group) {
 2. [CALCITE-3916: Support cascades style top-down driven rule apply](https://issues.apache.org/jira/browse/CALCITE-3916)
 3. [CALCITE-3916: Support top-down rule apply and upper bound space pruning #1991](https://github.com/apache/calcite/pull/1991)
 4. [Efficiency in the Columbia Database Query Optimizer - YONGWEN XU](https://15721.courses.cs.cmu.edu/spring2018/papers/15-optimizer1/xu-columbia-thesis1998.pdf)
+
+## Cascades style Top-Down 实现
+
+### 当前问题
+
+**无论是消除 importance 之前还是之后，rule 的 apply 过程都是随机的。** 在消除 importance 后，我们不再需要类似于深度学习中梯度的反向传播一样向上递归，不停重新计算和比较  importance，节省了计算成本，但仍然存在一些问题。
+
+- 问题一，无法合理的应用剪枝策略。在消除 importance 之前，剪枝策略非常激进。在找到第一个满足条件的 plan 后一定步数之内没有找到更优的计划就会停止搜索。在消除 importance 之后，剪枝策略非常保守，除非超时或所有 rule 都 apply 完毕，否则不会停止搜索。剪枝策略的过于激进和过于保守会导致很难平衡优化成本和优化效果。Calcite 可能用于很多不同的场景，这些场景对于成本和效果的权衡也是不同的。
+- 问题二，更加致命。在 Volcano/Cascades 论文中，优化过程有三个阶段，Exploration (logical transformation, yields logical nodes) 、Implementation (physical transformation, yields physical nodes) 和 Optimization (Physical property enforcement)。==但因为将逻辑算子全部展开的开销过于巨大，基于优化时间和成本的考虑，为了尽可能快的搜索到一个可用的执行计划，目前业界的实现这些几乎都是在一个阶段完成的==。所以目前 Calcite 随机 apply rule 的方式带来了一个巨大的问题，子 RelSet 无法知道父 RelSet 的 Trait，对优化结果可能产生不好的影响。为了解决这个问题，Calcite 用了一个 `AbstractConvertor`，在 apply 过程中穷举生成 trait 相同的 plan，最后在 `buildCheapestPlan()` 的时候选出，非常低效。
+
+考虑如下这个逻辑计划。我们随机 apply 规则，当 transform 到 LogicalJoin 这个结点时，我们无法知道最后的结果需要排序，那么有可能最后的物理算子不是 HashJoin，从而后面需要增加 Sort 算子导致最后的计划不是最优计划。
+
+```text
+LogicalSort
+  LogicalProject
+    LogicalFilter
+      LogicalJoin
+        JdbcTableScan
+        JdbcTableScan
+```
+
+但是如果 Top-Down 地执行 apply rule，那么当优化某个 RelSet 时，我们完全可以知道其父 RelSet 的 Trait，从而得到更好的计划。更多 case 可以参考 [[CALCITE-3896] Pass through parent trait requests to child operators](https://issues.apache.org/jira/browse/CALCITE-3896) 。
+
+### 解决方案
+
+阿里云 Maxcompute（原 ODPS） 团队给 Calcite 提出了一个真正意义上的 Top-Down 优化器 [[CALCITE-3916] Support cascades style top-down driven rule apply](https://issues.apache.org/jira/browse/CALCITE-3916) ，集成在了 VolcanoPlanner 内部，提供了一个开关 `topDownOpt` 用于开启或关闭。
+
+这个 PR 参考了 [Columbia Query Optimizer](https://15721.courses.cs.cmu.edu/spring2019/papers/22-optimizer1/xu-columbia-thesis1998.pdf) ，优化算法参考论文 4.2.3 节。这里做一个简单的阐述。
+
+解决一个动态规划问题，通常有两种方法，自底向上和自顶向下（记忆化搜索）。如先前讨论过的优先队列情况，若去掉 importance 变成一个无序队列，因注册结点的顺序是深度优先，先注册子节点再注册当前结点，所以规则的应用顺序永远是从叶节点到根节点的，这就是典型的自底向上。
+
+而 Columbia Optimizer 的优化方式是典型的自顶向下，我更愿意称之为**记忆化搜索**。自顶向下的优化器并不意味着规则的 apply 顺序是自顶向下的，而是请求（也就是流程发起）是自顶向下的。执行顺序是这样一个过程。
+
+1. 给定 RelSet X，对其进行 Optimize。
+2. 但是在 Optimization 之前，是否已经 implementation ？没有的话，让我们 implements X。
+3. 等等，是否 explore 过？没有，那么让我们首先 explore 这个 RelSet。如何 explore 这个 RelSet？从这个 RelSet 中的第一个 RelNode A 开始。
+4. 在开始之前，检查是否已经 explore 了 RelNode A 的子 RelSet (Y 和 Z) ？没有，然后让我们首先 explore RelSet Y...
+5. X 的子结点全部 explore 完毕，开始 implements X。
+6. 先 implements Y...
+
+还是以数组 $nums = [10,9,2,5,3,7,101,18]$ 为例计算 $LIS$，计算 $Length[1][1]$​ 时会去递归计算第一行下方的子问题，并在全局缓存，在下一次计算到这个子问题时直接拿到缓存结果，而不是巧妙安排计算顺序，从最下一行算起。
+
+![img](./v2-adf876bb21772d656fe5fd8a98c782de_720w.webp)
+
+Columbia Optimizer 本质上就是以一个的深度优先递归方式来优化关系代数表达式。对于一个算子树 T，深度优先的从根节点到叶节点遍历 T（每一个节点实际上会被转换成等价的算子森林），对于其中的每一个节点，应用全部匹配的规则计算出新结点并加入森林，最后根据 Cost 信息从各个森林中选出一个树，使最后组成的算子树的 Cost 最低。
+
+> 这又有同学提出一个问题。对于每一个结点，会有一个 Match 的 Rule 队列，在这个 RelNode 上应用 Rule 的顺序和是 FIFO 的，为什么在这个队列不引入 SubstitutionRule ，让某些肯定有收益的 Rule 先执行呢？
+
+上一章提到的优化器（IterativeRuleDriver）中，Rule 被放在一个全局的队列里，依次从队列中弹出一个 Rule，优化这个 Rule 对应的所有子树。 SubstitutionRule 先被弹出的目的是尽快让有收益的 Rule 被匹配，得到一个成本过得去的计划。这是一个 Rule 驱动的过程，每一次优化的过程，被优化的结点在树中都是“随机”的。每一条 Rule 应用完，原算子树中可能有很多的子树被优化，SubstitutionRule 的收益很高。但 Top-Down 的实现里，每次被优化的结点是按深度优先的顺序来依次优化结点，对于每个结点，来找其匹配的一些 Rule 执行。此时即使有些 Rule 被优先执行，受到影响的仅仅是这个结点代表的子树。最坏的情况下，在优化的前期，甚至是这个结点是叶节点，那优先弹出一些 Rule 执行，影响的仅仅是一个叶子结点，这种策略收益低，实现起来复杂度高，意义不大。
+
+递归需要维护调用栈，保存执行现场，性能是比较差的。[Church–Turing thesis - Simple English Wikipedia, the free encyclopedia](https://link.zhihu.com/?target=https%3A//simple.wikipedia.org/wiki/Church%E2%80%93Turing_thesis%23%3A~%3Atext%3DThe%20Church-Turing%20thesis%20%28also%20known%20as%20Church%27s%20thesis%2C%2CChurch-Turing%20thesis%20is%20linked%20to%20G%C3%B6del%27s%20incompleteness%20theorems.) 已经证明，所有图灵完备（Turing Completeness）的函数在表达能力上都是严格等价的，所以所有的递归函数都可以用非递归的图灵完备的函数来实现。==<u>Columbia Optimizer 将这个过程利用栈消除递归，形成了一个具备 Initialized, Explored, Exploring, Implemented, Implementing, Optimized, Optimizing 等状态的状态机</u>==。
+
+![img](./v2-65ffc3243bc7c501a1443658fa627565_720w.webp)
+
+整个优化过程就是不停从 Task 栈顶取 Task 执行，直到栈空为止。总共有五类 Task。
+
+| Task       | Description             |
+| ---------- | ----------------------- |
+| O_GROUP    | group optimization      |
+| E_GROUP    | group exploration       |
+| O_EXPR     | expression optimization |
+| O_INPUTS   | inputs optimization     |
+| APPLY_RULE | rule application        |
+
+其调用关系如图。
+
+![img](./v2-f5e293f4ae50b7250e33a853babd0792_720w.webp)
+
+#### O_GROUP
+
+O_GROUP 用于优化一个 group。其 perform 函数会递归优化当前 group （类似 Calcite 的 RelSet）中的每个物理计划和逻辑计划。对于**物理计划**，生成 O_INPUTS 放入 Task 栈，对于**逻辑计划**，生成 O_EXPR 放入 Task 栈。
+
+注意这里先遍历逻辑计划 ，生成 O_EXPR。但是由于 Task 进入的是栈，所以先被执行的 Task 反而是后入栈的 O_INPUTS。**这里是故意这么设计的，其原因是搜索物理计划的过程中生成的可行的 plan 可能会帮助剪枝**。
+
+![img](./v2-c09fd332090f2c71da8269ceb58050d8_720w.webp)
+
+#### O_EXPR
+
+O_EXPR 中<u>遍历所有规则并 apply</u>，同时依次 ==explore== 子逻辑计划。
+
+![img](./v2-07ce6f63dd8b0aeae46a4816dd86aba2_720w.webp)
+
+#### O_INPUTS
+
+O_INPUTS 计算 cost，获取一个表达式的最优 physical plan。但这个任务比较特殊，它在调度其他 Task 后不会终止，只有在找到解（完整优化的 plan 的 cost 小于一个预设的上界）或碰到剪枝条件（low bound pruning）才会退出。它首先将自己推入栈，然后调度下一个 O_GROUP Task，也就是不停 optimize 子结点。
+
+这个 Task 是最核心的 Task。
+
+![img](./v2-68e391b1da08d0fc2fc4c13302517459_720w.webp)
+
+#### APPLY_RULE
+
+APPLY_RULE 对于每一组 rule 和结点，apply rule 形成新的 plan。根据生成的是逻辑计划还是物理计划生成不同的 task 并入栈。
+
+![img](./v2-22a5086a9da3a0f0bb44c61961e24ab8_720w.webp)
+
+#### E_GROUP
+
+E_GROUP 用于 expand 一个 group。其 perform 函数依次 explore group 中的**每一个逻辑计划**。
+
+![img](./v2-10dec3b325e81ff0b7c72a83e2227f0e_720w.webp)
+
+#### 剪枝
+
+<u>剪枝的原理可以参见 Columbia 论文 4.3.1 章节。相比于 Cascades，区别在于行 4. Group Lower Bound 计算的是逻辑上的成本，只考虑 logical properties</u>。
+
+![img](./v2-6fb7dccb3269c9e5d915475ce9500969_720w.webp)
+
+在有了 Lower Bound Pruning 后，Search Space 对应的结果的二维矩阵不一定会被全部计算。类似下方这个矩阵某几个原本本应求解的子问题（非 0 的元素）可能直接不计算。因为仅计算 Logical Properties 后得到的最小 Cost 已经超过可以接受的上限了。
+
+![img](./v2-adf876bb21772d656fe5fd8a98c782de_720w.webp)
+
+### 具体实现
+
+
 
 ## 物化视图匹配
 
