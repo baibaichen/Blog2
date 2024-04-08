@@ -682,7 +682,7 @@ State finished:
 
 ##### 4.2.2.2 Enforcer Rule
 
-**Enforcer** 规则是一种特殊规则，它插入物理运算符，强制或保证所需的物理属性。强制执行器规则插入的物理运算符称为**强制执行器**。通常，强制执行器将**组**作为输入，并输出<u>结果相同但物理属性不同</u>的**组**。例如，`QSORT` 物理运算符是一个强制执行器，它==在搜索空间中由组表示的元组集合上==实现 QSORT 算法。`SORT_RULE` 规则是一个强制规则，它将 QSORT 运算符插入到==替换==中。它可以表示为:
+**Enforcer 规则**是一种特殊规则，它插入物理运算符，以强制或保证所需的物理属性。**Enforcer 规则**插入的物理运算符称为 **enforcer**。通常，**Enforcer** 将**组**作为输入，并输出<u>结果相同但物理属性不同</u>的**组**。例如，`QSORT` 物理运算符是一个 **enforcer**，它在搜索空间中由组表示的元组集合上实现 QSORT 算法。`SORT_RULE` 规则是一个强制规则，它将 QSORT 运算符插入到==替换==中。它可以表示为:
 
 ```
 Pattern: L(1) 
@@ -893,15 +893,16 @@ APPLY_RULE::perform( mexpr, rule, context, exploring ) {
 
 图 22 说明了方法 `O_INPUTS_perform()` 的伪代码，它实现了任务 O_INPUTS 的算法。
 
-**符号**：
-
-- **G**：正在优化的组。
-- **IG**：G 中表达式的各种输入。
-- **GLB**：输入 Group 的组下界，存储为 Group 的数据成员。
-- **Full winner**：计划不为空的获胜者。
-- **InputCost**[]：包含对 G 的最优输入的实际（或下限）成本。
-- **LocalCost**：正在优化的顶层运算符的成本。
-- **CostSoFar**：LocalCost + 所有 InputCost[] 项的总和。
+> **符号**：
+>
+> - **G**：正在优化的组。
+> - **IG**：G 中表达式的各种输入。
+> - **GLB**：输入 Group 的组下界，存储为 Group 的数据成员。
+> - **Full winner**：计划不为空的获胜者。
+> - **InputCost**[]：包含对 G 的最优输入的实际（或下限）成本。
+> - **LocalCost**：正在优化的顶层运算符的成本。
+> - **CostSoFar**：LocalCost + 所有 InputCost[] 项的总和。
+>
 
 ```c++
 /* Figure 22 Pseudo-code of O_INPUTS::perform() */
