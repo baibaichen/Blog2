@@ -182,3 +182,14 @@ Cons: separate test cases for new planner, one more planner to maintain
 We'd like to hear the community's thoughts and advices.
 
 Thanks.
+
+------------
+
+RelSubset 是 Apache Calcite 中描述具有相同物理属性的关系表达式集合的概念。RelSubset 能够帮助优化器找到最佳的查询计划，主要体现在以下几个方面：
+
+1. 表示不同的执行策略：每个 RelSubset 代表了一个查询执行的可能策略。例如，一个查询可能可以通过哈希连接或者排序合并连接来执行。这些都是同一查询的不同执行策略，它们会在同一个 RelSet 中以不同的 RelSubset 形式存在。
+2. 提供成本比较的基础：对于每一个 RelSubset，优化器会按照一定的模型计算其执行成本，然后在所有的 RelSubset 中选择成本最低的一个。因此，RelSubset 为优化器提供了一个成本评估和比较的基础。
+3. ==生成更多的执行策略：在查询优化的过程中，优化器还会通过转换规则（Transformation Rules）生成新的 RelSubset，进一步寻找可能的最优解==。
+4. 加快查询优化过程：由于 RelSubset 中的关系表达式是物理相等的，所以能避免在物理优化阶段进行无意义的比较和计算。这一点对于加快查询优化过程和提高优化效率是非常有帮助的。
+
+通过以上方式，RelSubset 可以帮助优化器更好地找到最佳的查询计划。

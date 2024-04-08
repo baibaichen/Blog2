@@ -911,7 +911,7 @@ GROUP BY orderstatus
 
 The associated query plan might look like this:
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/607d33d2b04e03f8aad679dd_plan-example.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/607d33d2b04e03f8aad679dd_plan-example.png)
 
 ## Optimizer Interface
 
@@ -955,7 +955,7 @@ MEMO 是一种数据结构，主要用于基于成本的优化器，以有效地
 
 Presto 还使用类似 MEMO 的数据结构。有一个存储**组**的 [`Memo`](https://github.com/prestodb/presto/blob/release-0.245/presto-main/src/main/java/com/facebook/presto/sql/planner/iterative/Memo.java) 类。优化器[初始化](https://github.com/prestodb/presto/blob/release-0.245/presto-main/src/main/java/com/facebook/presto/sql/planner/iterative/IterativeOptimizer.java#L89) `Memo`，它通过关系树的递归遍历填充**组**。但是，`Memo` 中的每个组可能只有一个 [运算符](https://github.com/prestodb/presto/blob/release-0.245/presto-main/src/main/java/com/facebook/presto/sql/planner/iterative/Memo.java#L254)。也就是说，Presto 不会在一个组中存储多个等价的运算符。相反，正如我们将在下面看到的，Presto 无条件地用转换后的**运算符**替换当前**运算符**。因此，Presto 中的`Memo` 类不是经典意义上的 MEMO 数据结构，因为它不跟踪等价操作符。在 Presto 中，您可能会将**组**视为**运算符**的方便包装器，主要用于在优化过程中跟踪运算符的==可达性==。
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/607d35a463c67eb5fef29ffd_memo.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/607d35a463c67eb5fef29ffd_memo.png)
 
 ### Rule Matching
 
@@ -1003,11 +1003,11 @@ To generate the equivalent execution plans, we may apply one or more **transform
 
 Some transformations operate on bigger parts of the plan or even the whole plan. For example, an implementation of the join order selection with dynamic programming may enumerate all joins in the plan, generate alternative join sequences, and pick the best one.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/60963ba5eb259ef7ebab78e4_blog04-dp.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/60963ba5eb259ef7ebab78e4_blog04-dp.png)
 
 Other transformations could be relatively isolated. Consider the transformation that pushes the filter operator past the aggregate operator. It works on an isolated part of the tree and doesn't require a global context.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/60963bb7dc99fc0d65d4ebbf_blog04-filter-push.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/60963bb7dc99fc0d65d4ebbf_blog04-filter-push.png)
 
 ## Rules
 
@@ -1017,7 +1017,7 @@ To facilitate your engine's evolution, you may want to abstract out some of your
 
 The rule abstraction allows you to split the optimization logic into pluggable parts that evolve independently of each other, significantly simplifying the development of the optimizer. The optimizer that uses rules to generate the equivalent plans is called a **rule-based optimizer**.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/60963bc8dc99fc4d98d4ec35_blog04-rules.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/60963bc8dc99fc4d98d4ec35_blog04-rules.png)
 
 Notice that the rules are, first of all, a pattern that helps you decompose the optimizer's codebase. The usage of rules doesn't force you to follow a specific optimization procedure, such as Volcano/Cascades. It doesn't prevent you from using particular optimization techniques, like dynamic programming for join enumeration. It doesn't require you to choose between heuristic or cost-based approaches. However, the isolated nature of rules may complicate some parts of your engine, such as join planning.
 
@@ -1054,11 +1054,11 @@ In Apache Calcite, you may define one or more optimization stages. Every stage m
 
 Let's take a look at a couple of rules for join planning. To explore all bushy join trees, you may use [JoinCommuteRule](https://github.com/apache/calcite/blob/branch-1.24/core/src/main/java/org/apache/calcite/rel/rules/JoinCommuteRule.java) and [JoinAssociateRule](https://github.com/apache/calcite/blob/branch-1.24/core/src/main/java/org/apache/calcite/rel/rules/JoinAssociateRule.java). These rules are relatively simple and work on individual joins. The problem is that they may trigger duplicate derivations, as explained in this [paper](https://dl.acm.org/doi/10.14778/2732977.2732997).
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/60963bdab571206fb3c6b90a_blog04-commute-associate.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/60963bdab571206fb3c6b90a_blog04-commute-associate.png)
 
 Alternatively, Apache Calcite may use a set of rules that convert multiple joins into a single [n-way join](https://github.com/apache/calcite/blob/branch-1.24/core/src/main/java/org/apache/calcite/rel/rules/MultiJoin.java) and then apply a heuristic algorithm to produce a single optimized join order from the n-way join. This is an example of the rule, that works on a large part of the tree, rather than individual operators. You may use a similar approach to implement the rule to do the join planning with dynamic programming.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/60963be3ec20c2754457d5d0_blog04-calcite-multijoin.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/60963be3ec20c2754457d5d0_blog04-calcite-multijoin.png)
 
 The Apache Calcite example demonstrates that the rule-based optimization could be used with both heuristic and cost-based exploration strategies, as well as for complex join planning.
 
@@ -1129,7 +1129,7 @@ In future posts, we will discuss the difference between logical and physical opt
 
 假设我们正在设计一个基于规则的优化器。我们想将规则应用于关系运算符树，并生成另一棵树。如果我们在树的中间插入一个新的运算符，我们需要更新父级运算符以指向新的运算符。一旦我们改变了**父级**运算符，我们可能需要改变**父级**的**父级**。==如果你的运算符在设计上是不可变的，或者被程序的其他部分使用，可能需要复制树的大部分来创建一个 新计划==。
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/6065b4d9ce4c7f60b6b80638_memo-01.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/6065b4d9ce4c7f60b6b80638_memo-01.png)
 
 >  This approach is wasteful because you need to propagate changes to parents over and over again.
 
@@ -1145,7 +1145,7 @@ In future posts, we will discuss the difference between logical and physical opt
 
 应用转换时，我们可能只更改引用而不更新树的其他部分。 优化结束后，我们删除引用并重建最终树。
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/6065b1551fda64a7d2555d8b_memo-02.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/6065b1551fda64a7d2555d8b_memo-02.png)
 
 > You may find a similar design in many production-grade heuristic optimizers. In our previous [blog post](https://www.querifylabs.com/blog/the-architecture-of-presto-optimizer-part-1) about **Presto**, <u>==we discussed==</u> the [Memo](https://github.com/prestodb/presto/blob/release-0.245/presto-main/src/main/java/com/facebook/presto/sql/planner/iterative/Memo.java) class that manages such references. In **Apache Calcite**, the heuristic optimizer [HepPlanner](https://github.com/apache/calcite/blob/branch-1.24/core/src/main/java/org/apache/calcite/plan/hep/HepPlanner.java) models node references through the class [HepRelVertex](https://github.com/apache/calcite/blob/branch-1.24/core/src/main/java/org/apache/calcite/plan/hep/HepRelVertex.java).
 >
@@ -1174,7 +1174,7 @@ In future posts, we will discuss the difference between logical and physical opt
 
 当规则应用于算子**A**，并产生一个新的等价算子**B**时，我们将**B**添加到**A**的等价群。 我们在优化过程中考虑的组集合称为 **MEMO**。 维护 MEMO 的过程称为 **memoization**。
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/6065be2f874bac04397aca27_memo-03.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/6065be2f874bac04397aca27_memo-03.png)
 
 > MEMO is a variation of the [AND/OR graph](https://anilshanbhag.in/static/papers/rsgraph_vldb14.pdf). Operators are AND-nodes representing the subgoals of the query (e.g., applying a filter). Groups are OR-nodes, representing the alternative subgoals that could be used to achieve the parent goal (e.g., do a table scan or an index scan).
 >
@@ -1188,13 +1188,13 @@ MEMO是[AND/OR图](https://anilshanbhag.in/static/papers/rsgraph_vldb14.pdf)的�
 
 通常，优化器在优化过程中**总是**保持组的==最新获胜者==，以便**修剪**搜索空间，我们将在以后的博客文章中讨论。
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/6065ce8aa449b40540d1253a_memo-04.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/6065ce8aa449b40540d1253a_memo-04.png)
 
 > When the root group's cheapest operator is resolved, we construct the final plan through a top-down traverse across every group's cheapest operators.
 
 当 root group 成本最低的运算符被解析时，我们通过**自顶向下**遍历每个组成本最低的运算符来构造最终的执行计划。
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/6065ce9ae0bc9c1de43ee87c_memo-05.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/6065ce9ae0bc9c1de43ee87c_memo-05.png)
 
 > Memoization is very efficient because it allows for the **deduplication** of nodes, eliminating unnecessary work. Consider a query that has five joins. The total number of unique join orders for such a query is 30240. If we decide to create a new plan for every join order, we would need to instantiate 30240 * 5 = 151200 join operators. With memoization, you only need 602 join operators to encode the same search space - a dramatic improvement!
 >
@@ -1229,13 +1229,13 @@ WHERE event_date BETWEEN ? AND ?
 
 We may do the full table scan and then apply the filter. Alternatively, we may utilize a secondary index on the attribute `event_date`, merging the scan and the filter into a single index lookup. This sounds like a good idea because we reduce the amount of data that needs to be processed.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/607a85e7fe7bfa2c106c7233_index-is-better.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/607a85e7fe7bfa2c106c7233_index-is-better.png)
 
 We may instruct the optimizer to apply such transformations unconditionally, based on the observation that the index lookup is likely to improve the plan's quality. This is an example of **heuristic** optimization.
 
 Now consider that our filter has low selectivity. In this case, we may scan the same blocks of data several times, thus increasing the execution time.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/607a85f17332606a7a737099_index-is-worse.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/607a85f17332606a7a737099_index-is-worse.png)
 
 In practice, rules that unanimously produce better plans are rare. A transformation may be useful in one set of circumstances and lead to a worse plan in another. For this reason, heuristic planning cannot guarantee optimality and may produce arbitrarily bad plans.
 
@@ -1245,7 +1245,7 @@ In the previous example, we have two alternative plans, each suitable for a part
 
 First of all, we should define the optimization goal, which could be minimal latency, maximal throughput, etc. Then we may associate every plan with a value that describes how "far" the plan is from the ideal target. For example, if the optimization goal is latency, we may assign every plan with an estimated execution time. The closer the plan's cost to zero, the better.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/607aaba3f9f15f9bdabfdafd_cost-distance.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/607aaba3f9f15f9bdabfdafd_cost-distance.png)
 
 The underlying hardware and software are often complicated, so we rarely can estimate the optimization target precisely. Instead, we may use a collection of assumptions that approximate the behavior of the actual system. We call it the **cost model**. The cost model is usually based on parameters of the algorithms used in a plan, such as the estimated amount of consumed CPU and RAM, the amount of network and disk I/O, etc. We also need data statistics: operator cardinalities, filter selectivities, etc. The goal of the model is to consider these characteristics to produce a cost of the plan. For example, we may use coefficients to combine the parameters in different ways depending on the optimization goal.
 
@@ -1291,7 +1291,7 @@ A typical database may execute an SQL query in multiple ways, depending on the s
 
 Consider the [TPC-H](https://docs.snowflake.com/en/user-guide/sample-data-tpch.html#database-entities-relationships-and-characteristics) schema. The `customer` may have `orders`. Every order may have several positions defined in the `lineitem` table. The `customer` table has 150,000 records, the `orders` table has 1,500,000 records, and the `lineitem` table has 6,000,000 records. Intuitively, every customer places approximately ten orders, and every order contains four positions on average.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/608d5a01332e56b1db26b8ce_example-schema.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/608d5a01332e56b1db26b8ce_example-schema.png)
 
 Suppose that we want to retrieve all `lineitem` positions for all `orders` placed by the given `customer`:
 
@@ -1312,15 +1312,15 @@ Assume that we have a[ cost model](https://www.querifylabs.com/blog/what-is-cost
 
 We consider two different join orders. We can join `customer` with `orders` and then with `lineitem`. This join order is very efficient because most customers are filtered early, and we have a tiny intermediate relation.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/608e53ad9b9ce03c18c69ac1_example-plan-1.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/608e53ad9b9ce03c18c69ac1_example-plan-1.png)
 
 Alternatively, we can join `orders` with `lineitem` and then with `customer`. It produces a large intermediate relation because we map every `lineitem` to an `order` only to discard most of the produced tuples in the second join.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/608e53d5dc8f7c54784cc3d9_example-plan-2.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/608e53d5dc8f7c54784cc3d9_example-plan-2.png)
 
 The two join orders produce plans with very different costs. The first join strategy is highly superior to the second.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/608e541346f3a77e929780b3_example-plans.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/608e541346f3a77e929780b3_example-plans.png)
 
 ## Search Space
 
@@ -1328,43 +1328,43 @@ The two join orders produce plans with very different costs. The first join stra
 >
 > We model an n-way join as a sequence of `n-1` 2-way joins that form a full binary tree. Leaf nodes are original relations, and internal nodes are join relations. For 3 relations there are 12 valid join orders:
 >
-> ![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/608e6542c9c9012fc37fe2d9_join-graph-order.png)
+> ![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/608e6542c9c9012fc37fe2d9_join-graph-order.png)
 >
 > We count the number of possible join orders for `N` relations in two steps. First, we count the number of different orders of leaf nodes. For the first leaf, we choose one of `N` relations; for the second leaf, we choose one of remaining `N-1` relations, etc. This gives us `N!` different orders.
 >
-> ![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/608e675a6cbcc0cba198a7ab_join-leaf-order.png)
+> ![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/608e675a6cbcc0cba198a7ab_join-leaf-order.png)
 >
 > Second, we need to calculate the number of all possible shapes of a full binary tree with `N` leaves, which is the number of ways of associating `*N-1*` applications of a binary operator. This number is known to be equal to [Catalan number](https://en.wikipedia.org/wiki/Catalan_number) `C(N-1)`. Intuitively, for the given fixed order of `N` leaf nodes, we need to find the number of ways to set `N-1` pairs of open and close parenthesis. E.g., for the four relations `[a,b,c,d]`, we have five different parenthesizations:
 >
-> ![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/608e6b4c89997418f3adb378_join-catalan.png)
+> ![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/608e6b4c89997418f3adb378_join-catalan.png)
 >
 > Multiplying the two parts, we get the final equation:
 >
-> ![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/609244fc97f5f05ecf8c08f8_join_equation.gif)
+> ![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/609244fc97f5f05ecf8c08f8_join_equation.gif)
 
 完美的优化器需要为给定查询构建所有可能的等价计划，并选择最佳计划。那么，优化器需要考虑多少选项呢？
 
 我们将 n 路 Join 建模为由 `n-1` 个 2 路 Join 组成的完整二叉树序列。叶节点是原始的表，内部节点是 Join。对于 3 张表，有 12 个有效的 Join 顺序:
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/608e6542c9c9012fc37fe2d9_join-graph-order.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/608e6542c9c9012fc37fe2d9_join-graph-order.png)
 
 我们分两步计算 `N` 张表的 Join 数量。 首先，我们统计叶子节点之间的排列。 对于第一片叶子，我们从 `N` 张表中选择一张表； 对于第二片叶子，我们从剩余的 `N-1` 表选择一张表，以此类推，不同的排列有  `N!`  种。
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/608e675a6cbcc0cba198a7ab_join-leaf-order.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/608e675a6cbcc0cba198a7ab_join-leaf-order.png)
 
 Second, we need to calculate the number of all possible shapes of a full binary tree with `N` leaves, which is the number of ways of associating `*N-1*` applications of a binary operator. This number is known to be equal to [Catalan number](https://en.wikipedia.org/wiki/Catalan_number) `C(N-1)`. Intuitively, for the given fixed order of `N` leaf nodes, we need to find the number of ways to set `N-1` pairs of open and close parenthesis. E.g., for the four relations `[a,b,c,d]`, we have five different parenthesizations:
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/608e6b4c89997418f3adb378_join-catalan.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/608e6b4c89997418f3adb378_join-catalan.png)
 
 Multiplying the two parts, we get the final equation:
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/609244fc97f5f05ecf8c08f8_join_equation.gif)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/609244fc97f5f05ecf8c08f8_join_equation.gif)
 
 ## Performance
 
 The number of join orders grows exponentially. For example, for three tables, the number of all possible join plans is `12`; for five tables, it is `1,680`; for ten tables, it is `17,643,225,600`. Practical optimizers use different techniques to ensure the good enough performance of the join enumeration.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/6092494d20b58973a88c6454_chart%20(1).png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/6092494d20b58973a88c6454_chart%20(1).png)
 
 First, optimizers might use caching to minimize memory consumption. Two widely used techniques are [dynamic programming](https://en.wikipedia.org/wiki/Dynamic_programming) and [memoization](https://www.querifylabs.com/blog/memoization-in-cost-based-optimizers).
 
@@ -1410,7 +1410,7 @@ In this post, we took a sneak peek at the join ordering problem and got a bird's
 
 另一种 IR 是关系运算符树。我们可以定义常见的关系运算符，例如 `Project`、`Filter`、`Join`、`Aggregate`。 以这种方式表示查询，其优化要简单得多，因为**关系运算符**具有明确定义的范围，并且通常只有一个输入（连接和集合运算符除外）。这极大简化了常见的关系优化，例如**运算符转置**。 **此外，它使实现者可以灵活地独立于数据库语法规则对运算符进行建模**。
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/60b3612efc0661ba1956b79b_ast-vs-rel.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/60b3612efc0661ba1956b79b_ast-vs-rel.png)
 
 > The main disadvantage is the need to translate the syntax tree into a relational tree, which is often non-trivial, especially with complex syntax constructs like subqueries or common table expressions. However, the simplicity and flexibility of relational operators usually outweigh by a high margin the additional efforts on translation.
 
@@ -1432,7 +1432,7 @@ We start with several simplified definitions, which are not precise but sufficie
 
 An **attribute** is a pair of a name and a data type. An **attribute value** is defined by an attribute name and value from the attribute type domain. A **tuple** is an unordered set of attribute values. No two attribute values in the tuple may have the same attribute name. A **relation** is a set of tuples. Every tuple within the relation has the same set of attributes. **Relational operators** take zero, one, or more input relations and produce an output relation.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/60b374a4be8579b98cbce816_blog08-definitions.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/60b374a4be8579b98cbce816_blog08-definitions.png)
 
 ### Operators
 
@@ -1440,7 +1440,7 @@ To construct a tree of relational operators, we need the ability to define opera
 
 In Apache Calcite, the relational operator is represented by the [RelNode](https://github.com/apache/calcite/blob/calcite-1.26.0/core/src/main/java/org/apache/calcite/rel/RelNode.java) interface. The operator may have zero, one, or more input operators. For example, `TableScan` is an 0-ary operator, `Filter` is a unary operator, and `Union` is an N-ary operator. Every operator exposes the `RelDataType`, which is an ordered list of operator attributes. This is sufficient to construct arbitrarily complex relational trees.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/60b48ffda5f126e051e3a082_blog08-row-type.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/60b48ffda5f126e051e3a082_blog08-row-type.png)
 
 ### Row Expressions
 
@@ -1460,7 +1460,7 @@ In Apache Calcite, the relational operator is represented by the [RelNode](https
 
 例如，表达式 `name = "John"` 将表示如下。
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/60b7829f70d3200769e64e01_blog08-rex.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/60b7829f70d3200769e64e01_blog08-rex.png)
 
 > Notice that `RexInputRef` references the input's attribute by index, which means that attribute order is important in Apache Calcite. On the bright side, it simplifies the design, as you do not need to care about attribute names and potential naming conflicts (think of a join of two tables, which have an attribute with the same name). On the other hand, it has a detrimental effect on join order planning, as we shall see below.
 
@@ -1496,7 +1496,7 @@ The operator contains the `org.apache.calcite.schema.Table` instance, which desc
 
 查询“SELECT a, a+b FROM t”的关系树可能如下所示：
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/60b78e86342fb8c97b6540f5_blog08-project.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/60b78e86342fb8c97b6540f5_blog08-project.png)
 
 ### Filter
 
@@ -1504,13 +1504,13 @@ The `Filter` operator returns tuples that satisfy a predicate. A predicate is a 
 
 The query `SELECT a, a+b FROM t WHERE a+b>5` could be represented as:
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/60b78be9128f38006b87f543_blog08-filter.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/60b78be9128f38006b87f543_blog08-filter.png)
 
 ### Calc
 
 The `Calc` is a special operator that combines the functionality of `Project` and `Filter` operators and performs the common sub-expression elimination. Internally, it splits all composite row expressions into primitive expressions. Expressions are organized in a list. The special `RexLocalRef` node is used to link siblings. `Project` becomes a list of expression indexes that should be exposed from the operator. `Filter` becomes an optional expression index that filters input tuples.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/60b78c01fcaf5405442e5ede_blog08-calc.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/60b78c01fcaf5405442e5ede_blog08-calc.png)
 
 Apache Calcite provides a lot of optimization rules for `Project` and `Filter` operators. These same optimizations are generally not implemented for the `Calc` operator because it would essentially require duplication of rules logic. Instead, you may do the cost-based optimization with `Project` and `Filter` operations only and then convert `Project` and `Filter` operators into `Calc` in a separate heuristic phase. Apache Calcite provides [dedicated rules](https://github.com/apache/calcite/blob/calcite-1.26.0/core/src/main/java/org/apache/calcite/plan/RelOptRules.java#L55-L66) for that. We touched on the multi-phase optimization in our previous [blog post](https://www.querifylabs.com/blog/what-is-cost-based-optimization).
 
@@ -1530,7 +1530,7 @@ The `Aggregate` operator outputs group keys followed by aggregate functions. For
 
 Consider the plan for the query `SELECT SUM(a+b), c FROM t GROUP BY c` below. Notice two `Project` operators: one to calculate `a+b` and another to output `SUM` before the attribute `c`.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/60b78c1759f1405dda985451_blog08-agg.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/60b78c1759f1405dda985451_blog08-agg.png)
 
 ### Join
 >
@@ -1555,13 +1555,13 @@ Consider the plan for the query `SELECT SUM(a+b), c FROM t GROUP BY c` below. No
 
 考虑改变输入顺序的 `JoinCommute` 规则。要应用此规则，我们需要 (a) 重写 Join 的内部谓词和 (b) 在新的 `Join` 之上添加 `Project` 以恢复属性的原始顺序。
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/60b78c222b319033945b0cf1_blog08-join-1.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/60b78c222b319033945b0cf1_blog08-join-1.png)
 
 > This additional `Project` prevents the execution of other rules. For example, the `JoinAssociate` rule tries to reorder `(A join B) join C` to `A join (B join C)`. The rule looks for a pattern "Join on top of the Join". But with the additional `Project`, we have only "Join on top of the Project". To mitigate this, we may use the `JoinProjectTransposeRule` that transposes `Join` and `Project`, but this dramatically decreases planner's performance to the extent that Apache Calcite cannot do the exhaustive cost-based join planning on more than 5-6 tables in a reasonable time.
 
 这个额外的 `Project` 阻止了其他规则的执行。 例如，`JoinAssociate` 规则尝试将`(A join B) join C` 重新排序为`A join (B join C)`。 该规则查找关系树中 **Join 之上的 Join** 的模式。但是有了这个额外的 `Project` ，关系树中的模式为  **`Project` 之上的 `Join`**。为了缓解这个问题，我们可以使用转置 `Join` 和 `Project` 的 `JoinProjectTransposeRule`，但这会大大降低优化划器的性能，以至于 Calcite  无法在合理的时间内对超过 5-6个 表的 `Join `进行详尽的基于成本的优化。
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/60b4cbfba395d8e030cc1dbb_blog08-join-2.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/60b4cbfba395d8e030cc1dbb_blog08-join-2.png)
 
 > The alternative solution would be to operate on unique column names rather than indexes. Spark Catalyst and CockroachDB follow this approach. But this would require introducing some unique identifier to every equivalence group, which is also a challenge on its own.
 
@@ -1617,7 +1617,7 @@ WHERE
 
 成本较低的计划往往会产生更小的中间表。为了确保优化器首选这样的计划，得让 `Join` 运算符的成本与生成的行数成正比。
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/612e81b84c903cc96d2db936_blog09-join-order-plans.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/612e81b84c903cc96d2db936_blog09-join-order-plans.png)
 
 > But how to estimate the number of rows (**cardinality**) in the first place? For the `Scan` operator, we may rely on table statistics maintained by the database.
 >
@@ -1673,7 +1673,7 @@ WHERE
 
 
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/612e913cc36b1f0b82d9ef81_blog09-metadata-recursion%20(1).png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/612e913cc36b1f0b82d9ef81_blog09-metadata-recursion%20(1).png)
 
 ## Metadata in Apache Calcite
 
@@ -1746,7 +1746,7 @@ class RelMdRowCount {
 
 如果需要，**handler** 函数可能会被覆盖。通过扩展 `RelMetadataQuery` 类，您还可以添加新的元数据类。
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/613085e0a2eca2854cf0c1e2_blog09-dispatching.drawio.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/613085e0a2eca2854cf0c1e2_blog09-dispatching.drawio.png)
 
 > Previously, Apache Calcite used Java reflection to dispatch metadata requests, see [ReflectiveRelMetadataProvider](https://github.com/apache/calcite/blob/calcite-1.27.0/core/src/main/java/org/apache/calcite/rel/metadata/ReflectiveRelMetadataProvider.java). However, due to performance [concerns](https://issues.apache.org/jira/browse/CALCITE-604), the reflective approach was replaced with code generation using the [Janino](http://janino-compiler.github.io/janino/) compiler, see [JaninoRelMetadataProvider](https://github.com/apache/calcite/blob/calcite-1.27.0/core/src/main/java/org/apache/calcite/rel/metadata/JaninoRelMetadataProvider.java). Internally, the generated code is basically a large `switch` block that dispatches the metadata request to a proper handler function.
 
@@ -1762,7 +1762,7 @@ class RelMdRowCount {
 
 一个关键的观察结果是，给定运算符的元数据保持稳定的时间很长，只要运算符的子节点没有变化。因此，我们可以会缓存运算符的元数据，并在检测到子节点发生更改时使其失效。 Apache Calcite 跟踪运算符之间的连接，这使其能够检测此类修改，并提供现场的元数据缓存功能。
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/613089a93018223cb784eebf_blog09-caching.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/613089a93018223cb784eebf_blog09-caching.png)
 
 ## Useful Metadata Classes
 
@@ -1819,23 +1819,23 @@ Consider that our system can execute two-way joins, like `AxB` or `BxA`. To join
 
 First, we count the number of different orders of leaf nodes. Intuitively, for `N` inputs, we have `N` alternatives for the first position, `N-1` alternatives for the second position, etc., which gives us `N!` orders.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/61ac76977e58ee8973a31487_join-leaf-order.drawio.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/61ac76977e58ee8973a31487_join-leaf-order.drawio.png)
 
 Next, for every particular leaf order, we determine the number of possible two-way join orders, which is the number of ways of associating `N-1` applications of a binary operator. This number is equal to the [Catalan number](https://en.wikipedia.org/wiki/Catalan_number) `C(N-1)`.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/61ac7717d096cf8a67e5cfc3_join-catalan.drawio.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/61ac7717d096cf8a67e5cfc3_join-catalan.drawio.png)
 
 The Catalan number of `N` is determined as follows:
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/61ac782a4c1110060dbb539a_equation-catalan.gif)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/61ac782a4c1110060dbb539a_equation-catalan.gif)
 
 We combine both parts to get the final formula:
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/61ac7932c7fb436831772f65_equation-join-clique.gif)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/61ac7932c7fb436831772f65_equation-join-clique.gif)
 
 Consider the TPC-DS suite. [Query 3](https://github.com/Agirish/tpcds/blob/master/query3.sql#L6-L8) joins three tables, which gives 12 join orders, an easy target. [Query 17](https://github.com/Agirish/tpcds/blob/master/query17.sql#L29-L36) joins eight tables, which gives more than 17 million join orders. Many optimizers would already give up on exhaustive enumeration at this point. Finally, [query 64](https://github.com/Agirish/tpcds/blob/master/query64.sql#L35-L52) has a sub-plan that joins eighteen tables, giving us ~830 sextillion join orders, big trouble.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/61b7a3683eee6f258f4ce3a7_chart-clique.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/61b7a3683eee6f258f4ce3a7_chart-clique.png)
 
 ## Cross-product suppression
 
@@ -1847,7 +1847,7 @@ Note that this is merely a heuristic, and there are some queries where the optim
 
 We introduce the **join topology**, a graph where vertices are inputs and edges are join conditions. The topology is called a **clique** when every input has a join condition with every other input. The topology is called a **star** when one input is joined to all other inputs. The topology is called a **chain** when two inputs are joined with one other input, and the rest are joined with two other inputs.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/617d989f885c2bc3ab4db913_join-topologies.drawio.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/617d989f885c2bc3ab4db913_join-topologies.drawio.png)
 
 Now, let's count the number of cross-product free join orders for each topology.
 
@@ -1855,33 +1855,33 @@ Now, let's count the number of cross-product free join orders for each topology.
 
 The cross-product suppression is not applicable for clique by definition since every input has join conditions with every other input. Therefore, the number of cross-product free join orders in cliques equals to the formula above.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/61acdc2ae8edf7a87ec994d5_equation-join-clique.gif)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/61acdc2ae8edf7a87ec994d5_equation-join-clique.gif)
 
 ### Chain
 
 For the chain topology, there is a single order of leaves, e.g., `A-B-C`. `C(N-1)` parenthesizations are available for that order of leaves. For each such parenthesization, we can change the order of inputs within every parenthesis, e.g., change `(AB)` to `(BA)`. This gives us `2^(N-1)` combinations.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/61acdc7d50c1f4f974002cec_join-chain.drawio.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/61acdc7d50c1f4f974002cec_join-chain.drawio.png)
 
 The final formula is:
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/61b85ac7d5eb4d3ed3e20f7b_equation-join-chain.gif)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/61b85ac7d5eb4d3ed3e20f7b_equation-join-chain.gif)
 
 ### Star
 
 For star queries, we count the number of left-deep trees starting with the fact table, giving us `(N-1)!` possible trees. For every such tree, we commute individual joins, which gives us `2^(N-1)` alternatives per tree.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/61ace759cf072572e35d4fc3_join-star.drawio.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/61ace759cf072572e35d4fc3_join-star.drawio.png)
 
 The final formula is:
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/61b85b27d85b32f1f7e94df0_equation-join-star.gif)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/61b85b27d85b32f1f7e94df0_equation-join-star.gif)
 
 ### Example
 
 Consider the TPC-DS [query 17](https://github.com/Agirish/tpcds/blob/master/query17.sql#L29-L36) again. The join graph topology for this query looks as follows:
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/61b7a4f9bb2df18aa3c06d31_q17.drawio.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/61b7a4f9bb2df18aa3c06d31_q17.drawio.png)
 
 Without the cross-product suppression, there are `17,297,280` possible join orders. To count the number of cross-product free join orders, we implement a simple bottom-up [join enumerator](https://github.com/querifylabs/querifylabs-blog/tree/main/join-enumerator) that discards the join orders with cross-products. The enumerator [gives](https://github.com/querifylabs/querifylabs-blog/blob/main/join-enumerator/src/test/java/com/querifylabs/blog/joins/JoinEnumeratorTcpdsTest.java) us `211,200` cross-product free join orders, roughly `1.3%` of all possible join orders. This example demonstrates how cross-join suppression may decrease the number of considered joins by several orders of magnitude.
 
@@ -1889,7 +1889,7 @@ Without the cross-product suppression, there are `17,297,280` possible join orde
 
 Chain topologies produce the smallest number of cross-product free join orders, followed by star and clique. Real queries usually have mixed topologies, so counting the number of cross-product free join orders in them is not straightforward. Nevertheless, the number of plans with cross-products is vastly more than the number of cross-product free plans for most queries. Therefore, cross-product suppression is an important heuristic that allows discarding plenty of not optimal plans in advance.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/61b7a4a732c408cbb1b32d85_chart-all.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/61b7a4a732c408cbb1b32d85_chart-all.png)
 
 Since the complexity remains exponential even for chain topologies, the cross-product suppression alone is not sufficient for production-grade databases. State-of-the-art optimizers attack the problem from two angles:
 
@@ -1904,8 +1904,6 @@ The join order enumeration is a well-known NP-hard problem that cannot be solved
 
 In future posts, we will see how the cross-product suppression and [memoization](# Memoization in Cost-based Optimizers) may further improve the optimizer's performance. We will also discuss modern join enumeration algorithms and their implementations in practical optimizers. Stay tuned!
 
-
-
 # Introduction to Data Shuffling in Distributed SQL Engines
 
 
@@ -1917,11 +1915,11 @@ Distributed SQL engines process queries on several nodes. Nodes may need to exch
 
 SQL engines convert a query string to a sequence of operators, which will call an execution plan. We assume that operators in a plan are organized in a tree. Every operator consumes data from zero, one or more child operators, and produces an output that a single parent operator consumes. Practical engines may use DAGs, where several parent operators consume the operator's output, but we ignore such cases for simplicity.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/61f980d8f3cf42dff1804e5e_tree-dag.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/61f980d8f3cf42dff1804e5e_tree-dag.png)
 
 In distributed engines, we may want to create several instances of the same plan's operator on different nodes. For example, a table might be partitioned into several segments that different workers read in parallel. Likewise, several nodes might execute a heavy `Join` operator concurrently, each instance producing only part of the output. In this case, we say that a single operator produces several physical data streams.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/61f980a865bddae70ede12fe_nway-operators.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/61f980a865bddae70ede12fe_nway-operators.png)
 
 ## Operator Requirements
 
@@ -1931,11 +1929,11 @@ The `Join` operator evaluates every pair of tuples from left and right inputs ag
 
 Note that there might be multiple viable partitioning schemes. For example, for the join condition `a1=b1 AND a2=b2`, the input might be redistributed by `[a1, a2]`, `[a2, a1]`, `[a1]`, or `[a2]`. This adds considerable complexity to the query planning because different operator combinations might benefit from different partitioning schemes. We will discuss distributed planning in detail in the next blog post.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/61f56bf758a4e2456a71d64a_join-unicast.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/61f56bf758a4e2456a71d64a_join-unicast.png)
 
 Alternatively, we may **broadcast** one of the inputs. If there are `N` instances of the `Join` operator, we create `N` full copies of one of the inputs. This might be beneficial if one of the inputs is much smaller than the other, such that broadcasting of the smaller input is cheaper than re-distribution of both inputs. Also, the broadcast scheme is mandatory for non-equi joins and some outer joins.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/61f56d4a28293a380ed5a8a2_join-broadcast.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/61f56d4a28293a380ed5a8a2_join-broadcast.png)
 
 The academia proposed more distribution strategies. For example, [Track Join](https://w6113.github.io/files/papers/trackjoin-sigmod14.pdf) tries to minimize the network traffic by creating an individual transfer schedule for each tuple. However, partitioned and broadcast shuffles are the most commonly used strategies in practical systems.
 
@@ -1950,11 +1948,11 @@ During query planning, optimizers usually maintain distribution metadata, such a
 
 The distribution function and the number of shards make sense only for the `PARTITIONED` output and describe how data is split between physical streams and how many such streams are. Common distribution function examples are hash, range, and random distribution.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/61f57f7fbbd0e1394007e0e4_distribution.drawio.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/61f57f7fbbd0e1394007e0e4_distribution.drawio.png)
 
 The convenient way to express the data shuffling in the optimizer is to use a dedicated plan operator, usually called `Exchange` or `Shuffle`. The optimizer's goal is to find the optimal placement of `Exchange` operators in the query plan. A variety of algorithms might be used for this, from simple heuristic rewrites to fully-fledged cost-based optimization with the Cascades algorithm. We will discuss shuffle planning in detail in the next blog post.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/61f983cf7b496fa7c8ea25c0_shuffle-operator.drawio.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/61f983cf7b496fa7c8ea25c0_shuffle-operator.drawio.png)
 
 ## Execution
 
@@ -1962,7 +1960,7 @@ The engine needs to figure out which nodes should execute which operations. Usua
 
 `Exchange` operators are replaced with specialized implementations that transmit data between participants. OLTP engines may prefer to transfer data through network sockets to minimize latency. Big data engines may decide to exchange data through a persistent medium, such as distributed file system, to avoid loss of result in the case of participant crash.
 
-![img](https://uploads-ssl.webflow.com/5fe5c475cb3c75040200bfe6/61f9837e7152b22dbce10443_exec.png)
+![img](https://assets-global.website-files.com/5fe5c475cb3c75040200bfe6/61f9837e7152b22dbce10443_exec.png)
 
 Executors do not always strictly follow the original plan. Optimizers may produce not optimal plans due to imprecise statistics; system reconfiguration may happen during query execution, etc. Advanced executors may do runtime re-optimizations, overriding some planner decisions. For example, the executor may prefer one shuffle type over the other in the face of data skew or incorrect cardinality estimations or change the number of shuffle partitions in runtime. Please refer to the [query robustness survey](https://hal.archives-ouvertes.fr/hal-01316823/document) by Yin et al. for more ideas on possible runtime re-optimization strategies.
 

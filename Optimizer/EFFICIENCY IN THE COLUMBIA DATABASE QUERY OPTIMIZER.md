@@ -220,28 +220,17 @@ The remainder of this chapter will review some fundamental concepts used in solv
 
 ### 2.6 Rules
 
-> Many optimizers use rules to generate the logically equivalent expressions of a given initial query. A rule is a description of how to transform an expression to a logically equivalent expression. A new expression is generated when a rule is applied to a given expression. It is the rules that an optimizer uses to expand the initial search space and generate all the logically equivalent expressions of a given initial query.
->
-> Each rule is defined as a pair of pattern and substitute. A pattern defines the structure of the logical expression that can be applied to the rule. A substitute defines the structure of the result after applying the rule. When expanding the search space, the optimizer will look at each logical expression, (note that rules only apply to logical expressions), and check if this expression matches any patterns of the rules in the rule set. If the pattern of a rule is matched, the rule is fired to generate the new logically equivalent expression according to the substitute of the rule.
->
-> Cascades used expressions to represent patterns and substitutes. Patterns are always logical expressions, while substitutes can be logical or physical. Transformation rules and implementation rules are two common types of rules. A rule is called transformation rule if its substitute is a logical expression. A rule is called implementation rule if its substitute is a physical expression.
->
-> For example, **EQJOIN_LTOR** is a transformation rule that applies left to right associativity to a left deep logical expression and generates a right deep logical expression that is logically equivalent to the original expression. EQJOIN_MERGEJOIN is an implementation rule that generates a physical expression  by replacing the EQJOIN operator with MERGEJOIN physical operator. This physical expression implements the original logical expression using sort-merge join algorithm. Figure 8 shows a picture of these two simple rules.
->
-> > - [x] Figure 8. Two types of Rules
+Many optimizers use rules to generate the logically equivalent expressions of a given initial query. A rule is a description of how to transform an expression to a logically equivalent expression. A new expression is generated when a rule is applied to a given expression. It is the rules that an optimizer uses to expand the initial search space and generate all the logically equivalent expressions of a given initial query.
 
-许多优化器使用**规则**来生成给定初始查询的逻辑上等价的表达式。**<u>规则是描述如何将表达式转换为逻辑上等价的其他表达式</u>**。将规则应用于给定表达式时，将生成一个新表达式。优化器使用规则**扩展初始搜索空间**，并生成给定初始查询所有逻辑上等价的表达式。
+Each rule is defined as a pair of **pattern** and **substitute**. A pattern defines the structure of the logical expression that can be applied to the rule. A substitute defines the structure of the result after applying the rule. When expanding the search space, the optimizer will look at each logical expression, (note that rules only apply to logical expressions), and check if this expression matches any patterns of the rules in the rule set. If the pattern of a rule is matched, the rule is fired to generate the new logically equivalent expression according to the substitute of the rule.
 
-每个规则定义为一对模式和替代。**模式**定义**<u>==符合规则的==</u>**逻辑表达式结构。**替代**定义了应用规则后逻辑表达式结构。扩展搜索空间时，优化器将查看每个逻辑表达式（注意，<u>规则仅适用于逻辑表达式</u>），并检查此表达式是否与规则集中的任何规则模式匹配。如果匹配某个规则的模式，则根据规则的替换，触发规则以生成新的逻辑等价表达式。
+Cascades used expressions to represent patterns and substitutes. Patterns are always logical expressions, while substitutes can be logical or physical. Transformation rules and implementation rules are two common types of rules. A rule is called transformation rule if its substitute is a logical expression. A rule is called implementation rule if its substitute is a physical expression.
 
-Cascades 使用表达式表示模式和替代。**模式总是逻辑表达式**，而**替代**可以是逻辑或物理表达式。转换规则和实现规则是两种常见的规则类型。如果规则的替代物是逻辑表达式，则称为转换规则。如果规则的替代物是物理表达式，则称为实现规则。
-
-例如，**EQJOIN_LTOR** 是一个转换规则，将左到右的关联性应用于左深度逻辑表达式，并生成逻辑上等价于原始表达式的右深逻辑表达式。**EQJOIN_MERGEJOIN** 是一个实现规则，通过将 **EQJOIN** 运算符替换为 **MERGEJOIN** 物理运算符来生成物理表达式。该物理表达式使用 sort-merge-join 算法实现原始逻辑表达式。 图 8 显示了这两个简单的规则。
-
+ For example, **EQJOIN_LTOR** is a transformation rule that applies left to right associativity to a left deep logical expression and generates a right deep logical expression that is logically equivalent to the original expression. EQJOIN_MERGEJOIN is an implementation rule that generates a physical expression  by replacing the EQJOIN operator with MERGEJOIN physical operator. This physical expression implements the original logical expression using sort-merge join algorithm. Figure 8 shows a picture of these two simple rules.
 
 <p align="center">
  <img src="./EFFICIENCY IN THE COLUMBIA DATABASE QUERY OPTIMIZER/Figure_8.png" />
- 图 8. Two types of Rules
+ Figure 8. Two types of Rules
 </p>
 
 ## Chapter 3. Related Work
@@ -292,60 +281,32 @@ Volcano 搜索策略的效率允许生成真正的优化器，一个用于面向
 
 ### 3.3 The Cascades Optimizer Framework
 
-> The Cascades Optimizer Framework [Gra95] is an extensible query optimization framework that resolves many short-comings of the EXODUS and Volcano optimizer generators. It achieves a substantial improvement over its predecessors in functionality, ease-of-use, and robustness without giving up extensibility, dynamic programming and memoization. The choosing of Cascades as the foundation for new query optimizers in Tandem’s NonStop SQL product [Cel96] and in Microsoft’s SQL Server product [Gra96] demonstrated that Cascades satisfies the requirements and demands of modern commercial database systems. The following list some of advantages of Cascades:
->
-> - Optimization tasks as data structures
-> - Rules as objects
-> - Rules to place property enforcers such as sort operations
-> - ==Ordering of moves by promise==
-> - Predicates as operators that is both logical and physical
-> - Abstract interface class defining the DBI-optimizer interface and permitting DBI-defined subclass hierarchies.
-> - More robust code written in C++ and a clean interface making full use of the abstraction mechanisms of C++
-> - Extensive tracing support and better documentation to assist the DBI
->
->In Cascades, the optimization algorithm is broken into several parts, which are called “tasks”. Tasks are realized as objects in which a “perform” method is defined for them. All such task objects are collected in a task structure that is realized as a Last-In-First-Out stack^11^. Scheduling a task is very similar to invoking a function: the task is popped out of the stack and the “perform” method of the task is invoked. At any time during the optimization there is a stack of tasks waiting to be performed. Performing a task may result in more tasks being placed on the stack.
->
->> 11. As [Gra95] pointed out, other task structures can easily be envisioned. In particular, task objects can be reordered very easily at any point, enabling very flexible mechanisms for heuristic guidance, Moreover, There are more advantages in representing the task structure by a graph that captures dependencies or the topological ordering among tasks and permit efficient parallel search (using shared memory).
->
->The Cascades optimizer first copies the original query into the initial search space (**in Cascades, the search space is called “memo” which is inherited from Volcano**). The entire optimization process is then triggered by a task to optimize the top group of the initial search space, which in turn triggers optimization of smaller and smaller subgroups in the search space. Optimizing a group means finding the best plan in the group (which is called an “optimization goal”) and therefore applies rules to all expressions. In this process, new tasks are placed into the task stack and new groups and expressions are added into the search space. After the task of optimizing the top group is completed, which requires all the subgroups of the top group to complete their optimization, the best plan of the top group can be found, hence the optimization is done.
->
->Like the Volcano optimizer generator, Cascades begins the optimization process from the top group and is considered to use a top-down search strategy. Dynamic programming and memoization are also used in the task of optimizing a group. Before initiating optimization of all a group’s expressions, ==it checks whether the same optimization goal has been pursued already==; if so, it simply returns the plan found in the earlier search. One major difference between the search strategies in Cascades and Volcano is that Cascades only explores a group on demand while Volcano always generates all equivalent logical expressions exhaustively in the first pre-optimization phase before the actual optimization phase begin. In Cascades, there is no separation into two phases. It is not useful to derive all logically equivalent forms of all expressions, e.g., of a predicate. A group is explored using transformation rules only on demand, and it is explored only to create all members of the group that match a given pattern. Since it explores groups only for truly useful patterns, Cascades search strategy is more efficient^12^.
->
->> 12. In the worst case, exploration of Cascades is exhaustive. Thus in the worst case the efficiency of the Cascades search will equal that of the Volcano search strategy.
->
->Compared to the Volcano optimizer generator’s cumbersome user interface, Cascades provides a clean data structure abstraction and interface between DBI and optimizer. Each of the classes that makes up the interface between the Cascades optimizer and the DBI is designed to become the root of a subclass hierarchy. The optimizer relies only on the method defined in this interface; the DBI is free to add additional methods when defining subclasses. Some important interfaces include operators, cost model and rules. This clear interface is important in that it makes the optimizer more robust and makes it easier for a DBI to implement or extend an optimizer.
->
->[Bil97] describes an experimental optimizer, Model D, for optimizing the TPC-D queries [TPC95] developed under the Cascades optimizer framework. Model D has many logical operators which in turn require a number of rules and physical operators. The new operators and rules are defined and easily added to the optimizer by the DBI by deriving from the base interface class. With only a few changes to the Cascades search engine, Model D demonstrates the extensibility of the Cascade framework in the relational model.
->
->Cascades is just an optimizer framework. It proposed numerous performance improvements, but many features are currently unused or provided only in rudimentary form. The current design and implementation of Cascades leaves room for many improvements. The strong separation of optimizer framework and the DBI’s specification, extensive use of virtual methods, very frequent object allocation and deallocation can cause performance problems. Some pruning techniques can be applied to the top-down optimization to dramatically improve search performance. All these observations motivate our research in Cascades and development of a new, more efficient optimizer – the Columbia optimizer.
->
+The Cascades Optimizer Framework [Gra95] is an extensible query optimization framework that resolves many short-comings of the EXODUS and Volcano optimizer generators. It achieves a substantial improvement over its predecessors in functionality, ease-of-use, and robustness without giving up extensibility, dynamic programming and memoization. The choosing of Cascades as the foundation for new query optimizers in Tandem’s NonStop SQL product [Cel96] and in Microsoft’s SQL Server product [Gra96] demonstrated that Cascades satisfies the requirements and demands of modern commercial database systems. The following list some of advantages of Cascades:
 
-Cascades 优化器框架 [Gra95] 是一个可扩展的查询优化框架，它解决了 EXODUS 和 Volcano 优化器生成器的许多缺点。在不放弃可扩展性、动态规划和 memoization 的情况下，它在功能、易用性和健壮性方面比之前的版本有了实质性的改进。在 Tandem 的 NonStop SQL 产品 [Cel96] 和 Microsoft 的 SQL Server 产品 [Gra96] 中选择 Cascades 作为新查询优化器的基础，表明 Cascades 满足现代商业数据库系统的需求。下面列出了 Cascades 的一些优点：
+- Optimization tasks as data structures
+- Rules as objects
+- Rules to place property enforcers such as sort operations
+- ==Ordering of moves by promise==
+- Predicates as operators that is both logical and physical
+- Abstract interface class defining the DBI-optimizer interface and permitting DBI-defined subclass hierarchies.
+- More robust code written in C++ and a clean interface making full use of the abstraction mechanisms of C++
+- Extensive tracing support and better documentation to assist the DBI
 
-- 优化任务作为数据结构
-- 规则作为对象
-- 设置属性强制执行器的规则，如排序操作
-- ==按承诺排序动作==
-- 谓词作为逻辑和物理运算符
-- 抽象接口类定义了 DBI 优化器接口，并允许DBI 定义的子类层次结构。
-- 用 C++ 编写的更健壮的代码和一个干净的接口，充分利用 C++ 的抽象机制
-- 广泛的追踪支持和更好的文档来协助 DBI
+In Cascades, the optimization algorithm is broken into several parts, which are called “tasks”. Tasks are realized as objects in which a “perform” method is defined for them. All such task objects are collected in a task structure that is realized as a Last-In-First-Out stack^11^. Scheduling a task is very similar to invoking a function: the task is popped out of the stack and the “perform” method of the task is invoked. At any time during the optimization there is a stack of tasks waiting to be performed. Performing a task may result in more tasks being placed on the stack.
 
-在 Cascades 中，优化算法分为几个部分，称为**任务**。任务被实现为对象，其中定义了一个 `perform` 方法。所有这些任务对象都收集在一个任务结构中，该结构实现为**后进先出**的堆栈^11^。调度任务非常类似于调用函数：将任务从堆栈中弹出，并调用任务的 `perform`方法。在优化期间的任何时候，都有一堆任务等待执行。执行一个任务可能会导致更多的任务被放置在堆栈上。
+> 11. As [Gra95] pointed out, other task structures can easily be envisioned. In particular, task objects can be reordered very easily at any point, enabling very flexible mechanisms for heuristic guidance, Moreover, There are more advantages in representing the task structure by a graph that captures dependencies or the topological ordering among tasks and permit efficient parallel search (using shared memory).
 
-> 11. 正如 [Gra95] 所指出的，可以很容易地设想其他任务结构。特别是，任务对象可以很容易地在任何点重新排序，这为启发式指导提供了非常灵活的机制。此外，用 **graph** 来表示任务结构更有优势，**graph** 可以捕获任务之间的依赖关系或拓扑排序，并允许高效的并行搜索(使用共享内存)。
+The Cascades optimizer first copies the original query into the initial search space (**in Cascades, the search space is called “memo” which is inherited from Volcano**). The entire optimization process is then triggered by a task to optimize the top group of the initial search space, which in turn triggers optimization of smaller and smaller subgroups in the search space. Optimizing a group means finding the best plan in the group (which is called an “optimization goal”) and therefore applies rules to all expressions. In this process, new tasks are placed into the task stack and new groups and expressions are added into the search space. After the task of optimizing the top group is completed, which requires all the subgroups of the top group to complete their optimization, the best plan of the top group can be found, hence the optimization is done.
 
-Cascades 优化器首先将原始查询复制到初始搜索空间（在 Cascades 中，搜索空间称为 **memo**，继承自 Volcano）。然后一个任务触发整个优化过程，优化==初始搜索空间的顶层组==，该任务反过来又触发对搜索空间中越来越小的子组进行优化。优化一个组意味着在组中找到最好的计划（称为“优化目标”），因此将规则应用于所有表达式。在此过程中，将新任务放入任务堆栈中，将新组和表达式添加到搜索空间中。当顶层组的优化任务完成后，需要顶层组的所有子组完成自己的优化，才能找到顶层组的最优方案，从而完成优化。
+Like the Volcano optimizer generator, Cascades begins the optimization process from the top group and is considered to use a top-down search strategy. Dynamic programming and memoization are also used in the task of optimizing a group. Before initiating optimization of all a group’s expressions, ==it checks whether the same optimization goal has been pursued already==; if so, it simply returns the plan found in the earlier search. One major difference between the search strategies in Cascades and Volcano is that Cascades only explores a group on demand while Volcano always generates all equivalent logical expressions exhaustively in the first pre-optimization phase before the actual optimization phase begin. In Cascades, there is no separation into two phases. It is not useful to derive all logically equivalent forms of all expressions, e.g., of a predicate. A group is explored using transformation rules only on demand, and it is explored only to create all members of the group that match a given pattern. Since it explores groups only for truly useful patterns, Cascades search strategy is more efficient^12^.
 
-和 Volcano 优化器生成器一样，Cascades 从最上层的组开始优化过程，使用自顶向下的搜索策略。动态规划和 **memoization** 也用于优化组的任务。在对所有组的表达式进行初始优化之前，==先检查是否已经追求了相同的优化目标==；如果是，它只返回在前面的搜索中找到的计划。Cascades 和 Volcano 中的搜索策略之间的一个主要区别在于，Cascades 仅按需探索一组，而 Volcano 总是在实际优化阶段开始之前的第一个预优化阶段详尽地生成所有等效的逻辑表达式。在 Cascades 中，没有分成两个阶段。推导出所有表达式（例如谓词）的所有逻辑等价形式是没有用的。只在需要时使用转换规则探索组，并且只在组的所有成员匹配给定模式时才探索该组。由于它只探索真正有用的模式组，因此 Cascades 搜索策略更有效^12^。
+> 12. In the worst case, exploration of Cascades is exhaustive. Thus in the worst case the efficiency of the Cascades search will equal that of the Volcano search strategy.
 
-> 12. 最坏的情况下 ， Cascades 彻底探索。 因此，在最坏的情况下，Cascades 搜索的效率将与 Volcano 搜索策略的效率相同。
+Compared to the Volcano optimizer generator’s cumbersome user interface, Cascades provides a clean data structure abstraction and interface between DBI and optimizer. Each of the classes that makes up the interface between the Cascades optimizer and the DBI is designed to become the root of a subclass hierarchy. The optimizer relies only on the method defined in this interface; the DBI is free to add additional methods when defining subclasses. Some important interfaces include operators, cost model and rules. This clear interface is important in that it makes the optimizer more robust and makes it easier for a DBI to implement or extend an optimizer.
 
-与 Volcano 优化器生成器繁琐的用户接口相比，Cascades 在 DBI 和优化器之间提供了一个干净的数据结构抽象和接口。构成 Cascades 优化器和 DBI 之间接口的每个类都被设计成**子类层次结构的根**。优化器仅依赖于该接口中定义的方法； DBI 在定义子类时可以自由添加额外的方法。一些重要的接口包括运算符、成本模型和规则。 这个清晰的接口很重要，因为它使优化器更加健壮，并使 DBI 更容易实现或扩展优化器。
+[Bil97] describes an experimental optimizer, Model D, for optimizing the TPC-D queries [TPC95] developed under the Cascades optimizer framework. Model D has many logical operators which in turn require a number of rules and physical operators. The new operators and rules are defined and easily added to the optimizer by the DBI by deriving from the base interface class. With only a few changes to the Cascades search engine, Model D demonstrates the extensibility of the Cascade framework in the relational model.
 
-[Bil97] 描述了一个实验优化器 **Model D**，用于优化在 Cascades 优化器框架下开发的 TPC-D 查询 [TPC95]。**Model D** 有许多逻辑运算符，而这些逻辑运算符又需要许多规则和物理运算符。DBI 可以通过派生基类接口来定义新的运算符和规则，并很容易地将它们添加到优化器中。只需对 Cascades 搜索引擎进行少量更改，**Model D** 就展示了 Cascade 框架在关系模型中的可扩展性。
-
-Cascades 只是一个优化器框架。 它提出了许多性能改进，但许多功能目前未使用或仅以基本形式提供。目前 Cascades 的设计和实现仍有许多改进的空间。优化器框架和 DBI 规范的强分离、虚方法的广泛使用、非常频繁的对象分配和释放都会导致性能问题。一些修剪技术可以应用于自上而下的优化，以显着提高搜索性能。 所有这些观察结果都激发了我们对 Cascades 的研究和开发一种新的、更有效的优化器——哥伦比亚优化器。
+Cascades is just an optimizer framework. It proposed numerous performance improvements, but many features are currently unused or provided only in rudimentary form. The current design and implementation of Cascades leaves room for many improvements. The strong separation of optimizer framework and the DBI’s specification, extensive use of virtual methods, very frequent object allocation and deallocation can cause performance problems. Some pruning techniques can be applied to the top-down optimization to dramatically improve search performance. All these observations motivate our research in Cascades and development of a new, more efficient optimizer – the Columbia optimizer.
 
 ## Chapter 4 . Structure of the Columbia Optimizer
 
@@ -416,7 +377,7 @@ This section will describe the structure of the Columbia ==**search space**==. T
 
 We borrow the term Search Space from AI, where it is a tool for solving a problem. In query optimization, the problem is to find the cheapest plan for a given query, subject to a ==**certain context**==. A Search Space typically consists of a collection of possible solutions to the problem and its sub problems. Dynamic Programming and <u>Memoization</u> are two approaches to using a Search Space to solve a problem. Both Dynamic Programming and Memoization partition the possible solutions by logical equivalence. We call each partition a **==GROUP==**. Hence, search space consists of a collection of groups.
 
-In Columbia, a structure similar to the Cascades’ MEMO structure is used to represent the search space, namely an instance of class SSP, which consists of an array of groups with a group ID identified as the root group in the search space. A group in the search space contains a collection of logically equivalent multi-expressions. As is introduced in section 2.4, a multi-expression consists of an operator and none or more groups as inputs. Hence, each group in the search space is either a root group or an input group to other group(s), i.e., from the root group, all other groups can be visited as descendants of the root group. That is why the root group must be identified. By copying in the initial query expression, The search space is initialized with several basic groups. Each basic group contains only one logical multi-expression. The further operation of the optimization will expand the search space by adding new multiexpressions and new groups into the search space. <u>The method “CopyIn” copies an expression to a multi-expression and includes the multi-expression into the search space</u>. It may either include the new multi-expression into an existing group which the multi-expression logically equivalently belongs to, or include the new multiexpression into a new group in which case the method is respondent to first create the new group and append it to the search space. The method “CopyOut” of the class SSP will output the optimal plan after the optimization is finished.
+In Columbia, a structure similar to the Cascades’ MEMO structure is used to represent the search space, namely an inst，ance of class SSP, which consists of an array of groups with a group ID identified as the root group in the search space. A group in the search space contains a collection of logically equivalent multi-expressions. As is introduced in section 2.4, a multi-expression consists of an operator and none or more groups as inputs. Hence, each group in the search space is either a root group or an input group to other group(s), i.e., from the root group, all other groups can be visited as descendants of the root group. That is why the root group must be identified. By copying in the initial query expression, The search space is initialized with several basic groups. Each basic group contains only one logical multi-expression. The further operation of the optimization will expand the search space by adding new multiexpressions and new groups into the search space. <u>The method “CopyIn” copies an expression to a multi-expression and includes the multi-expression into the search space</u>. It may either include the new multi-expression into an existing group which the multi-expression logically equivalently belongs to, or include the new multiexpression into a new group in which case the method is respondent to first create the new group and append it to the search space. The method “CopyOut” of the class SSP will output the optimal plan after the optimization is finished.
 
 ##### 4.2.1.2 Duplicate Multi-expression Detection in the Search Space
 
@@ -460,7 +421,7 @@ The class GROUP is central to top-down optimization. A group contains a collecti
 
  > 15. Actually, a plan in a group is derived from the physical multi-expressions explicitly stored in the group.
 
- This section describes how the lower bound of a group is obtained in Columbia. **Obviously, a higher lower bound is better**. The goal is to find the highest possible lower bound according to the information we gathered from a group. When a group is constructed, the logical property is gathered, including the cardinality and the schema of the group, from which our lower bound is derived. <u>Since the lower bound is based only on the group’s logical property, it can be calculated without enumerating any expressions in the group</u>.
+This section describes how the lower bound of a group is obtained in Columbia. **Obviously, a higher lower bound is better**. The goal is to find the highest possible lower bound according to the information we gathered from a group. When a group is constructed, the logical property is gathered, including the cardinality and the schema of the group, from which our lower bound is derived. <u>Since the lower bound is based only on the group’s logical property, it can be calculated without enumerating any expressions in the group</u>.
 
 Before the calculation of the lower bound is described, some definitions are presented:
 
@@ -519,7 +480,7 @@ In Figure 14, we defined three kinds of lower bounds for a group. Detailed discu
 
 First, rule bindings take all logical multi-expressions as inputs to check if they match patterns, so we need not skip over physical multi-expressions. A group generally contains a huge number of logical and physical multi-expressions which may occupy several pages of virtual memory, so a single reference of physical multi-expressions may cause memory page fault which greatly slow down the program execution. Generally, the number of physical multi-expressions in a group is twice or three times as the number of logical multi-expressions. By separating logical and physical expressions and only looking at logical expressions, binding in Columbia should be faster than that in Cascades.
 
-Second, if a group has been optimized and we are optimizing it for a different property, we can handle the physical and logical multi-expressions in the group separately. The physical multi-expressions in the physical list are scanned only to check whether the desired property is satisfied and calculate costs directly, and the logical multi-expressions in the logical list are scanned only to see if all appropriate rules have been fired. Only when a rule has not been applied to an expression before, is the logical expression to be optimized. In Cascades, the task for optimizing a group does not look at the physical multi-expressions. Instead, all logical multi-expressions are to be optimized again. Obviously, the approach in Columbia to optimize a group is superior to that in Cascades, and is facilitated by the separation of logical and physical linked lists in a group.
+Second, <u>if a group has been optimized and we are optimizing it for a different property</u>, we can handle the physical and logical multi-expressions in the group separately. The physical multi-expressions in the physical list are scanned only to check whether the desired property is satisfied and calculate costs directly, and the logical multi-expressions in the logical list are scanned only to see if all appropriate rules have been fired. Only when a rule has not been applied to an expression before, is the logical expression to be optimized. In Cascades, the task for optimizing a group does not look at the physical multi-expressions. Instead, all logical multi-expressions are to be optimized again. Obviously, the approach in Columbia to optimize a group is superior to that in Cascades, and is facilitated by the separation of logical and physical linked lists in a group.
 
 **Better Structure for Winners**. The key idea of dynamic programming and memoization is to save the winners of searches for future use. Each search for the cheapest solution to a problem or subproblem is done relative to some context. Here a context consists of required physical properties (e.g. the solution must be sorted on A.X ) and an upper bound (e.g. the solution must cost less than 5). A **WINNER** is the multi-expression (physical) which won the search for the context which guided a search. Since different search contexts may yield different winners for a group, an array of winner objects is stored into a group structure.
 
@@ -972,15 +933,11 @@ There are four cases on which we can run benchmarks for Columbia. The O_INPUTS a
 
 ### 4.3 Pruning Techniques
 
-> In this section, two pruning techniques in Columbia are discussed. They extend Cascades’ search algorithm and improve search performance by effectively pruning the search space. As we can see from section 4.2.3.5, these pruning techniques are mainly implemented in task O_INPUTS.
-
-本节将讨论 Columbia  的两种裁剪技术。它们扩展了 Cascades 的搜索算法，并通过有效地裁剪搜索空间来提高搜索性能。从 [4.2.3.5](#4.2.3.5 O_INPUTS - Task to optimize inputs and derive cost of an expression) 节可以看出，这些裁剪技术主要在任务 O_INPUTS 中实现。
+In this section, two pruning techniques in Columbia are discussed. They extend Cascades’ search algorithm and improve search performance by effectively pruning the search space. As we can see from section 4.2.3.5, these pruning techniques are mainly implemented in task O_INPUTS.
 
 #### 4.3.1 Lower Bound Group Pruning
 
 > **Motivation**: Top-down optimizers compute a cost for high-level physical plans before some lower-level plans are generated. These early costs serve as upper bounds for subsequent optimizations. In many cases these upper bounds could be used to avoid generating entire groups of expressions. We call this group pruning.
-
-自上而下的优化器在生成一些低级计划之前计算高级物理计划的成本。这些早期成本可作为后续优化的上限。在许多情况下，这些上限可用于避免生成整组表达式。我们称之为组修剪。
 
 > Since Columbia searches top-down and memoizes, bounds could be used to prune entire groups. For example, suppose the optimizer’s input is $(A \Join B) \Join C$. The optimizer will first calculate the cost of one plan in the group ==[ABC]==, say $(A \Join_L B) \Join_L C$; imagine **its cost is 5 seconds**. It expanded the group [AB] and did not consider the groups [AC] or [BC] in calculating this 5 second cost. Now we are considering optimizing another expression in the group, say $[AC]\Join_L[B]$​. Suppose the group [AC] represents a Cartesian product, it is so huge that it takes more than 5 seconds just to copy out tuples from [AC] to [ABC]. It means the plans containing [AC] will never be the optimal plan for [ABC]. In this case the optimizer does not generate, so effectively prunes, all the plans in the group [AC]. Figure 23 shows the content of the search space after the optimization of the two expressions discussed above. Notice that the [AC] group was not expanded. On the other hand, Starburst and other bottom-up optimizers optimize the groups [AB], [AC] and [BC] before beginning to process [ABC], thus losing any chance to prune multiple plans.
 

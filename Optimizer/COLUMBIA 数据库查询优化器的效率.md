@@ -220,19 +220,10 @@
 
 ### 2.6 Rules
 
-> Many optimizers use rules to generate the logically equivalent expressions of a given initial query. A rule is a description of how to transform an expression to a logically equivalent expression. A new expression is generated when a rule is applied to a given expression. It is the rules that an optimizer uses to expand the initial search space and generate all the logically equivalent expressions of a given initial query.
->
-> Each rule is defined as a pair of pattern and substitute. A pattern defines the structure of the logical expression that can be applied to the rule. A substitute defines the structure of the result after applying the rule. When expanding the search space, the optimizer will look at each logical expression, (note that rules only apply to logical expressions), and check if this expression matches any patterns of the rules in the rule set. If the pattern of a rule is matched, the rule is fired to generate the new logically equivalent expression according to the substitute of the rule.
->
-> Cascades used expressions to represent patterns and substitutes. Patterns are always logical expressions, while substitutes can be logical or physical. Transformation rules and implementation rules are two common types of rules. A rule is called transformation rule if its substitute is a logical expression. A rule is called implementation rule if its substitute is a physical expression.
->
-> For example, **EQJOIN_LTOR** is a transformation rule that applies left to right associativity to a left deep logical expression and generates a right deep logical expression that is logically equivalent to the original expression. EQJOIN_MERGEJOIN is an implementation rule that generates a physical expression  by replacing the EQJOIN operator with MERGEJOIN physical operator. This physical expression implements the original logical expression using sort-merge join algorithm. Figure 8 shows a picture of these two simple rules.
->
-> > - [x] Figure 8. Two types of Rules
 
 许多优化器使用**规则**来生成给定初始查询的逻辑上等价的表达式。**<u>规则是描述如何将表达式转换为逻辑上等价的其他表达式</u>**。将规则应用于给定表达式时，将生成一个新表达式。优化器使用规则**扩展初始搜索空间**，并生成给定初始查询所有逻辑上等价的表达式。
 
-每个规则定义为一对模式和替代。**模式**定义**<u>==符合规则的==</u>**逻辑表达式结构。**替代**定义了应用规则后逻辑表达式结构。扩展搜索空间时，优化器将查看每个逻辑表达式（注意，<u>规则仅适用于逻辑表达式</u>），并检查此表达式是否与规则集中的任何规则模式匹配。如果匹配某个规则的模式，则根据规则的替换，触发规则以生成新的逻辑等价表达式。
+每个规则定义为一对**模式**和**替代**。**模式**定义**符合规则的**逻辑表达式结构。**替代**定义了应用规则后的逻辑表达式。扩展搜索空间时，优化器将查看每个逻辑表达式（注意，<u>规则仅适用于逻辑表达式</u>），并检查此表达式是否与规则集中的任何规则模式匹配。如果匹配某个规则的模式，则根据规则的替换，触发规则以生成新的逻辑等价表达式。
 
 Cascades 使用表达式表示模式和替代。**模式总是逻辑表达式**，而**替代**可以是逻辑或物理表达式。转换规则和实现规则是两种常见的规则类型。如果规则的替代物是逻辑表达式，则称为转换规则。如果规则的替代物是物理表达式，则称为实现规则。
 
@@ -292,40 +283,12 @@ Volcano 搜索策略的效率允许生成真正的优化器，一个用于面向
 
 ### 3.3 The Cascades Optimizer Framework
 
-> The Cascades Optimizer Framework [Gra95] is an extensible query optimization framework that resolves many short-comings of the EXODUS and Volcano optimizer generators. It achieves a substantial improvement over its predecessors in functionality, ease-of-use, and robustness without giving up extensibility, dynamic programming and memoization. The choosing of Cascades as the foundation for new query optimizers in Tandem’s NonStop SQL product [Cel96] and in Microsoft’s SQL Server product [Gra96] demonstrated that Cascades satisfies the requirements and demands of modern commercial database systems. The following list some of advantages of Cascades:
->
-> - Optimization tasks as data structures
-> - Rules as objects
-> - Rules to place property enforcers such as sort operations
-> - ==Ordering of moves by promise==
-> - Predicates as operators that is both logical and physical
-> - Abstract interface class defining the DBI-optimizer interface and permitting DBI-defined subclass hierarchies.
-> - More robust code written in C++ and a clean interface making full use of the abstraction mechanisms of C++
-> - Extensive tracing support and better documentation to assist the DBI
->
->In Cascades, the optimization algorithm is broken into several parts, which are called “tasks”. Tasks are realized as objects in which a “perform” method is defined for them. All such task objects are collected in a task structure that is realized as a Last-In-First-Out stack^11^. Scheduling a task is very similar to invoking a function: the task is popped out of the stack and the “perform” method of the task is invoked. At any time during the optimization there is a stack of tasks waiting to be performed. Performing a task may result in more tasks being placed on the stack.
->
->> 11. As [Gra95] pointed out, other task structures can easily be envisioned. In particular, task objects can be reordered very easily at any point, enabling very flexible mechanisms for heuristic guidance, Moreover, There are more advantages in representing the task structure by a graph that captures dependencies or the topological ordering among tasks and permit efficient parallel search (using shared memory).
->
->The Cascades optimizer first copies the original query into the initial search space (**in Cascades, the search space is called “memo” which is inherited from Volcano**). The entire optimization process is then triggered by a task to optimize the top group of the initial search space, which in turn triggers optimization of smaller and smaller subgroups in the search space. Optimizing a group means finding the best plan in the group (which is called an “optimization goal”) and therefore applies rules to all expressions. In this process, new tasks are placed into the task stack and new groups and expressions are added into the search space. After the task of optimizing the top group is completed, which requires all the subgroups of the top group to complete their optimization, the best plan of the top group can be found, hence the optimization is done.
->
->Like the Volcano optimizer generator, Cascades begins the optimization process from the top group and is considered to use a top-down search strategy. Dynamic programming and memoization are also used in the task of optimizing a group. Before initiating optimization of all a group’s expressions, ==it checks whether the same optimization goal has been pursued already==; if so, it simply returns the plan found in the earlier search. One major difference between the search strategies in Cascades and Volcano is that Cascades only explores a group on demand while Volcano always generates all equivalent logical expressions exhaustively in the first pre-optimization phase before the actual optimization phase begin. In Cascades, there is no separation into two phases. It is not useful to derive all logically equivalent forms of all expressions, e.g., of a predicate. A group is explored using transformation rules only on demand, and it is explored only to create all members of the group that match a given pattern. Since it explores groups only for truly useful patterns, Cascades search strategy is more efficient^12^.
->
->> 12. In the worst case, exploration of Cascades is exhaustive. Thus in the worst case the efficiency of the Cascades search will equal that of the Volcano search strategy.
->
->Compared to the Volcano optimizer generator’s cumbersome user interface, Cascades provides a clean data structure abstraction and interface between DBI and optimizer. Each of the classes that makes up the interface between the Cascades optimizer and the DBI is designed to become the root of a subclass hierarchy. The optimizer relies only on the method defined in this interface; the DBI is free to add additional methods when defining subclasses. Some important interfaces include operators, cost model and rules. This clear interface is important in that it makes the optimizer more robust and makes it easier for a DBI to implement or extend an optimizer.
->
->[Bil97] describes an experimental optimizer, Model D, for optimizing the TPC-D queries [TPC95] developed under the Cascades optimizer framework. Model D has many logical operators which in turn require a number of rules and physical operators. The new operators and rules are defined and easily added to the optimizer by the DBI by deriving from the base interface class. With only a few changes to the Cascades search engine, Model D demonstrates the extensibility of the Cascade framework in the relational model.
->
->Cascades is just an optimizer framework. It proposed numerous performance improvements, but many features are currently unused or provided only in rudimentary form. The current design and implementation of Cascades leaves room for many improvements. The strong separation of optimizer framework and the DBI’s specification, extensive use of virtual methods, very frequent object allocation and deallocation can cause performance problems. Some pruning techniques can be applied to the top-down optimization to dramatically improve search performance. All these observations motivate our research in Cascades and development of a new, more efficient optimizer – the Columbia optimizer.
->
-
 Cascades 优化器框架 [Gra95] 是一个可扩展的查询优化框架，它解决了 EXODUS 和 Volcano 优化器生成器的许多缺点。在不放弃可扩展性、动态规划和 memoization 的情况下，它在功能、易用性和健壮性方面比之前的版本有了实质性的改进。在 Tandem 的 NonStop SQL 产品 [Cel96] 和 Microsoft 的 SQL Server 产品 [Gra96] 中选择 Cascades 作为新查询优化器的基础，表明 Cascades 满足现代商业数据库系统的需求。下面列出了 Cascades 的一些优点：
 
 - 优化任务作为数据结构
 - 规则作为对象
 - 设置属性强制执行器的规则，如排序操作
-- ==按承诺排序动作==
+- ==按 promise 排序优化动作==
 - 谓词作为逻辑和物理运算符
 - 抽象接口类定义了 DBI 优化器接口，并允许DBI 定义的子类层次结构。
 - 用 C++ 编写的更健壮的代码和一个干净的接口，充分利用 C++ 的抽象机制
@@ -337,7 +300,7 @@ Cascades 优化器框架 [Gra95] 是一个可扩展的查询优化框架，它�
 
 Cascades 优化器首先将原始查询复制到初始搜索空间（在 Cascades 中，搜索空间称为 **memo**，继承自 Volcano）。然后一个任务触发整个优化过程，优化==初始搜索空间的顶层组==，该任务反过来又触发对搜索空间中越来越小的子组进行优化。优化一个组意味着在组中找到最好的计划（称为“优化目标”），因此将规则应用于所有表达式。在此过程中，将新任务放入任务堆栈中，将新组和表达式添加到搜索空间中。当顶层组的优化任务完成后，需要顶层组的所有子组完成自己的优化，才能找到顶层组的最优方案，从而完成优化。
 
-和 Volcano 优化器生成器一样，Cascades 从最上层的组开始优化过程，使用自顶向下的搜索策略。动态规划和 **memoization** 也用于优化组的任务。在对所有组的表达式进行初始优化之前，==先检查是否已经追求了相同的优化目标==；如果是，它只返回在前面的搜索中找到的计划。Cascades 和 Volcano 中的搜索策略之间的一个主要区别在于，Cascades 仅按需探索一组，而 Volcano 总是在实际优化阶段开始之前的第一个预优化阶段详尽地生成所有等效的逻辑表达式。在 Cascades 中，没有分成两个阶段。推导出所有表达式（例如谓词）的所有逻辑等价形式是没有用的。只在需要时使用转换规则探索组，并且只在组的所有成员匹配给定模式时才探索该组。由于它只探索真正有用的模式组，因此 Cascades 搜索策略更有效^12^。
+和 Volcano 优化器生成器一样，Cascades 从最上层的组开始优化过程，使用自顶向下的搜索策略。动态规划和 **memoization** 也用于优化组的任务。在对所有组的表达式进行初始优化之前，==先检查是否已经追求了相同的优化目标==；如果是，它只返回在前面的搜索中找到的计划。<u>Cascades 和 Volcano 中的搜索策略之间的一个主要区别在于，Cascades 仅按需探索一组，而 Volcano 总是在实际优化阶段开始之前的第一个预优化阶段详尽地生成所有等效的逻辑表达式</u>。在 Cascades 中，没有分成两个阶段。推导出所有表达式（例如谓词）的所有逻辑等价形式是没有用的。只在需要时使用转换规则探索组，并且只在组的所有成员匹配给定模式时才探索该组。由于它只探索真正有用的模式组，因此 Cascades 搜索策略更有效^12^。
 
 > 12. 最坏的情况下 ， Cascades 彻底探索。因此，在最坏的情况下，Cascades 搜索的效率将与 Volcano 搜索策略的效率相同。
 
@@ -416,13 +379,13 @@ Columbia 基于 Cascades 框架，专注于优化器的效率。本章将详细�
 
 #### 4.2.1 The Search Space
 
-本节描述 Columbia **==搜索空间==**的结构。搜索空间的组件是<u>**组**</u>。每个<u>**组**</u>包含一个或多个逻辑上等价的多重表达式。
+本节描述 Columbia 搜索空间的结构。搜索空间的组件是<u>**组**</u>。每个<u>**组**</u>包含一个或多个逻辑上等价的多重表达式。
 
 ##### 4.2.1.1 Search Space Structure - Class SSP
 
-我们从 AI 借来<u>**搜索空间**</u>一词，它是解决问题的工具。查询优化是要根据**==特定上下文==**，找到<u>给定查询成本最低的计划</u>。搜索空间通常由<u>问题及其子问题</u>可能解决方案的集合组成。**动态规划**和**记忆化**是使用搜索空间解决问题的两种方法。动态规划和<u>记忆化</u>都通过<u>逻辑等价</u>来划分可能的解决方案。我们将每个这样的划分称为 **==GROUP==**。因此，搜索空间由组的集合组成。
+我们从 AI 借来搜索空间一词，它是解决问题的工具。查询优化是要根据**特定上下文**，找到<u>给定查询成本最低的计划</u>。搜索空间通常由<u>问题及其子问题</u>可能解决方案的集合组成。**动态规划**和**记忆化搜索**是使用搜索空间解决问题的两种方法。动态规划和记忆化搜索都通过逻辑等价来划分可能的解决方案。我们将每个这样的划分称为 **组**。因此，搜索空间由组的集合组成。
 
-在 Columbia 中，类似于 Cascade 的 MEMO 的结构被用来表示搜索空间，即类 `SSP` 的一个实例，包含一个 **Group** 数组，Group ID 被标识为搜索空间中的 Root Group。搜索空间中的 **Group** 包含逻辑上等价的多个表达式。如[第 2.4 节](#2.4. Groups)所述，这些表达式**==由==**一个运算符，以及一个或多个 Group 作为输入组成。因此，搜索空间中的每个组都是 Root Group，或其他 Group 的输入Group，即从 Root Group 开始，所有其他 Group 都可以作为 Root Group 后代来访问。这就是为什么必须标识 Root Group 的原因。通过复制初始查询表达式，搜索空间被初始化为几个基本 Group。每个基本组只包含一个逻辑多重表达式。进一步的优化是通过在搜索空间中添加新的多重表达式和新的组来扩展搜索空间。方法 `CopyIn` 将一个表达式复制到多重表达式中，并将多重表达式包含到搜索空间中。可以将新的多重表达式包含在逻辑上等价的现有 Group 中，也可以将该新的多重表达式包含在新的 Group 中，此时，将首先创建新的 Group ，再将其追加到搜索空间中。`SSP` 的 `CopyOut` 将输出优化后的计划。
+在 Columbia 中，类似于 Cascade 的 MEMO 的结构被用来表示搜索空间，即类 `SSP` 的一个实例，包含一个 **Group** 数组，Group ID 被标识为搜索空间中的 Root Group。搜索空间中的 **Group** 包含逻辑上等价的多个表达式。如[第 2.4 节](#2.4. Groups)所述，这些表达式由一个运算符，以及一个或多个 Group 作为输入组成。因此，搜索空间中的组要么是 Root Group，要么是其他 Group 的输入Group，即从 Root Group 开始，所有其他 Group 都可以作为 Root Group 后代来访问。这就是为什么必须标识 Root Group 的原因。通过复制初始查询表达式，搜索空间被初始化为几个基本 Group。每个基本组只包含一个逻辑多重表达式。进一步的优化是通过在搜索空间中添加新的多重表达式和新的组来扩展搜索空间。方法 `CopyIn` 将一个表达式复制到多重表达式中，并将多重表达式包含到搜索空间中。可以将新的多重表达式包含在逻辑上等价的现有 Group 中，也可以将该新的多重表达式包含在新的 Group 中，此时，将首先创建新的 Group ，再将其追加到搜索空间中。`SSP` 的 `CopyOut` 将输出优化后的计划。
 
 ##### 4.2.1.2 Duplicate Multi-expression Detection in the Search Space
 
@@ -430,7 +393,7 @@ Columbia 基于 Cascades 框架，专注于优化器的效率。本章将详细�
 
 在搜索空间中包含多重表达式的一个潜在问题是可能发生重复，即在搜索空间中可能存在与此多重表达式完全相同的多重表达式^13^。因此，在实际加入多重表达式之前，必须在整个搜索空间中检查是否已存在该多重表达式。如果已存在，则不应将此多重表达式添加到搜索空间中。
 
-> 13. 实际上，在基于规则的优化器中，重复不可避免。即使存在唯一规则集（在第 [4.2.2](# 4.2.2 Rules) 节中讨论），也需要唯一标识，原因有二：(i) 唯一的规则集会产生副作用，例如，规则 (AB)C ->A(BC) 将包含 BC 的组作为副作用；尽管唯一规则集保证表达式 A(BC) 不存在，但 BC 可能已经存在。(ii) ==唯一规则集的泛化，例如，添加聚合下推，可能会破坏唯一性==。
+> 13. 实际上，在基于规则的优化器中，重复不可避免。即使存在唯一规则集（在第 [4.2.2](# 4.2.2 Rules) 节中讨论），也需要唯一标识，原因有二：(i) 唯一的规则集会产生副作用，例如，规则 `(AB)C ->A(BC)` 的副作用是将产生包含 `BC` 的组；尽管唯一规则集保证表达式 `A(BC)` 不存在，但 `BC` 可能已经存在。(ii) ==唯一规则集的泛化，例如，添加聚合下推，可能会破坏唯一性==。
 
 至少有三种算法可以检查重复，：
 
@@ -460,13 +423,13 @@ return init_val mod table_size
 回想搜索空间中的多重表达式数量非常多，Columbia 的这种哈希机制可以简单高效地消除整个搜索空间中重复的多重表达式。
 
 ##### 4.2.1.3 GROUP
-`GROUP` 类是**自顶向下**优化的核心，是逻辑上等价的**逻辑和物理多重表达式**的集合。由于所有这些多重表达式都具有相同的逻辑属性，因此 `GROUP` 还存储了指向这些多重表达式共享的<u>逻辑属性</u>的指针。对于动态规划和==memoization==，包含了一个记录了组内最优计划的 `WINNER`。除了这些基本元素外，Columbia 还改进了 `GROUP`，使得搜索策略更加高效。与 Cascade 相比，该算法增加了一个下界成员，分离了物理表达式和逻辑多重表达式，并为胜者提供了更好的结构。
+`GROUP` 类是**自顶向下**优化的核心，是逻辑上等价的**逻辑和物理多重表达式**的集合。由于所有这些多重表达式都具有相同的逻辑属性，因此 `GROUP` 还存储了指向这些多重表达式共享的<u>逻辑属性</u>的指针。对于动态规划和记忆化搜索，包含了一个记录了组内最优计划的 `WINNER`。除了这些基本元素外，Columbia 还改进了 `GROUP`，使得搜索策略更加高效。与 Cascade 相比，该算法增加了一个下界成员，分离了**物理表达式**和**逻辑多重表达式**，并为胜者提供了更好的结构。
 
-**Group 的下界**。Group 的下界是一个值 L，Group 中的每个计划 P ^15^ 都满足：$cost(P) >= L$。下界是自上而下优化的重要措施，当 Group 的下界大于当前上界（即当前优化的成本限制）时，可能会裁剪该 Group ，它可以避免枚举整个输入 Group 而不会丢失最优方案。第 4.4.1 节将讨论在 Columbia 进行Group 裁剪的细节，这是 Columbia 优化器对提高效率的主要贡献。在创建 Group 并将其追加到搜索空间时，将计算 Group 的下界，以便后续优化时使用，
+**Group 的下界**。Group 的下界是一个值 L，Group 中的每个计划 P ^15^ 都满足：$cost(P) >= L$。下界是自上而下优化的重要措施，当 Group 的下界大于当前上界（即当前优化的成本限制）时，可能会裁剪该 Group ，它可以避免枚举整个输入 Group 而不会丢失最优方案。第 4.4.1 节将讨论在 Columbia 进行Group 裁剪的细节，这是 Columbia 优化器对提高效率的主要贡献。在创建 Group 并将其追加到搜索空间时，将计算 Group 的下界，以便后续优化时使用。
 
 > 15. 实际上，Group 中的计划是从显式存储在 Group 中的物理**多重表达式**<u>派生的</u>。
 
-本节介绍如何在 Columbia 中计算 Group 的下界。**显然，下界越高越好**。我们的目标是根据我们从 Group 中收集到的信息找到最高的下界。构造 Group 时，将收集逻辑属性，包括基数和 Group 的 Schema，并从中计算出下界。**由于计算下界仅基于组的逻辑属性，因此可以在不枚举组中任何表达式的情况下进行计算**。
+本节介绍如何在 Columbia 中计算 Group 的下界。==**显然，下界越高越好**==。我们的目标是根据我们从 Group 中收集到的信息找到最高的下界。构造 Group 时，将收集逻辑属性，包括基数和 Group 的 Schema，并从中计算出下界。**由于计算下界仅基于组的逻辑属性，因此可以在不枚举组中任何表达式的情况下进行计算**。
 
 在介绍如何计算下界之前，先给出一些定义：
 
@@ -524,7 +487,9 @@ Else
 
 首先，**规则绑定**将所有逻辑<u>**多重表达式**</u>作为输入来检查它们是否与模式匹配，因此我们不必跳过物理多重表达式。一个 Group 通常包含大量逻辑和物理多重表达式，可能占用好几页的虚拟内存，因此，物理多重表达式的单个引用可能会导致内存页面错误，从而大大降低程序执行速度。通常，Group 中物理多重表达式的数量是逻辑多重表达式数量的两到三倍。通过分离逻辑表达式和物理表达式并仅查看逻辑表达式，Columbia 中的绑定应该比 Cascades 中的绑定更快。
 
-其次，如果已经优化过一个 Group，并且我们针对不同的属性正在对其进行优化，那么我们可以分别处理该 Group 中的物理和逻辑多重表达式。只扫描物理列表中的物理多重表达式，以检查是否满足所需属性并直接计算成本，只扫描逻辑列表中的逻辑多重表达式，以查看是否已触发所有适当的规则。只有当规则以前没有应用于<u>表达式</u>时，才需要优化逻辑表达式。在 Cascades 中，优化 Group 的<u>==任务==</u>不会查看物理<u>**多重表达式**</u>。相反，将再次优化所有逻辑多重表达式。显然，Columbia 优化 Group 的方法优于 Cascades，并且通过将逻辑链表和物理链表分开，简化了该方法。
+其次，如果已经优化过一个 Group，**并且我们正在为不同的属性优化它**，那么我们可以分别处理该 Group 中的物理和逻辑多重表达式。
+
+只扫描物理列表中的物理多重表达式，以检查是否满足所需属性并直接计算成本，只扫描逻辑列表中的逻辑多重表达式，以查看是否已触发所有适当的规则。==只有当以前没有将规则应用于表达式时==，才需要优化逻辑表达式。在 Cascades 中，优化 Group 的<u>==任务==</u>不会查看物理<u>**多重表达式**</u>。相反，将再次优化所有逻辑多重表达式。显然，Columbia 优化 Group 的方法优于 Cascades，并且通过将逻辑链表和物理链表分开，简化了该方法。
 
 **胜者的数据结构更优**。动态规划和 **memoization** 的关键思想是缓存胜者的信息，以便将来使用。针对每个问题或子问题，搜索其最佳的解决方案都是相对于某些上下文进行。这里，上下文由所需的物理属性（例如，结果集必须按 A.X 排序）和上界（例如，执行计划的成本必须小于5）组成。**胜者**是一个（物理）多重表达式，在某个上下文的搜索中获胜。由于不同的搜索上下文可能会为一个 Group 产生不同的赢家，所以 Group 中存储的是赢家对象的数组。
 
@@ -682,7 +647,7 @@ State finished:
 
 ##### 4.2.2.2 Enforcer Rule
 
-**Enforcer 规则**是一种特殊规则，它插入物理运算符，以强制或保证所需的物理属性。**Enforcer 规则**插入的物理运算符称为 **enforcer**。通常，**Enforcer** 将**组**作为输入，并输出<u>结果相同但物理属性不同</u>的**组**。例如，`QSORT` 物理运算符是一个 **enforcer**，它在搜索空间中由组表示的元组集合上实现 QSORT 算法。`SORT_RULE` 规则是一个强制规则，它将 QSORT 运算符插入到==替换==中。它可以表示为:
+**Enforcer 规则**是一种特殊规则，它插入物理运算符，以强制或保证所需的物理属性。**Enforcer 规则**插入的物理运算符称为 **enforcer**。通常，**Enforcer** 将**组**作为输入，并输出<u>结果相同但物理属性不同</u>的**组**。例如，`QSORT` 物理运算符是一个 **enforcer**，它在搜索空间中由组表示的元组集合上实现 QSORT 算法。`SORT_RULE` 规则是一个强制规则，插入 QSORT 运算符。表示为:
 
 ```
 Pattern: L(1) 
@@ -690,7 +655,7 @@ Substitute: QSORT L(1)
 其中 L(i) 代表索引为 i 的 LEAF_OP。
 ```
 
-当且仅当搜索上下文需要排序的物理属性时，才会触发强制执行器规则。例如，考虑用 merge-join 优化时，对**其输入搜索上下文的物理属性**要求是，要按 merge-join 的属性对输入排序。考虑如下的多重表达式：
+当且仅当搜索上下文需要排序的物理属性时，才会触发 **enforcer 规则**。例如，优化 merge-join 时，**其输入的搜索上下文**要求输入根据  merge-join 的属性进行排序。考虑如下的多重表达式：
 
 ```
 MERGE_JOIN(A.X, B.X), G1, G2.
@@ -698,7 +663,7 @@ MERGE_JOIN(A.X, B.X), G1, G2.
 
 当使用自顶向下方法优化这个多重表达式时，首先根据特定的上下文优化输入。左侧输入组 G1，搜索上下文中所需的物理属性是在 A.X 上排序，而右侧输入组 G2 所需的物理属性是在 B.X 上排序。搜索算法需要输入有序，触发 `SORT_RULE` 插入 QSORT 运算符，以强制输入**组**具有所需的属性。
 
-其他强制规则类似，例如 HASH_RULE，它强制执行哈希物理属性。是否触发**Enforcer** 规则，由规则对象中的 `promise()` 方法决定。当且仅当搜索上下文具有所需的物理属性（例如，已排序或已散列）时，`promise()` 方法才返回正的承诺值。如果没有必需的物理属性，则承诺值返回零，表示不会触发强制执行器规则。
+其他强制规则类似，如 HASH_RULE，它强制 hash 物理属性。是否触发 **enforcer** 规则，由规则对象中的 `promise()` 方法决定。当且仅当搜索上下文需要某种物理属性（例如，排序或 hash）时，`promise()` 方法才返回正整数。如果不需要某种物理属性，则返回零，表示不会触发强制执行器规则。
 
 Cascades 和 Columbia 在处理强制执行规则上有两个不同之处。
 
@@ -741,7 +706,7 @@ optimize() {
 
 该任务在给定的一组上下文中，找到**组**中成本最低的计划，并将其（与上下文一起）存储在组的 **winner** 结构中。如果没有成本最低的计划（例如无法满足上限），那么带有空计划的上下文存储在 winner 结构中。该任务生成组中所有相关的逻辑和物理表达式，计算所有物理表达式的开销，并选择成本最低的计划。`O_GROUP` 创建两种其他类型的任务：`O_EXPR` 和 `O_INPUTS` 来生成和优化 **==Group==** 中的表达式。
 
-这个任务使用动态规划和<u>==**缓存**==</u>。在优化 **Group** 中所有的表达式之前，它先检查是否已经搜索了相同的优化目标（即，相同的搜索上下文）； 如果是这样，只需要简单地返回先前搜索中找到的计划。重用先前找到的计划是动态规划的关键。
+这个任务使用动态规划和记忆化搜索。在优化 **Group** 中所有的表达式之前，它先检查是否已经搜索了相同的优化目标（即，相同的搜索上下文）； 如果是这样，只需要简单地返回先前搜索中找到的计划。重用先前找到的计划是动态规划的关键。
 
 图 18 描述了 `O_GROUP` 任务。它由 `O_GROUP :: perform()` 实现。
 
@@ -775,7 +740,7 @@ O_GROUP::perform( context ) {
 
 **首先**，第一次优化 Group（即在 Group 中搜索上下文）：在这种情况下，Group 中只有一个逻辑 **mexpr**（初始 mexpr）。该算法只创建一个任务 `O_EXPR`，即初始 **mexpr**，并将其推入任务栈，`O_EXPR` 将通过应用规则生成其他表达式。
 
-**more efficient than that in Cascades.第二种**情况是在<u>**不同的上下文**</u>下（例如，所需物理属性不同）优化 Group 时：在这种情况下，已优化了 Group，可能有<u>==一些 winner==</u>。因此，组中可能有多个逻辑和物理多重表达式。需要做两件事：1）我们需要用新的上下文对每个逻辑多重表达式执行 O_EXPR 任务。因为在新的上下文中，规则集中某些不能应用于多重表达式的规则变得适用。由于独特的规则集技术，我们不会重复触发同一个规则，从而避免在组中生成重复的多个表达式；2）我们需要使用新的上下文对每个物理多重表达式执行 O_INPUTS 任务，以计算物理多重表达式的成本，并在可能的情况下为此上下文生成赢家。
+**第二种**情况是在<u>**不同的上下文**</u>下优化 Group 时，例如，所需物理属性不同：在这种情况下，该 Group 已被优化并且可能有<u>==一些 winner==</u>。因此，Group 中可能有多个逻辑和物理多重表达式。需要做两件事：1）我们需要用<u>新的上下文</u>对每个逻辑多重表达式执行 O_EXPR 任务。因为在新的上下文中，规则集中某些不能应用于多重表达式的规则变得适用。由于独特的规则集技术，我们不会重复触发同一个规则，从而避免在组中生成重复的多个表达式；2）我们需要使用新的上下文对每个物理多重表达式执行 O_INPUTS 任务，以计算物理多重表达式的成本，并在可能的情况下为此上下文生成获胜者。
 
 在 Cascades 中，优化 Group 的任务不处理物理多重表达式。对于组中的所有逻辑多重表达式，任务为每个逻辑多重表达式创建 O_EXPR 任务，并将其压入堆栈。然后生成所有物理多重表达式，并计算成本。在第二次优化 Group 的情况下，将再次生成所有物理多重表达式，以在不同的上下文中计算成本。由于所有逻辑和物理多重表达式都存储在一个链表中，因此该方法必须跳过组中所有的物理多重表达式。从这个比较来看，Columbia 中优化 Group 的算法比 Cascades 中的优化算法效率更高。
 
@@ -848,7 +813,7 @@ Columbia 和 Cascades 中优化多重表达式的算法没有太大区别，只�
 
 ##### 4.2.3.4 APPLY_RULE - Task to Apply a Rule to a Multi-Expression
 
-Columbia 和 Cascades 应用规则的算法没有区别。==规则只用于**逻辑表达式**。APPLY_RULE 的任务是将规则应用于**逻辑多重表达式**，并在搜索空间中生成新的逻辑或物理多重表达式==。给定规则和逻辑多重表达式，该任务确定与搜索空间中当前可用的表达式的所有合理模式绑定，然后应用该规则并将新的替代表达式包括到搜索空间中。如果新生成的多重表达式是逻辑多重表达式，则将对其做转换以便进一步的优化，如果是物理多重表达式，则计算其成本。
+Columbia 和 Cascades 应用规则的算法没有区别。规则只用于**逻辑表达式**。APPLY_RULE 的任务是将规则应用于**逻辑多重表达式**，并在搜索空间中生成新的逻辑或物理多重表达式。给定规则和逻辑多重表达式，该任务确定与搜索空间中当前可用的表达式的所有合理模式绑定，然后应用该规则并将新的替代表达式包括到搜索空间中。如果新生成的多重表达式是逻辑多重表达式，则将对其做转换以便进一步的优化，如果是物理多重表达式，则计算其成本。
 
 图 21 显示了 APPLY_RULE 任务的算法，该算法由方法 `APPLY_RULE::perform()` 实现。Columbia 的这个算法与 Cascades 的算法相同。
 
@@ -887,6 +852,8 @@ APPLY_RULE::perform( mexpr, rule, context, exploring ) {
 
 ##### 4.2.3.5 O_INPUTS - Task to optimize inputs and derive cost of an expression
 
+> 优化输入并推导表达式成本的任务
+
 在优化过程中应用了**实现规则**，即对查询树中的一个节点考虑了实现算法后，通过优化实现算法的每个输入来继续优化。任务 O_INPUTS 的目标是计算物理多重表达式的成本。它首先计算多重表达式输入的成本，然后将它们与顶层运算符的成本相加。`O_INPUTS` 类中的数据成员 `input_no`（初始为 0），表示对哪个输入已经计算了成本。==此任务和其他任务相比，比较独特，因为它不会在调度其他任务后终止。它首先将自己压入堆栈，然后对其输入进行优化==。当所有输入都计算完成本后，它会计算整个物理多重表达式的成本。
 
 该任务是执行 Columbia 修剪技术的主要任务，在 4.3 节中详细讨论。基于 Cascades 中的相同任务，Columbia 中的 O_INPUTS  重新设计了算法，并添加了剪枝相关的逻辑来实现 Columbia 中新的剪枝技术。
@@ -912,7 +879,7 @@ For each input group IG
   If (Starburst case) InputCost is zero;
   Determine property required of search in IG;
   If (no such property) terminate this task.;
-  Get Winner for IG with that property;
+  Get Winner for IG with that property; // =>
   If (the Winner from IG is a Full winner) InputCost[IG] = cost of that winner;
   else if (!CuCardPruning) InputCost[IG] = 0   //Group Pruning case
     else if (no Winner) InputCost[IG] = GLB    //remainder is Lower Bound Pruning case
@@ -972,15 +939,13 @@ if (either there is no winner in G or CostSoFar is cheaper than the cost of the 
 
 ### 4.3 Pruning Techniques
 
-> In this section, two pruning techniques in Columbia are discussed. They extend Cascades’ search algorithm and improve search performance by effectively pruning the search space. As we can see from section 4.2.3.5, these pruning techniques are mainly implemented in task O_INPUTS.
-
 本节将讨论 Columbia  的两种裁剪技术。它们扩展了 Cascades 的搜索算法，并通过有效地裁剪搜索空间来提高搜索性能。从 [4.2.3.5](#4.2.3.5 O_INPUTS - Task to optimize inputs and derive cost of an expression) 节可以看出，这些裁剪技术主要在任务 O_INPUTS 中实现。
 
 #### 4.3.1 Lower Bound Group Pruning
 
 > **Motivation**: Top-down optimizers compute a cost for high-level physical plans before some lower-level plans are generated. These early costs serve as upper bounds for subsequent optimizations. In many cases these upper bounds could be used to avoid generating entire groups of expressions. We call this group pruning.
 
-自上而下的优化器在生成一些低级计划之前计算高级物理计划的成本。这些早期成本可作为后续优化的上限。在许多情况下，这些上限可用于避免生成整组表达式。我们称之为组修剪。
+**动机**：自上而下的优化器在生成一些低级计划之前计算高级物理计划的成本。这些早期成本可作为后续优化的上限。在许多情况下，这些上限可用于避免生成整组表达式。我们称之为组修剪。
 
 > Since Columbia searches top-down and memoizes, bounds could be used to prune entire groups. For example, suppose the optimizer’s input is $(A \Join B) \Join C$. The optimizer will first calculate the cost of one plan in the group ==[ABC]==, say $(A \Join_L B) \Join_L C$; imagine **its cost is 5 seconds**. It expanded the group [AB] and did not consider the groups [AC] or [BC] in calculating this 5 second cost. Now we are considering optimizing another expression in the group, say $[AC]\Join_L[B]$​. Suppose the group [AC] represents a Cartesian product, it is so huge that it takes more than 5 seconds just to copy out tuples from [AC] to [ABC]. It means the plans containing [AC] will never be the optimal plan for [ABC]. In this case the optimizer does not generate, so effectively prunes, all the plans in the group [AC]. Figure 23 shows the content of the search space after the optimization of the two expressions discussed above. Notice that the [AC] group was not expanded. On the other hand, Starburst and other bottom-up optimizers optimize the groups [AB], [AC] and [BC] before beginning to process [ABC], thus losing any chance to prune multiple plans.
 
