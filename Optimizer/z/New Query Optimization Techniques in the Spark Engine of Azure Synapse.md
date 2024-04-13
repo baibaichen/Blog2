@@ -142,7 +142,6 @@ Figure 5: The figure shows the partial aggregation optimization as done in Spark
 </p>
 
 > [!NOTE]
->
 > **Previous work on partial push-down of aggregates**
 >
 > The first optimization is specific to the big-data setting, it is targeted at reducing the amount of data exchanged. Notice that the un-optimized plan in Figure 5 (bottom-left) would require 3 exchanges (on $b_1$, *𝑏*2 and *𝑎*1) as highlighted by bold lines. This optimization (bottom right) performs a partial aggregation where it would perform an additional aggregation before exchange, that is even before data is partitioned on the grouping key. Such partial aggregation would bring down the amount of data exchanged as it would produce only one row per group at each task in the stage before final aggregation.
@@ -167,8 +166,8 @@ In synapse spark we perform exchange placement in a cost based manner, while tak
  <img src="./media/F7.png" />
 Figure 7: Exchange placement overview 
 </p>
+
 > [!NOTE]
->
 > 本节介绍我们在 Synapse Spark 中使用的==交换放置==算法。图 7 概述了现有系统目前的功能以及我们的建议。大体上有两种系统。Scope[35]，采用基于成本的探索来选择不同的节点来放置 Exchange [34]。正如我们稍后描述的，这种探索允许它最大限度地**重叠交换**。另一方面，像 Spark 这样的系统不支持探索，而是只维护一个单一的计划，自下而上遍历计划，执行完==本地重叠检查==后引入交换。如图所示，两个系统在交换放置后分别应用**交换重用**规则。两个系统都会在不进行探索的情况下转换最终选择的计划。
 >
 > 在 Synapse Spark 中，我们以基于成本的方式<u>执行交换放置</u>，同时考虑**交换重叠**和**交换重用**机会。现在，基于成本的探索可能会很昂贵，并且 Scope 采用大量优化时间预算（几分钟）。另一方面，在 Synapse Spark 中，我们对优化器时间（按秒为单位）施加严格限制，以满足客户的期望。为了实现这一目标，我们改进了<u>具有较大探索空间的最先进算法</u>（第 3.1 节）。仅当存在多种**重叠交换**方式或**交换重叠**与**交换重用**冲突时（第 3.2 节），我们才会探索多种选项。最后，为了确定相互冲突的选项，我们需要尽早确定**交换重用**的可能性。我们采用平面标记（第3.3节）。
@@ -187,17 +186,14 @@ Require: Physical Plan 𝑝𝑙𝑎𝑛
 ```
 
 > [!NOTE]
-> 
 > 让我们首先检查最先进的交换放置算法 [34]。算法 1 显示了递归函数的伪代码，该递归函数计算计划中每个运算符感兴趣的分区选项。为了便于说明，我们假设该计划仅由基于 ***key*** 的运算符组成。当然，该实现涉及所有 SQL 运算符。首先，我们定义 $\mathcal{P}^{\prime}(\mathrm{X})=\mathcal{P}(\mathrm{X}) \backslash \emptyset$ 其中 $\mathcal{P}(\mathrm {X})$ 是 $\mathrm{X}$ 的**幂集**。在本节中，当我们提到幂集时，我们指的是$\mathcal{P}^{\prime}$。现在，在此方法中，感兴趣的分区选项由运算符的 ***key*** 的所有可能组合组成，即 $\mathcal{P}^{\prime}(\mathrm{\text{plan.keys}})$。在图 3 中，以 $\{a_{1}, b_{1}\}$ 作为键的 **Join** 其 *iKeysSet* 是 $\left\{a_{1}\left|b_{1}\right| a_{1}, b_{1}\right\}$ 。
 
 > [!IMPORTANT]
->
 > 在数学上，Power set 被称为幂集，是一个集合中所有可能子集的集合。假设我们有一个集合 X={a,b}，那么集合的幂集 P(X) 就是{{},{a},{b},{a,b}}。换句话说，它包含原集合的所有可能的组合，包括空集和原集合本身。正在讨论的公式 $\mathcal{P}^{\prime}(\mathrm{X})=\mathcal{P}(\mathrm{X}) \backslash \emptyset$  是用来定义一个新的集合 ，它就是原集合 $\mathrm{X}$ 的幂集去掉空集后的结果。
 
 Next, plans with different combinations of partition keys are explored using a standard plan space exploration algorithm. Algorithm 2 shows a simplified version of the dynamic programming based exploration algorithm used in both synapse spark and Scope[^2]. The algorithm tracks up to *𝑘* plans per node. We discuss how *𝑘* is chosen at the end of the section.
 
 > [!NOTE]
->
 > 接下来，使用标准的<u>计划空间探索算法</u>来探索具有不同分区键组合的计划。算法 2 显示了 Synapse Spark 和 Scope[^2] 中使用的基于动态规划的探索算法的简化版本。该算法跟踪每个节点最多 *𝑘* 个计划。我们在本节末尾讨论如何选择 *𝑘*。
 
 [^2]: There are several differences in the specifics of the algorithm used by the two systems. We focus here on exchange placement relevant aspects.
@@ -226,7 +222,6 @@ In line 2, for each interesting partitioning key *partnKeys* of this operator, t
 This algorithm is exhaustive in the enumeration of interesting partitioning options. Scope, the existing system that uses the algorithm, can afford to employ a large value of ***𝑘*** (as it has a large time budget). This ensures that it is able to produce maximum overlap plans like the one shown in Figure 4(a).
 
 > [!NOTE]
->
 > 在第 2 行中，对于该运算符==每个感兴趣的分区键 ***partnKeys***==，首先计算其子项（最多 ***𝑘*** 个）的最佳计划。接下来，将来自子节点的这些替代计划组合起来以获得当前运算符的替代计划。例如，如果计划有两个子计划 $𝐶_1$ 和 $𝐶_2$，分别有两个和三个==顶层计划==，则将有六个替代选项 - 计划将子计划为 $\{\{C_{1}^{1}, C_{2}^{1}\},\{C_{1}^{1}, C_{2}^{2}\},\{C_{1}^{1}, C_{2}^{3}\},\{C_{1}^{2}, C_{2}^{1}\},\{C_{1}^{2}, C_{2}^{2}\},\{C_{1}^{2}, C_{2}^{3}\}\}$。接下来迭代这些替代方案，添加交换（使用第 9 行的 `EnforceExchange`）并选择成本最低的顶级 ***𝑘*** 计划。正如在 [34] 中有更详细地解释，`EnforceExchange` 仅当子分区不满足父分区的分区选项时才插入交换。具体来说，它检查**交换重叠**，即子分区是否是正在探索的分区选项的（非空）子集。
 >
 > 该算法详尽地列举了所有感兴趣的分区选项。SCOPE（使用该算法的现有系统）可以使用较大的 ***𝑘*** 值（因为它有大量的时间预算）。这确保了它能够生成如图 4(a) 所示的最大重叠计划。
@@ -237,7 +232,6 @@ This algorithm is exhaustive in the enumeration of interesting partitioning opti
 Algorithm 3 describes our implementation to prune the exploration space by reducing the partitioning options (lines 5-7). Instead of relying on `EnforceExchange` to detect overlap opportunities, we prune the options in two phases. First, we compute individual partitioning keys of the operator that have an overlap with its parent’s or children’s keys. We add[^3] all of them to set iKeys.
 
 > [!NOTE]
->
 > 算法 3 描述了我们通过==减少分区选项==来裁剪探索空间的实现（第 5-7 行）。我们不依赖 `EnforceExchange` 来检测重叠机会，而是分两个阶段裁剪分区选项。首先，我们计算==与其父键或子键重叠的运算符的各个分区键==。我们将它们全部添加[^3] 到 **iKeys** 集合中。
 
 <p align="center">
@@ -254,7 +248,6 @@ In the second phase, we obtain all overlap options by <u>intersecting the power 
 Table 2: Examples showing overlap scenarios between two identical sub-trees’ keys (ST1 and ST2) and common partitioning keys from both parents (P1 and P2). Last column shows the one of the possible keys selection for exchange reuse.
 </p>
 > [!NOTE]
->
 > 在第二阶段，我们通过<u>将 *iKeys* 的幂集与  parent’s keys 和 children’s keys 的幂集相交来获得所有重叠选项</u>。我们使用 `checkAndAddAll` 方法仅将这些作为==分区选项==插入 *iKeySet* 中。此方法在将其添加为分区选项之前，检查该集合的不同值的数量是否大于所需的分区数量（作业参数）。表 2 演示了如何添加所有重叠选项。第三行（标记为 **Total**）有 3 种不同的方式在父级 (P1) 和子级 (ST1) 之间重叠，所有这些都作为选项添加。行 **Partial**（代表图 3 中的示例）仅添加一个选项。这足以生成最大重叠计划图 4(a)。最后，如果没有基于重叠添加选项（表中的 **None** 行），我们只考虑一个选项，即整个键集（第 20 行）。当运算符有多列的组合键时（例如在 TPCDS 查询中），这种修剪会显着减少搜索空间。
 
 ### 3.3 Incorporating exchange reuse
@@ -265,7 +258,6 @@ To resolve this, we will have to include additional keys in the interesting part
 We begin by executing a new routine before Algorithm 3 which is described in Algorithm 4. This algorithm adds plan markers at nodes in the tree such that if two nodes have the same marker value, the sub-trees rooted on them are identical. In addition to it, we use a **reuseMap**, to store the partitioning keys from these identical subtrees’ parent. This algorithm is followed by a cleanup routine (not shown) that removes singleton entries from the **reuseMap**.
 
 > [!NOTE]
->
 > 正如我们在第 2.2.1 节中看到的，**交换重用**可能与**交换重叠**发生冲突。当可重用子树及其父树的分区键之间存在重叠时，就会发生这种情况。例如，在图 3 中，具有键 $\{a_{1}\}$ 的 **Join** 及其具有键 $\{a_{1}, b_{1}\}$ 的父 **Join** 的分区键存在重叠。如果我们只是最大化重叠，我们可能根本不会在 **Join** 之后引入交换，因此就没有**交换重用**的场景（在**Join**之后）。
 >
 > 为了解决这个问题，我们必须在可重用子树的父级跟踪的感兴趣的分区选项（**iKeysSet**）中包含额外的键。我们分两步完成此任务。
@@ -288,7 +280,6 @@ Lets revisit row *Partial* in Table 2. Consider the two nodes at $(𝑆𝑇_1, �
 Since, we are depending on the costing model for the keys selection, we need to ensure that during costing we take *exchange reuse* into account. To accomplish this, we add a sub-routine `AddReuseExchange` after line 9 in Algorithm 2. At this point, *optPlan* would contain exchange operators at the required places, added by `EnforceExchange`. Since we have previously accomplished plan-marking, `AddReuseExchange` will identify exchange operators, whose children are marked for reuse. Now, for each group (consisting of identical sub-trees), it replaces all except one such exchange operators by *exchange reuse* operators in the *optPlan*. We will now use this *optPlanWithReuse* while updating the operator’s *top k plans* set. 
 
 > [!NOTE]
->
 > 接下来，如果子树是可重用子树（第 13-16 行），我们通过==**在感兴趣的分区键集**==中添加公共键（从 **reuseMap** 派生）来扩展算法 3 以支持 **交换重用**。
 >
 > 让我们重新审视表 2 中的 *Partial* 行。考虑图 3 中 $\Join_{𝑎_1=𝑎_2} (𝑇_1,𝑇_2)$ 处 $(𝑆𝑇_1, 𝑆𝑇_2)$ 的两个节点及其父节点 $(𝑃_1, 𝑃_2)$ 。我们已经确定他们基于重叠推理的 ***iKeysSet*** 将包含一个元素 $𝑎_1$。现在为了考虑重用，我们将在它们的 ***iKeysSet*** 中添加 $𝑃_1$ 和 $𝑃_2$ 之间的公共 **keys**。因此，父级新的 ***iKeysSet*** 将是 $\{a_1|b_1\}$ 。==探索现在将包括 $𝑏_1$​ 的交换作为一个选项==。如果成本计算正确，这应该会产生如图 4(b) 所示的计划。
@@ -302,7 +293,6 @@ optPlanWithReuse ← AddReuseExchange(optPlan)
 In summary, synapse spark incorporates cost based exploration to decide on the placement of exchanges. By detecting exchange reuse opportunity early and by using this along with overlap information it is able to prune the search space significantly to make exploration practical. Specifically, in synapse spark we desire to optimize every query within 30 seconds. We achieve this by dynamically choosing the values of *𝑘* based on the complexity of the query. We observe that because of pruning a value of *𝑘* = 4 is sufficient to find the optimal exchange placement for all queries. We show in Section 7.4 that a value above 16 (as would be needed without pruning) significantly slows down the optimizer.
 
 > [!NOTE]
->
 > 总之，Synapse Spark 结合了基于成本的探索来决定交换的位置。通过尽早检测交换重用机会，并将其与重叠信息一起使用，能够显著地裁剪搜索空间以使探索变得实用。具体来说，在 Synapse Spark 中，我们希望<u>在 30 秒内</u>优化每个查询。我们通过根据查询的复杂性动态选择 *𝑘* 的值来实现这一点。我们观察到，由于裁剪，*𝑘* = 4 的值足以找到所有查询的最佳交换位置。我们在第 7.4 节中表明，大于 16 的值（不需要修剪）会显著降低优化器的速度。
 
 ## PARTIAL AGGREGATION PUSH-DOWN
