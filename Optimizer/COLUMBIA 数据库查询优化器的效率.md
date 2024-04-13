@@ -264,31 +264,22 @@ The QGM optimizer is capable of sophisticated heuristic optimization. Thus it co
 
 ### 3.2 The Exodus and Volcano Optimizer Generators
 
-> The Exodus optimizer generator [GrD87] was the first extensible optimizer framework using top-down optimization. The goal of Exodus is to build an infrastructure and tool for query optimization with minimal assumptions about the data model. The input into Exodus is a model description file, which describes a set of **==operators==**, a set of methods to be considered when building and comparing access plans, transformation rules (defining the transformations of the query tree) and implementation rules (defining the correspondence between operators and methods). To implement a query optimizer for a new data model, the DBI10 writes a model description file and a set of C procedures. The generator transforms the model file into a C program which is compiled and linked with the set of C procedures to generate a data model specific optimizer. The generated optimizer transforms the initial query tree step by step, maintaining information about all the alternatives explored so far in a data structure called **MESH**. At any time during the optimization there can be a set of possible next transformations, which are stored in a queue structure, called OPEN. When the OPEN is not empty, the optimizer will select a transformation from OPEN, apply it to the correct nodes in MESH, do cost estimation for the new nodes and add newly enable transformation into OPEN.
->
-> The main contribution of Exodus is the top-down optimizer generator framework which separates the search strategy of an optimizer from the data model and separates transformation rules and logical operators from implementation rules and physical operators. Although it was difficult to construct efficient optimizers, it contributed as a useful foundation for the next generation of extensible optimizers.
->
-> With the primary goal of improving the efficiency of Exodus, Volcano Optimizer Generator [GrM93] is designed to achieve more efficiency, further extensibility and effectiveness. Efficiency was achieved by combing dynamic programming with directed search based on physical properties, branch-and-bound pruning and heuristic guidance into a new search algorithm that is called ==directed dynamic programming==. The search strategy in Volcano is a top-down, goal-oriented control strategy: sub expressions are optimized only if warranted. <u>That is, only those **expressions and plans** that truly participate in promising larger plans are considered for optimization</u>. It also uses dynamic programming to store all optimal sub plans as well as optimization failures until a query is completely optimized. Since it is very goal-oriented though the use of physical properties ( a generalization of “interesting properties” used in System R) and derives only those expressions and plans which are promising, the search algorithm is efficient. More extensibility in Volcano was achieved by generating optimizer source code from data model specifications and by encapsulating costs as well as logical and physical properties into abstract data types. **Effectiveness** was achieved by permitting exhaustive search, which is pruned only at the discretion of the optimizer implementers.
->
-> The efficiency of the Volcano search strategy permitted the generation of real optimizers, one for an object-oriented database system [BMG93] and one for a prototype scientific database system with many rules [Wog93].
->
-
-Exodus 优化器生成器 [GrD87] 是第一个使用**自顶向下优化**的可扩展优化器框架。Exodus 的目标是在对数据模型的假设最少的情况下，构建用于查询优化的基础设施和工具。Exodus 的输入是一个模型描述文件，它描述了一组**==运算符==**、一组<u>构建和比较</u>访问计划时要考虑的方法、转换规则（定义查询树的转换）和实现规则（定义运算符和方法之间的对应关系）。为了为新的数据模型实现查询优化器，DBI10 编写了一个<u>模型描述文件</u>和一组 C 程序。生成器将模型文件转换为 C 程序，编译该程序并与一组 C 程序链接，以生成特定于数据模型的优化器。生成的优化器逐步转换初始查询树，在名为 **MESH** 的数据结构中，维护到目前为止探索过的所有替代方案的信息。在优化过程中，任何时候都可能存在==一组可能的下一个转换==，这些转换存储在一个名为 OPEN 的队列结构中。OPEN 不为空时，==优化器会从 OPEN 中选择一个变换==，将其应用到 MESH 中正确的节点，对新节点进行成本估计，并将新启用的变换添加到 OPEN 中。
+Exodus 优化器生成器 [GrD87] 是第一个使用**自顶向下优化**的可扩展优化器框架。Exodus 的目标是在对数据模型的假设最少的情况下，构建用于查询优化的基础设施和工具。Exodus 的输入是一个模型描述文件，它描述了一组**运算符**、一组<u>构建和比较</u>访问计划时要考虑的方法、转换规则（定义查询树的转换）和实现规则（定义运算符和实现方法之间的对应关系）。为了为新的数据模型实现查询优化器，DBI10 编写了一个<u>模型描述文件</u>和一组 C 程序。生成器将模型文件转换为 C 程序，编译该程序并与一组 C 程序链接，以生成特定于数据模型的优化器。生成的优化器逐步转换初始查询树，在名为 **MESH** 的数据结构中，维护到目前为止探索过的所有替代方案的信息。在优化过程中，任何时候都可能存在==一组可能的下一个转换==，这些转换存储在一个名为 OPEN 的队列结构中。OPEN 不为空时，==优化器会从 OPEN 中选择一个变换==，将其应用到 MESH 中正确的节点，对新节点进行成本估计，并将新启用的变换添加到 OPEN 中。
 
 Exodus 的主要贡献是自顶向下优化器生成器框架，它将优化器的搜索策略与数据模型分离，并将**转换规则和逻辑运算符**与**实现规则和物理运算符**分开。尽管构建高效优化器很困难，但它为下一代可扩展优化器提供了一个有用的基础。
 
-Volcano Optimizer Generator [GrM93] 的主要目标是提高 Exodus 的效率，以实现更高的性能、进一步的可扩展性和有效性。**将动态规划与基于物理性质的有向搜索、分枝定界剪枝和启发式引导相结合，形成一种新的搜索算法，称为==有向动态规划==，从而实现效率**。Volcano 中的搜索策略是一种自上而下、面向目标的控制策略：只在必要时优化子表达式。<u>也就是说，只有那些真正参与有前途的更大计划的**表达式和计划**才会被考虑优化</u>。它还使用动态规划来存储所有最优子计划以及失败的优化，直到完全优化完查询。由于它通过使用物理特性（系统 R 中**感兴趣的特性**的泛化），因此非常面向目标，并且只转换那些有希望的表达式和计划，所以搜索算法较高效。通过从**数据模型规范**中生成优化器源代码，并将成本以及逻辑和物理属性封装到抽象数据类型中，Volcano 实现了更多的可扩展性。有效性是通过穷举搜索来实现，只由优化器实现者来决定是否进行修剪。
+Volcano Optimizer Generator [GrM93] 的主要目标是提高 Exodus 的效率，以实现更高的性能、进一步的可扩展性和有效性。**将动态规划与基于物理性质的有向搜索、分枝定界剪枝和启发式引导相结合，形成一种新的搜索算法，称为有向动态规划，从而实现高效率**。Volcano 中的搜索策略是一种自上而下、面向目标的控制策略：只在必要时优化子表达式。<u>也就是说，只有那些真正参与有前途的更大计划的**表达式和计划**才会被考虑优化</u>。它还使用动态规划来存储所有最优子计划以及失败的优化，直到完全优化完查询。由于它通过使用物理特性（系统 R 中**感兴趣的特性**的泛化），因此非常面向目标，并且只转换那些有希望的表达式和计划，所以搜索算法较高效。通过从**数据模型规范**中生成优化器源代码，并将成本以及逻辑和物理属性封装到抽象数据类型中，Volcano 实现了更多的可扩展性。有效性是通过穷举搜索来实现，只由优化器实现者来决定是否进行修剪。
 
 Volcano 搜索策略的效率允许生成真正的优化器，一个用于面向对象的数据库系统 [BMG93]，另一个用于有许多规则的原型科学数据库系统 [Wog93]。
 
 ### 3.3 The Cascades Optimizer Framework
 
-Cascades 优化器框架 [Gra95] 是一个可扩展的查询优化框架，它解决了 EXODUS 和 Volcano 优化器生成器的许多缺点。在不放弃可扩展性、动态规划和 memoization 的情况下，它在功能、易用性和健壮性方面比之前的版本有了实质性的改进。在 Tandem 的 NonStop SQL 产品 [Cel96] 和 Microsoft 的 SQL Server 产品 [Gra96] 中选择 Cascades 作为新查询优化器的基础，表明 Cascades 满足现代商业数据库系统的需求。下面列出了 Cascades 的一些优点：
+Cascades 优化器框架 [Gra95] 是一个可扩展的查询优化框架，它解决了 EXODUS 和 Volcano 优化器生成器的许多缺点。在不放弃可扩展性、动态规划和记忆化搜索的情况下，它在功能、易用性和健壮性方面比之前的版本有了实质性的改进。在 Tandem 的 NonStop SQL 产品 [Cel96] 和 Microsoft 的 SQL Server 产品 [Gra96] 中选择 Cascades 作为新查询优化器的基础，表明 Cascades 满足现代商业数据库系统的需求。下面列出了 Cascades 的一些优点：
 
 - 优化任务作为数据结构
 - 规则作为对象
 - 设置属性强制执行器的规则，如排序操作
-- ==按 promise 排序优化动作==
+- 按 promise 排序优化规则
 - 谓词作为逻辑和物理运算符
 - 抽象接口类定义了 DBI 优化器接口，并允许DBI 定义的子类层次结构。
 - 用 C++ 编写的更健壮的代码和一个干净的接口，充分利用 C++ 的抽象机制
@@ -298,9 +289,9 @@ Cascades 优化器框架 [Gra95] 是一个可扩展的查询优化框架，它�
 
 > 11. 正如 [Gra95] 所指出的，可以很容易地设想其他任务结构。特别是，任务对象可以很容易地在任何点重新排序，这为启发式指导提供了非常灵活的机制。此外，用 **graph** 来表示任务结构更有优势，**graph** 可以捕获任务之间的依赖关系或拓扑排序，并允许高效的并行搜索(使用共享内存)。
 
-Cascades 优化器首先将原始查询复制到初始搜索空间（在 Cascades 中，搜索空间称为 **memo**，继承自 Volcano）。然后一个任务触发整个优化过程，优化==初始搜索空间的顶层组==，该任务反过来又触发对搜索空间中越来越小的子组进行优化。优化一个组意味着在组中找到最好的计划（称为“优化目标”），因此将规则应用于所有表达式。在此过程中，将新任务放入任务堆栈中，将新组和表达式添加到搜索空间中。当顶层组的优化任务完成后，需要顶层组的所有子组完成自己的优化，才能找到顶层组的最优方案，从而完成优化。
+Cascades 优化器首先将原始查询复制到初始搜索空间（在 Cascades 中，搜索空间称为 **memo**，继承自 Volcano）。然后一个任务触发整个优化过程，优化**初始搜索空间的顶层组**，该任务反过来又触发对搜索空间中越来越小的子组进行优化。优化一个组意味着在组中找到最好的计划（称为“优化目标”），因此将规则应用于所有表达式。在此过程中，将新任务放入任务堆栈中，将新组和表达式添加到搜索空间中。当顶层组的优化任务完成后，需要顶层组的所有子组完成自己的优化，才能找到顶层组的最优方案，从而完成优化。
 
-和 Volcano 优化器生成器一样，Cascades 从最上层的组开始优化过程，使用自顶向下的搜索策略。动态规划和 **memoization** 也用于优化组的任务。在对所有组的表达式进行初始优化之前，==先检查是否已经追求了相同的优化目标==；如果是，它只返回在前面的搜索中找到的计划。<u>Cascades 和 Volcano 中的搜索策略之间的一个主要区别在于，Cascades 仅按需探索一组，而 Volcano 总是在实际优化阶段开始之前的第一个预优化阶段详尽地生成所有等效的逻辑表达式</u>。在 Cascades 中，没有分成两个阶段。推导出所有表达式（例如谓词）的所有逻辑等价形式是没有用的。只在需要时使用转换规则探索组，并且只在组的所有成员匹配给定模式时才探索该组。由于它只探索真正有用的模式组，因此 Cascades 搜索策略更有效^12^。
+和 Volcano 优化器生成器一样，Cascades 从最上层的组开始优化过程，使用自顶向下的搜索策略。动态规划和记忆化搜索也用于优化组的任务。在对所有组的表达式进行初始优化之前，==先检查是否已经追求了相同的优化目标==；如果是，它只返回在前面的搜索中找到的计划。<u>Cascades 和 Volcano 中的搜索策略之间的一个主要区别在于，Cascades 仅按需探索一组，而 Volcano 总是在实际优化阶段开始之前的第一个预优化阶段详尽地生成所有等效的逻辑表达式</u>。在 Cascades 中，没有分成两个阶段。推导出所有表达式（例如谓词）的所有逻辑等价形式是没有用的。只在需要时使用转换规则探索组，并且只在组的所有成员匹配给定模式时才探索该组。由于它只探索真正有用的模式组，因此 Cascades 搜索策略更有效^12^。
 
 > 12. 最坏的情况下 ， Cascades 彻底探索。因此，在最坏的情况下，Cascades 搜索的效率将与 Volcano 搜索策略的效率相同。
 
@@ -385,7 +376,7 @@ Columbia 基于 Cascades 框架，专注于优化器的效率。本章将详细�
 
 我们从 AI 借来搜索空间一词，它是解决问题的工具。查询优化是要根据**特定上下文**，找到<u>给定查询成本最低的计划</u>。搜索空间通常由<u>问题及其子问题</u>可能解决方案的集合组成。**动态规划**和**记忆化搜索**是使用搜索空间解决问题的两种方法。动态规划和记忆化搜索都通过逻辑等价来划分可能的解决方案。我们将每个这样的划分称为 **组**。因此，搜索空间由组的集合组成。
 
-在 Columbia 中，类似于 Cascade 的 MEMO 的结构被用来表示搜索空间，即类 `SSP` 的一个实例，包含一个 **Group** 数组，Group ID 被标识为搜索空间中的 Root Group。搜索空间中的 **Group** 包含逻辑上等价的多个表达式。如[第 2.4 节](#2.4. Groups)所述，这些表达式由一个运算符，以及一个或多个 Group 作为输入组成。因此，搜索空间中的组要么是 Root Group，要么是其他 Group 的输入Group，即从 Root Group 开始，所有其他 Group 都可以作为 Root Group 后代来访问。这就是为什么必须标识 Root Group 的原因。通过复制初始查询表达式，搜索空间被初始化为几个基本 Group。每个基本组只包含一个逻辑多重表达式。进一步的优化是通过在搜索空间中添加新的多重表达式和新的组来扩展搜索空间。方法 `CopyIn` 将一个表达式复制到多重表达式中，并将多重表达式包含到搜索空间中。可以将新的多重表达式包含在逻辑上等价的现有 Group 中，也可以将该新的多重表达式包含在新的 Group 中，此时，将首先创建新的 Group ，再将其追加到搜索空间中。`SSP` 的 `CopyOut` 将输出优化后的计划。
+在 Columbia 中，类似于 Cascade 的 MEMO 的结构被用来表示搜索空间，即类 `SSP` 的一个实例，包含一个 **Group** 数组，Group ID 被标识为搜索空间中的 Root Group。搜索空间中的组包含逻辑上等价的多个表达式。如[第 2.4 节](#2.4. Groups)所述，这些表达式由一个运算符，以及一个或多个组作为输入组成。因此，搜索空间中的组要么是 Root Group，要么是其他组的输入组，即从 Root Group 开始，所有其他组都可以作为 Root Group 后代来访问。这就是为什么必须标识 Root Group 的原因。通过复制初始查询表达式，搜索空间被初始化为几个基本 组。每个基本组只包含一个逻辑多重表达式。进一步的优化是通过在搜索空间中添加新的多重表达式和新的组来扩展搜索空间。方法 `CopyIn` 将一个表达式复制到多重表达式中，并将多重表达式包含到搜索空间中。可以将新的多重表达式包含在逻辑上等价的现有组中，也可以将该新的多重表达式包含在新的组中，此时，将首先创建新的组，再将其追加到搜索空间中。`SSP` 的 `CopyOut` 将输出优化后的计划。
 
 ##### 4.2.1.2 Duplicate Multi-expression Detection in the Search Space
 
@@ -425,20 +416,20 @@ return init_val mod table_size
 ##### 4.2.1.3 GROUP
 `GROUP` 类是**自顶向下**优化的核心，是逻辑上等价的**逻辑和物理多重表达式**的集合。由于所有这些多重表达式都具有相同的逻辑属性，因此 `GROUP` 还存储了指向这些多重表达式共享的<u>逻辑属性</u>的指针。对于动态规划和记忆化搜索，包含了一个记录了组内最优计划的 `WINNER`。除了这些基本元素外，Columbia 还改进了 `GROUP`，使得搜索策略更加高效。与 Cascade 相比，该算法增加了一个下界成员，分离了**物理表达式**和**逻辑多重表达式**，并为胜者提供了更好的结构。
 
-**Group 的下界**。Group 的下界是一个值 L，Group 中的每个计划 P ^15^ 都满足：$cost(P) >= L$。下界是自上而下优化的重要措施，当 Group 的下界大于当前上界（即当前优化的成本限制）时，可能会裁剪该 Group ，它可以避免枚举整个输入 Group 而不会丢失最优方案。第 4.4.1 节将讨论在 Columbia 进行Group 裁剪的细节，这是 Columbia 优化器对提高效率的主要贡献。在创建 Group 并将其追加到搜索空间时，将计算 Group 的下界，以便后续优化时使用。
+**Group 的下界**。Group 的下界是一个值 L，Group 中的每个计划 P ^15^ 都满足：$cost(P) >= L$。下界是自上而下优化的重要措施，当组的下界大于当前上界（即当前优化的成本限制）时，可能会裁剪该组，它可以避免枚举整个输入组而不会丢失最优方案。第 4.4.1 节将讨论在 Columbia 中裁剪组的细节，这是 Columbia 优化器对提高效率的主要贡献。在创建组并将其追加到搜索空间时，将计算组的下界，以便后续优化时使用。
 
-> 15. 实际上，Group 中的计划是从显式存储在 Group 中的物理**多重表达式**<u>派生的</u>。
+> 15. 实际上，Group 中的计划是从显式存储在组中的物理**多重表达式**<u>派生的</u>。
 
-本节介绍如何在 Columbia 中计算 Group 的下界。==**显然，下界越高越好**==。我们的目标是根据我们从 Group 中收集到的信息找到最高的下界。构造 Group 时，将收集逻辑属性，包括基数和 Group 的 Schema，并从中计算出下界。**由于计算下界仅基于组的逻辑属性，因此可以在不枚举组中任何表达式的情况下进行计算**。
+本节介绍如何在 Columbia 中计算组的下界。==**显然，下界越高越好**==。我们的目标是根据我们从组中收集到的信息找到==最高==的下界。构造组时，将收集逻辑属性，包括基数和组的 Schema，并从中计算出下界。**由于计算下界仅基于组的逻辑属性，因此可以在不枚举组中任何表达式的情况下进行计算**。
 
 在介绍如何计算下界之前，先给出一些定义：
 
-- `touchcopy()` 是一个返回数值的函数，对于任何 **Join**，该值都小于 Join 成本除以 Join 输出的基数。该函数表示<u>产生输出元组所需的两个元组</u>的接触成本，加上<u>将结果复制出去</u>的成本。
+- `touchcopy()` 是一个返回数值的函数，对于任何 **Join**，该值都小于 Join 成本除以 Join 输出的基数。该函数表示<u>产生输出元组所需的两个元组</u>的接触成本，加上<u>将结果复制出去</u>的成本。【chatgpt ：`touchcopy()`是一个用于数据库查询优化器中进行成本估算的函数。它计算与数据库请求中的连接操作相关的成本。这个函数主要返回一个值，代表获取（触摸）必要的元组（数据记录）以及复制输出（结果）的成本。这个成本总是低于整个连接操作的总成本除以结果数（连接输出的基数）。这种成本估计可用于帮助优化复杂数据库查询的执行。成本越低，操作就被认为越有效率。】
 - `Fetch()` 是从磁盘中读取一个字节的<u>==均摊开销==</u>，假设数据是以块的形式读取的。
 - $|G|$ 表示组 G 的基数。
 - 给定一个组 G，如果基表 A 的某列 A.X 在 G 的 Schema 中，那么基表 A 就在 G 的 Schema 中。然后用 `cucard(A.X)` 表示 G 中 A.X 列的<u>**去重基数**</u>，G 中的 `cucard(A)` 表示 G 的 Schema 中，A中所有列 `cucard(A.X)` 的最大值。在不失一般性的前提下，我们假定 G 的 Schema 中基表为 A~1~，. . . ，A~n~，n> = 1，cucard(A~1~) <= ... <= cucard(A~n~)。
 
-如何计算 Group 的下界，如图 14 所示：
+如何计算组的下界，如图 14 所示：
 
 ```C
 // Figure 14. 计算 Group 下界的伪码
@@ -460,11 +451,11 @@ Else
 
 > 16. 对所有这些方法都有一种批评：它们依赖于基数和 `cucard` 估计，这是出了名的不准确。`cucard` 估计甚至比基数更糟糕。尽管存在更精确但更复杂的估计方法，例如使用直方图，但 Columbia 使用简单的估计，并允许在这种情况下进一步改进。
 
-**（1）** G **顶部联接**的 <u>**touch-copy**</u> 界，基于 G 的基数，因为 G 的任何计划输出的元组集合是该组顶部联接的结果输出。根据 `touchcopy()` 的定义，任何联接的成本（包括复制成本）至少是 touchcopy() 乘以所得联接的基数。
+**（1）** G **顶部 Join** 的 <u>**touch-copy**</u> 界，基于 G 的基数，因为 G 的任何计划输出的元组集合是该组顶部联接的结果输出。根据 `touchcopy()` 的定义，任何联接的成本（包括复制成本）至少是 touchcopy() 乘以所得联接的基数。
 
 **（2）** G **非顶部联接**的 <u>**touch-copy**</u> 界，基于 G 中列的唯一基数，即 G 的 Schema 中属性的 `curcard`。我们可以证明这个  <u>**touch-copy**</u> 界是**非顶部联接**的下界。
 
-**定理**：对应于 G 的非顶部联接的下界由 `touchcopy() * sum(cucard(Ai) where i=2, …, n)` 给出
+**定理**：对应于 G 的非顶部 Join 的下界由 `touchcopy() * sum(cucard(Ai) where i=2, …, n)` 给出
 
 **动机**：按照 A~i~ 的顺序考虑左深计划树。第一个联接的 Schema 有 A~2~，因此 A~1~ 和 A~2~ 的联接下界是 `touchcopy() * C2`，其中 `C2 = cucard(A2)`。其他联接 A~i~（i> 2）的 join 具有相同的属性。因此，它们的总和就是定理的结果。下面的引理表明，这适用于各种联接序以及任何联接图，而不仅仅是左深联接。
 
@@ -475,7 +466,7 @@ Else
 
 **引理证明**：使用归纳法，令 `k = size of schema(L)`。`k = 2` 时显然成立，归纳步骤：让 L 在其 Schema 中有 k 个表。将<u>**顶部联接**</u>映射到不带 A~*~ 的一侧。归纳在两个子树上成功，因为每个子树在其 Schema 中表少于 k 个。
 
-**定理证明**：对于 A~i~ 的任意排序和 Group 中 G 的任何联接图，G 中都有 n-1个联接。设 J 是 G 的一组连接，J~i~（i=2，…，n）是 G 的一个联接。G 的 Schema 包含基表A~1~，…，A~n~中的属性。根据引理，存在一个从 J 到 G 的 Schema 的映射，使得J~i~（i=2，…，n）分别映射到 A~i~（i=2，…，n），A~i~ 在 J~i~ 的 Schema 中。所以，`touchcopy()*Ci` 是联接 J~i~ 的下界，其中`Ci >= cucard(Ai)` 。因此， `touchcopy() * sum(cucard(Ai) i = 2，…，n)`  是联接 J~i~（ i = 2，…，n）的下界之和，这证明了定理。
+**定理证明**：对于 A~i~ 的任意排序和 Group 中 G 的任何联接图，G 中都有 n-1个联接。设 J 是 G 的一组连接，J~i~（i=2，…，n）是 G 的一个 Join。G 的 Schema 包含基表A~1~，…，A~n~中的属性。根据引理，存在一个从 J 到 G 的 Schema 的映射，使得J~i~（i=2，…，n）分别映射到 A~i~（i=2，…，n），A~i~ 在 J~i~ 的 Schema 中。所以，`touchcopy()*Ci` 是联接 J~i~ 的下界，其中`Ci >= cucard(Ai)` 。因此， `touchcopy() * sum(cucard(Ai) i = 2，…，n)`  是联接 J~i~（ i = 2，…，n）的下界之和，这证明了定理。
 
 **（3）** 读取 G 中的叶子节点（基表）的下界，也基于 G 的 Schema 中列的 `cucard`，对应于从基表获取元组的开销。读取开销是 G 的一个界的原因是：
 
@@ -491,7 +482,7 @@ Else
 
 只扫描物理列表中的物理多重表达式，以检查是否满足所需属性并直接计算成本，只扫描逻辑列表中的逻辑多重表达式，以查看是否已触发所有适当的规则。==只有当以前没有将规则应用于表达式时==，才需要优化逻辑表达式。在 Cascades 中，优化 Group 的<u>==任务==</u>不会查看物理<u>**多重表达式**</u>。相反，将再次优化所有逻辑多重表达式。显然，Columbia 优化 Group 的方法优于 Cascades，并且通过将逻辑链表和物理链表分开，简化了该方法。
 
-**胜者的数据结构更优**。动态规划和 **memoization** 的关键思想是缓存胜者的信息，以便将来使用。针对每个问题或子问题，搜索其最佳的解决方案都是相对于某些上下文进行。这里，上下文由所需的物理属性（例如，结果集必须按 A.X 排序）和上界（例如，执行计划的成本必须小于5）组成。**胜者**是一个（物理）多重表达式，在某个上下文的搜索中获胜。由于不同的搜索上下文可能会为一个 Group 产生不同的赢家，所以 Group 中存储的是赢家对象的数组。
+**胜者的数据结构更优**。动态规划和记忆化搜索的关键思想是缓存胜者的信息，以便将来使用。针对每个问题或子问题，搜索其最佳的解决方案都是相对于某些上下文进行。这里，上下文由所需的物理属性（例如，结果集必须按 A.X 排序）和上界（例如，执行计划的成本必须小于5）组成。**胜者**是一个（物理）多重表达式，在某个上下文的搜索中获胜。由于不同的搜索上下文可能会为一个 Group 产生不同的赢家，所以 Group 中存储的是赢家对象的数组。
 
 Cascade 中，`Winner` 类包含一个 `Pair`，由引导搜索的上下文和该上下文中胜者的多重表达式组成。Cascades 的 `Winner` 类还包含指向下一个 `Winner` 的指针，该指针表示对于不同的搜索上下文，该 Group 可能还有另一个 `Winner`。
 
@@ -854,7 +845,7 @@ APPLY_RULE::perform( mexpr, rule, context, exploring ) {
 
 > 优化输入并推导表达式成本的任务
 
-在优化过程中应用了**实现规则**，即对查询树中的一个节点考虑了实现算法后，通过优化实现算法的每个输入来继续优化。任务 O_INPUTS 的目标是计算物理多重表达式的成本。它首先计算多重表达式输入的成本，然后将它们与顶层运算符的成本相加。`O_INPUTS` 类中的数据成员 `input_no`（初始为 0），表示对哪个输入已经计算了成本。==此任务和其他任务相比，比较独特，因为它不会在调度其他任务后终止。它首先将自己压入堆栈，然后对其输入进行优化==。当所有输入都计算完成本后，它会计算整个物理多重表达式的成本。
+在优化期间应用了**实现规则**之后，即对查询树中的一个节点考虑了实现算法后，则要通过优化实现算法的每个输入来继续优化。任务 O_INPUTS 的目标是计算物理多重表达式的成本。它首先计算多重表达式输入的成本，然后将它们与顶层运算符的成本相加。`O_INPUTS` 类中的数据成员 `input_no`（初始为 0），表示对哪个输入已经计算了成本。==此任务和其他任务相比，比较独特，因为它不会在调度其他任务后终止。它首先将自己压入堆栈，然后对其输入进行优化==。当所有输入都计算完成本后，它会计算整个物理多重表达式的成本。
 
 该任务是执行 Columbia 修剪技术的主要任务，在 4.3 节中详细讨论。基于 Cascades 中的相同任务，Columbia 中的 O_INPUTS  重新设计了算法，并添加了剪枝相关的逻辑来实现 Columbia 中新的剪枝技术。
 
@@ -887,11 +878,11 @@ For each input group IG
         InputCost[IG] = max(cost of winner, IG Lower Bound)
 EndFor                                         // 初始化 InputCost
 
-//The rest of the code should be executed on every execution of this method.
+//下面的代码在每次执行此方法时执行。
 If (Pruning && CostSoFar >= upper bound) 
   terminate this task.                         // Note1: group pruning applied
         
-//Calculate cost of remaining inputs
+//计算剩余输入的成本
 For each remaining (from InputNo to arity) input group IG;
   Probe IG to see if there is a winner;
     If (there is a Full Winner in IG)
@@ -899,7 +890,7 @@ For each remaining (from InputNo to arity) input group IG;
       if (Pruning && CostSoFar exceeds G's context's upper bound) 
         terminate this task;
     else If (we did not just return from O_GROUP on IG)
-      //optimize this input; seek a winner for it
+      //优化该输入；为它寻找胜者
       push this task;
       push O_GROUP for IG;
       return;
@@ -910,7 +901,7 @@ For each remaining (from InputNo to arity) input group IG;
       else // There is no winner in IG
         Create a new null-plan winner in IG;
         terminate this task;
-EndFor //calculate the cost of remaining inputs
+EndFor //计算剩余输入的成本
 
 //Now all inputs have been optimized
 if (arity==0 and required property can not be satisfied) terminate this task;
