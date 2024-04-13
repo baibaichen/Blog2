@@ -20,11 +20,11 @@
 
 尽管以前的自顶向下优化器的实现表明，它们很难像自底向上优化那样调优出有竞争力的性能。但我们认为自上而下优化器在效率和可扩展性方面具有优势。本论文的其余部分描述了我们尝试开发另一种自上而下的优化器 Columbia，以证明可以在自上而下的方法中实现高效率。
 
-基于 Cascades Optimizer Framework 自顶向下的优化，Columbia 广泛地利用了 C++的面向对象特性，精心设计和简化自顶向下优化，在保持可扩展性的同时实现效率。它定义了一些带有虚方法的关键抽象类。搜索策略完全是根据这些抽象类实现的。搜索策略调用这些抽象类的虚拟方法，来执行搜索和基于成本的搜索空间修剪。因此，很容易扩展优化器来操作复杂的<u>数据模型</u>，通过从抽象类派生新类并重写虚拟方法来添加新的运算符和转换规则。由于本文的主要重点是关系数据模型的优化效率，因此我们在此不讨论优化器的可扩展性，并将扩展优化器以操作其他数据模型作为未来的工作。
+基于 Cascades Optimizer Framework 自顶向下的优化，Columbia 广泛地利用了 C++的面向对象特性，精心设计和简化自顶向下优化，在保持可扩展性的同时实现效率。它定义了一些带有虚方法的关键抽象类。搜索策略完全是根据这些抽象类实现的。搜索策略调用这些抽象类的虚拟方法，来执行搜索和基于成本的搜索空间裁剪。因此，很容易扩展优化器来操作复杂的<u>数据模型</u>，通过从抽象类派生新类并重写虚拟方法来添加新的运算符和转换规则。由于本文的主要重点是关系数据模型的优化效率，因此我们在此不讨论优化器的可扩展性，并将扩展优化器以操作其他数据模型作为未来的工作。
 
 为了尽量减少CPU和内存的使用，Columbia 使用了多种工程技术来提高效率。包括用于**消除重复表达式的快速哈希函数**、Group 中逻辑和物理表达式的分离、小而紧凑的数据结构、优化 Group 和输入的高效算法，以及处理强制执行器的有效方法。
 
-**Columbia 提供的一项重要技术是 Group 修剪**，它可以在不影响执行计划质量的情况下显著裁剪搜索空间。优化器在生成一些较低层的执行计划之前计算高层物理计划的成本。这些早期成本作为后续优化的上限。我们将证明，在许多情况下，这些上限可用于避免生成整组表达式，从而在搜索空间中裁剪大量可能的查询计划。
+**Columbia 提供的一项重要技术是 Group 裁剪**，它可以在不影响执行计划质量的情况下显著裁剪搜索空间。优化器在生成一些较低层的执行计划之前计算高层物理计划的成本。这些早期成本作为后续优化的上限。我们将证明，在许多情况下，这些上限可用于避免生成整组表达式，从而在搜索空间中裁剪大量可能的查询计划。
 
 除了 Group 剪枝，Columbia 还实现了另一种剪枝技术：全局 epsilon 剪枝。该技术通过生成可接受的接近最优的解决方案，显著地缩小了搜索空间。当发现一个解足够接近最优解时，优化目标就完成了，因此无需考虑大量的表达式。对这种剪枝技术进行了分析。给出了优化的有效性和误差。
 
@@ -175,25 +175,6 @@
 
 ### 2.5. The Search Space
 
-> The **search space** represents logical query trees and physical plans for a given initial query. To save space, the search space is represented as a set of groups, each group takes some groups as input. There is a top group designated as the final group, corresponding to the final result from the evaluation of the initial query. Figure 7 shows the initial search space of the given query.
->
-> > - [x] Figure 7. Initial Search Space of a given query
->
-> In the **initial search space**, each group includes only one logical expression, which came from the initial query tree. In figure 7, the top group, group [ABC], is the final group of the query. It corresponds to the final result of the joins of three relations. <u>We can derive the initial query tree from an initial search space</u>. **Each node in a query tree corresponds to an operator of a multi-expression in each group of the search space**. In Figure 7, top group [ABC] has a multi-expression which consists of an operator EQJOIN and two groups, [AB] and [C], as inputs. We can derive a query tree with the EQJOIN as the top operator and the input operators are derived from group [AB] and group [C], keep deriving input operators of the query tree from the input groups recursively until the considering groups are leaves (no input). The query tree derived from this initial search space is exactly the initial query tree. In other words, initial search space represents initial query tree.
->
-> In the course of optimization, the logically equivalent logical and physical expressions for each group are generated and the search space greatly expands. Each group will have a large number of logical and physical expressions. At the same time as the optimization generates physical expressions, the execution costs of the physical expressions (i.e., execution plans) are calculated. In some sense, generating all the physical expressions is the goal of the optimization since we want to find the cheapest plan and we know that costs are only related to physical expressions. But in order to generate all the physical expressions, all the logical expressions must be generated since each physical expression is the physical implementation of a logical expression. After the optimization is done, namely, all equivalent physical expressions are generated for each group and the costs of all possible execution plans are calculated, the cheapest execution plan can be located in the search space and served as the output of the optimizer. A completely expanded search space is called a final search space. Normally^6^, a final search space represents all the logically equivalent expressions (logical and physical) of a given query. ==In fact, all the possible query trees and execution plans can be derived from the final search space by using the recursive method we use to derive the initial query tree from the initial search space==. Each (logical or physical) operator of a multi-expression in the search space serves as an operator node in a query tree or an execution plan. Since a group in the search space contains a number of logical equivalent expressions, the final search space represents a large number of query trees and execution plans.
->
-> > 6. In some cases, pruning applies to the expansion of the search space, and then some expressions may not be generated. It may be that entire groups are not expanded. Some pruning techniques will be described in Section 4.4.
->
-> Table 1 [Bil97] shows the complexity of complete logical search space of join of n relations. (Only the numbers of logical expressions are showed.) For example, the search space of join of 4 relations has 15 groups, includes 54 logical expressions and represents 120 query trees.
->
-> > - [x] Table 1. Complexity of Join of n Relations [Bil97]
->
-> As can be seen from Table 1, even considering only the logical expressions, the size of the search space increases dramatically (exponentially) as the number of the  joined relations increases. The number of physical expressions depends on how many^7^ implementation algorithms used for the logical operators. For example, if there are N logical expressions in the search space, and M (M>=1) join algorithms are used in the database systems, then there will be M*N total physical expressions in the search space. So the number of physical expressions is at least the same as the number of logical expressions or larger.
->
-> > 7. Different database systems may choose a certain different number of algorithms to implement one logical operator. For example, nested-loops, sort-merge and indexnested-loops are the common join algorithms database systems choose.
->
-
 **搜索空间**表示给定初始查询的逻辑查询树和物理计划。为了节省空间，搜索空间被表示为 Group 的集合，每个 Group 接受一些 Group 作为输入。有一个顶层 Group 被指定为最终 Group，与初始查询的计算结果相对应。图 7 显示了给定查询的初始搜索空间
 
 <p align="center">
@@ -203,20 +184,20 @@
 
 在**初始搜索空间**中，每个组只包含一个逻辑表达式，它来自于初始查询树。图 7 中，顶部 Group [ABC] 是查询的最后一组，对应三张表 Join 的最终结果。<u>我们可以从初始搜索空间推导出初始查询树</u>。**查询树中的每个节点对应搜索空间中每组多重表达式的一个运算符**。图 7 中，顶部 Group  [ABC] 有一个多重表达式，它由一个运算符 EQJOIN 和两个组 [AB] 和 [C] 作为输入组成。我们可以推导出一个以 EQJOIN 为顶层运算符的查询树，输入运算符从组 [AB] 和组 [C] 中导出，不断从输入组中递归地导出查询树的输入算子，直到考虑的组是叶子（ 没有输入）。从这个初始搜索空间派生的查询树正是初始查询树。换句话说，初始搜索空间代表初始查询树。
 
-优化过程中，为每组生成逻辑上等价的逻辑和物理表达式，大大扩展了搜索空间。每个组都会有大量的逻辑和物理表达式。在优化器生成物理表达式的同时，计算物理表达式（即执行计划）的执行成本。在某种意义上，生成所有物理表达式是优化的目标，因为我们想找到成本最低的计划，而且我们知道成本只与物理表达式有关。但是为了生成所有物理表达式，必须生成所有逻辑表达式，因为每个物理表达式都是逻辑表达式的物理实现。优化完成后，即为每个组生成所有等价的物理表达式，并计算出所有可能的执行计划的成本，可以在搜索空间中找到成本最低的执行计划，作为优化器的输出。一个完全扩展的搜索空间称为最终搜索空间。通常^6^，最终搜索空间表示给定查询的所有逻辑等价表达式（逻辑和物理）。==事实上，通过使用<u>从初始搜索空间推导出初始查询树</u>的递归方法，所有可能的查询树和执行计划都可以从最终的搜索空间中推导出来==。搜索空间中多重表达式的每个（逻辑或物理）运算符充当查询树或执行计划中的运算符节点。由于搜索空间中的 Group 包含多个逻辑等价表达式，因此最终的搜索空间有大量的查询树和执行计划。
+优化过程中，为每组生成逻辑上等价的逻辑和物理表达式，大大扩展了搜索空间。每个组都会有大量的逻辑和物理表达式。在优化器生成物理表达式的同时，计算物理表达式（即执行计划）的执行成本。在某种意义上，生成所有物理表达式是优化的目标，因为我们想找到成本最低的计划，而且我们知道成本只与物理表达式有关。但是为了生成所有物理表达式，必须生成所有逻辑表达式，因为每个物理表达式都是逻辑表达式的物理实现。优化完成后，即为每个组生成所有等价的物理表达式，并计算出所有可能的执行计划的成本，可以在搜索空间中找到成本最低的执行计划，作为优化器的输出。一个完全扩展的搜索空间称为最终搜索空间。通常[^6]，最终搜索空间表示给定查询的所有逻辑等价表达式（逻辑和物理）。==事实上，通过使用<u>从初始搜索空间推导出初始查询树</u>的递归方法，所有可能的查询树和执行计划都可以从最终的搜索空间中推导出来==。搜索空间中多重表达式的每个（逻辑或物理）运算符充当查询树或执行计划中的运算符节点。由于搜索空间中的 Group 包含多个逻辑等价表达式，因此最终的搜索空间有大量的查询树和执行计划。
 
-> 6. 在某些情况下，如果将剪枝应用于搜索空间的扩展，则可能无法生成某些表达式。可能是整个组都没有扩展。一些修剪技术将在第4.4 节中描述。
+[^6]: 在某些情况下，如果将剪枝应用于搜索空间的扩展，则可能无法生成某些表达式。可能是整个组都没有扩展。一些裁剪技术将在第4.4 节中描述。
 
-表 1 [Bil97] 给出了 n 张表 Join 的完整逻辑搜索空间的复杂读。（只显示了逻辑表达式的个数）例如，4 张表的 Join 搜索空间有 15 个 Group，包含 54 个逻辑表达式，代表 120 棵查询树。
+表 1 [Bil97] 给出了 n 张表 Join 的完整逻辑搜索空间的复杂性。（只显示了逻辑表达式的个数）例如，4 张表的 Join 搜索空间有 15 个 Group，包含 54 个逻辑表达式，代表 120 棵查询树。
 
 <p align="center">
  <img src="./EFFICIENCY IN THE COLUMBIA DATABASE QUERY OPTIMIZER/table_1.png" />
  表 1. Complexity of Join of n Relations [Bil97]
 </p>
 
-从表 1 中可以看出，即使只考虑逻辑表达式，搜索空间的大小也会随着 Join 表数量的增加而急剧增加（呈指数级）。物理表达式的数量取决于用于逻辑运算符的 ^7^ 实现算法的数量。例如，如果搜索空间中有 N 个逻辑表达式，并且数据库系统中使用了 M(M>=1) 个 Join 算法，那么搜索空间中总共会有 $M\times N$ 个物理表达式。所以物理表达式的数量至少与逻辑表达式的数量相同或更大。
+从表 1 中可以看出，即使只考虑逻辑表达式，搜索空间的大小也会随着 Join 表数量的增加而急剧增加（呈指数级）。物理表达式的数量取决于用于逻辑运算符的[^7]实现算法的数量。例如，如果搜索空间中有 N 个逻辑表达式，并且数据库系统中使用了 M(M>=1) 个 Join 算法，那么搜索空间中总共会有 $M\times N$ 个物理表达式。所以物理表达式的数量至少与逻辑表达式的数量相同或更大。
 
-> 7. 不同的数据库系统可能会选择不同数量的算法来实现一个逻辑运算符。例如，嵌套循环、归并排序和索引嵌套循环是数据库系统常见 Join 算法。
+[^7]: 不同的数据库系统可能会选择不同数量的算法来实现一个逻辑运算符。例如，嵌套循环、归并排序和索引嵌套循环是数据库系统常见 Join 算法。
 
 ### 2.6 Rules
 
@@ -268,7 +249,7 @@ Exodus 优化器生成器 [GrD87] 是第一个使用**自顶向下优化**的可
 
 Exodus 的主要贡献是自顶向下优化器生成器框架，它将优化器的搜索策略与数据模型分离，并将**转换规则和逻辑运算符**与**实现规则和物理运算符**分开。尽管构建高效优化器很困难，但它为下一代可扩展优化器提供了一个有用的基础。
 
-Volcano Optimizer Generator [GrM93] 的主要目标是提高 Exodus 的效率，以实现更高的性能、进一步的可扩展性和有效性。**将动态规划与基于物理性质的有向搜索、分枝定界剪枝和启发式引导相结合，形成一种新的搜索算法，称为有向动态规划，从而实现高效率**。Volcano 中的搜索策略是一种自上而下、面向目标的控制策略：只在必要时优化子表达式。<u>也就是说，只有那些真正参与有前途的更大计划的**表达式和计划**才会被考虑优化</u>。它还使用动态规划来存储所有最优子计划以及失败的优化，直到完全优化完查询。由于它通过使用物理特性（系统 R 中**感兴趣的特性**的泛化），因此非常面向目标，并且只转换那些有希望的表达式和计划，所以搜索算法较高效。通过从**数据模型规范**中生成优化器源代码，并将成本以及逻辑和物理属性封装到抽象数据类型中，Volcano 实现了更多的可扩展性。有效性是通过穷举搜索来实现，只由优化器实现者来决定是否进行修剪。
+Volcano Optimizer Generator [GrM93] 的主要目标是提高 Exodus 的效率，以实现更高的性能、进一步的可扩展性和有效性。**将动态规划与基于物理性质的有向搜索、分枝定界剪枝和启发式引导相结合，形成一种新的搜索算法，称为有向动态规划，从而实现高效率**。Volcano 中的搜索策略是一种自上而下、面向目标的控制策略：只在必要时优化子表达式。<u>也就是说，只有那些真正参与有前途的更大计划的**表达式和计划**才会被考虑优化</u>。它还使用动态规划来存储所有最优子计划以及失败的优化，直到完全优化完查询。由于它通过使用物理特性（系统 R 中**感兴趣的特性**的泛化），因此非常面向目标，并且只转换那些有希望的表达式和计划，所以搜索算法较高效。通过从**数据模型规范**中生成优化器源代码，并将成本以及逻辑和物理属性封装到抽象数据类型中，Volcano 实现了更多的可扩展性。有效性是通过穷举搜索来实现，只由优化器实现者来决定是否进行裁剪。
 
 Volcano 搜索策略的效率允许生成真正的优化器，一个用于面向对象的数据库系统 [BMG93]，另一个用于有许多规则的原型科学数据库系统 [Wog93]。
 
@@ -299,7 +280,7 @@ Cascades 优化器首先将原始查询复制到初始搜索空间（在 Cascade
 
 [Bil97] 描述了一个实验优化器 **Model D**，用于优化在 Cascades 优化器框架下开发的 TPC-D 查询 [TPC95]。**Model D** 有许多逻辑运算符，而这些逻辑运算符又需要许多规则和物理运算符。DBI 可以通过派生基类接口来定义新的运算符和规则，并很容易地将它们添加到优化器中。只需对 Cascades 搜索引擎进行少量更改，**Model D** 就展示了 Cascade 框架在关系模型中的可扩展性。
 
-Cascades 只是一个优化器框架。它提出了许多性能改进，但许多功能目前未使用或仅以基本形式提供。目前 Cascades 的设计和实现仍有许多改进的空间。优化器框架和 DBI 规范的强分离、虚方法的广泛使用、非常频繁的对象分配和释放都会导致性能问题。一些修剪技术可以应用于自上而下的优化，以显着提高搜索性能。所有这些观察结果都激发了我们对 Cascades 的研究和开发一种新的、更有效的优化器——哥伦比亚优化器。
+Cascades 只是一个优化器框架。它提出了许多性能改进，但许多功能目前未使用或仅以基本形式提供。目前 Cascades 的设计和实现仍有许多改进的空间。优化器框架和 DBI 规范的强分离、虚方法的广泛使用、非常频繁的对象分配和释放都会导致性能问题。一些裁剪技术可以应用于自上而下的优化，以显着提高搜索性能。所有这些观察结果都激发了我们对 Cascades 的研究和开发一种新的、更有效的优化器——哥伦比亚优化器。
 
 ## Chapter 4 . Structure of the Columbia Optimizer
 
@@ -847,10 +828,11 @@ APPLY_RULE::perform( mexpr, rule, context, exploring ) {
 
 在优化期间应用了**实现规则**之后，即对查询树中的一个节点考虑了实现算法后，则要通过优化实现算法的每个输入来继续优化。任务 O_INPUTS 的目标是计算物理多重表达式的成本。它首先计算多重表达式输入的成本，然后将它们与顶层运算符的成本相加。`O_INPUTS` 类中的数据成员 `input_no`（初始为 0），表示对哪个输入已经计算了成本。==此任务和其他任务相比，比较独特，因为它不会在调度其他任务后终止。它首先将自己压入堆栈，然后对其输入进行优化==。当所有输入都计算完成本后，它会计算整个物理多重表达式的成本。
 
-该任务是执行 Columbia 修剪技术的主要任务，在 4.3 节中详细讨论。基于 Cascades 中的相同任务，Columbia 中的 O_INPUTS  重新设计了算法，并添加了剪枝相关的逻辑来实现 Columbia 中新的剪枝技术。
+该任务是执行 Columbia 裁剪技术的主要任务，在 4.3 节中详细讨论。基于 Cascades 中的相同任务，Columbia 中的 O_INPUTS  重新设计了算法，并添加了剪枝相关的逻辑来实现 Columbia 中新的剪枝技术。
 
 图 22 说明了方法 `O_INPUTS_perform()` 的伪代码，它实现了任务 O_INPUTS 的算法。
 
+> [!TIP]
 > **符号**：
 >
 > - **G**：正在优化的组。
@@ -919,13 +901,13 @@ if (either there is no winner in G or CostSoFar is cheaper than the cost of the 
   update the upperbound of the current context
   return;
 ```
-算法中有三个剪枝标志：Pruning、CuCardPruning 和 GlobepsPruning。优化器的用户可以相应地设置这些标志，以在 Columbia 试验不同的修剪技术。
+算法中有三个剪枝标志：Pruning、CuCardPruning 和 GlobepsPruning。优化器的用户可以相应地设置这些标志，以在 Columbia 试验不同的裁剪技术。
 
 我们可以在四种情况下为 Columbia 运行基准测试。O_INPUTS 算法用不同的逻辑处理这四种情况。Cascades 只处理情况 1 和 2。
 
 1. **Starburst** - `[!Pruning && !CuCardPruning]` ：不进行裁剪，生成输入组的所有表达式，即彻底扩展输入组。
 2. **Simple Pruning** - `[Pruning && !CuCardPruning]` ：尝试通过始终积极检查限制来避免输入组扩展，即表达式优化时，如果 `CostSoFar` 大于优化上下文的上限，则任务终止，不再进行进一步的优化。这时，如果在优化上下文中，输入有一个 winner，那么 `InputCost[]` 只存储输入 winner 的成本。
-3. **Lower Bound Pruning** - `[CuCardPruning]` ：尽量避免输入组扩展。这与简单修剪的区别在于：如果输入组没有 winner，则它将输入组的 GLB 存储在 InputCost[] 中。在这种情况下，假设 Pruning 标志是打开的，即，如果 CuCardPruning 为真，那么代码强制 Pruning 标志为真。
+3. **Lower Bound Pruning** - `[CuCardPruning]` ：尽量避免输入组扩展。这与简单裁剪的区别在于：如果输入组没有 winner，则它将输入组的 GLB 存储在 InputCost[] 中。在这种情况下，假设 Pruning 标志是打开的，即，如果 CuCardPruning 为真，那么代码强制 Pruning 标志为真。
 4. **Global Epsilon Pruning** - `[GlobepsPruning]` ：如果计划的成本低于全局 **epsilon** 值（`GLOBAL_EPS`），则被认为是 G 的最终 winner，因此不需要进一步优化（即任务终止）。该标志独立于其他标志。它可以与其他三种情况结合进行优化。
 
 ### 4.3 Pruning Techniques
@@ -934,77 +916,66 @@ if (either there is no winner in G or CostSoFar is cheaper than the cost of the 
 
 #### 4.3.1 Lower Bound Group Pruning
 
-> **Motivation**: Top-down optimizers compute a cost for high-level physical plans before some lower-level plans are generated. These early costs serve as upper bounds for subsequent optimizations. In many cases these upper bounds could be used to avoid generating entire groups of expressions. We call this group pruning.
+**动机**：自上而下的优化器在生成一些低级计划之前计算高级物理计划的成本。这些早期成本可作为后续优化的上限。在许多情况下，这些上限可用于避免生成整组表达式。我们称之为组裁剪。
 
-**动机**：自上而下的优化器在生成一些低级计划之前计算高级物理计划的成本。这些早期成本可作为后续优化的上限。在许多情况下，这些上限可用于避免生成整组表达式。我们称之为组修剪。
+由于 Columbia 从上到下记忆化搜索，因此可以使用**==边界==**来裁剪整个组。例如，假设优化器的输入是$(A\Join B)\Join C$。优化器将首先计算组[ABC]中一个计划的成本，比如$(A\Join_L B)\Join_LC$；假设**它的成本是5秒**。它扩展了组[AB]，在计算这 5 秒成本时，没有考虑组 [AC] 或 [BC]。现在我们正在考虑优化组中的另一个表达式，比如 $[AC]\Join_L[B]$。假设组[AC]表示笛卡尔乘积，它是如此巨大，以至于仅将元组从 [AC] 复制到 [ABC] 就超过 5 秒。**这意味着包含 [AC] 的计划永远不会是 [ABC] 的最佳计划**。在这种情况下，优化器不会生成组 [AC] 中的所有计划，因此有效地裁剪组[AC]。图 23 显示了对上述两个表达式进行优化后的搜索空间的内容。注意，[AC] 组未展开。另一方面，Starburst 和其他自下而上的优化器在开始处理 [ABC] 之前优化组 [AB]、[AC] 和 [BC]，从而失去了裁剪多个计划的机会。
 
-> Since Columbia searches top-down and memoizes, bounds could be used to prune entire groups. For example, suppose the optimizer’s input is $(A \Join B) \Join C$. The optimizer will first calculate the cost of one plan in the group ==[ABC]==, say $(A \Join_L B) \Join_L C$; imagine **its cost is 5 seconds**. It expanded the group [AB] and did not consider the groups [AC] or [BC] in calculating this 5 second cost. Now we are considering optimizing another expression in the group, say $[AC]\Join_L[B]$​. Suppose the group [AC] represents a Cartesian product, it is so huge that it takes more than 5 seconds just to copy out tuples from [AC] to [ABC]. It means the plans containing [AC] will never be the optimal plan for [ABC]. In this case the optimizer does not generate, so effectively prunes, all the plans in the group [AC]. Figure 23 shows the content of the search space after the optimization of the two expressions discussed above. Notice that the [AC] group was not expanded. On the other hand, Starburst and other bottom-up optimizers optimize the groups [AB], [AC] and [BC] before beginning to process [ABC], thus losing any chance to prune multiple plans.
+<p align="center">
+ <img src="./EFFICIENCY IN THE COLUMBIA DATABASE QUERY OPTIMIZER/Figure_23.png" />
+ Figure 23  <B>Search space during optimization ( [AC] is Cartesian product )</B>
+</p>
+**如果最优组 G 从未被枚举过，我们就说它被剪枝了**。因此，裁剪后的组将仅包含一个表达式，即创建它的表达式。组裁剪非常有效：表示 k 个表的 Join 的组可以包含 2^k^ –2 个逻辑表达式。**在一组中，物理表达式的数量通常是逻辑表达式的两倍以上**。
 
-由于 Columbia 从上到下搜索并记忆的，因此可以使用边界来修剪整个组。例如，假设优化器的输入是$(A\Join B)\Join C$。优化器将首先计算组==[ABC]==中一个计划的成本，比如$(A\Join_L B)\Join_LC$；假设**它的成本是5秒**。<u>它扩展了组[AB]，在计算这 5 秒的成本时没有考虑组[AC]或[BC]</u>。现在我们正在考虑优化组中的另一个表达式，比如$[AC]\Join_L[B]$。假设组[AC]表示笛卡尔乘积，它是如此巨大，以至于仅将元组从 [AC] 复制到 [ABC] 就需要 5 秒以上的时间。**这意味着包含 [AC] 的计划永远不会是 [ABC] 的最佳计划**。在这种情况下，优化器不会生成组 [AC] 中的所有计划，因此可以有效地修剪组[AC]。图23显示了对上述两个表达式进行优化后的搜索空间的内容。请注意，[AC] 组未展开。另一方面，Starburst 和其他自下而上的优化器在开始处理 [ABC] 之前优化组 [AB]、[AC] 和 [BC]，从而失去了修剪多个计划的机会。
+**算法**：在本节中，我们将描述 Columbia 如何通过使用改进的优化算法，来增加实现组剪枝的可能性，如图 24 所示。该算法是任务 O_INPUTS 的一部分（[第 4.2 3.5节](#4.2.3.5 O_INPUTS - Task to optimize inputs and derive cost of an expression)），是图 22 中 Note1 行的详细说明
 
-> - [ ] Figure 23  **Search space during optimization ( [AC] is Cartesian product )**
+```
+Figure 24  下界剪枝算法
+When optimizing a physical expression Expr under a context:
+(1) Compute a lower bound for the cost of Expr, equal to
+(2)   Cost of Expr’s operator +
+(3)   Cost of inputs that have optimal plans for the required properties +
+(4)   Group Lower Bound of other inputs ;
+(5) If this lower bound is > UpperBound of the context, return NULL;
+(6) For each input without an optimal plan for the required properties Optimize the input;
+```
 
-> We say that an optimality group G is pruned if it is never enumerated. A pruned group will thus contain only one expression, namely the expression which created it. Group pruning can be very effective: a group representing the join of k tables can contain 2^k^ –2 logical expressions. And there are normally more than two times physical expressions than logical expressions in a group.
+在图 24 中，第 (1) – (4) 行计算 Expr 成本的下限裁剪如果该下限大于当前上限的限制，则例程可以在不枚举任何输入组的情况下返回裁剪该算法与 Cascades 算法的区别在于 Cascades 算法中没有第 (4) 行。
 
-**如果最优组 G 从未被枚举过，我们就说它被剪枝了**。因此，修剪后的组将仅包含一个表达式，即创建它的表达式。组修剪非常有效：表示 k 个表的 Join 的组可以包含 2^k^ –2 个逻辑表达式。**在一组中，物理表达式的数量通常是逻辑表达式的两倍以上**。
+在 Columbia 中，有一个与组相关的组下界，它表示复制该组元组，并从<u>该组的表中获取元组</u>的最小成本（详见第 [4.2.1.3](#4.2.1.3 GROUP) 节）裁剪该组下界是在优化表达式之前计算并存储在组中的，因为它仅基于组的逻辑属性。第 (4) 行**将没有所需属性的最优计划的输入**纳入组下限，从而提高了 Expr 成本的下限，从而提高了组剪枝的可能性。
 
-**Algorithm**: In this section we will describe how Columbia increases the likelihood of achieving group pruning, through the use of an improved optimization algorithm, which is shown in Figure 24. This algorithm is one part of task O_INPUTS (section 4.2.3.5), and is the detail description of “Note1” line in Figure 22
+图25显示了发生这种下界组修剪时的情况。在这种情况下，Cascades 算法不会修剪组 [BC]，因为正在优化的表达式的下界成本只是运算符成本与输入的获胜者成本（如果有）之和裁剪在这种情况下，它等于 1+2+0=3，并且不大于上下文中的上限。组[BC]仍将扩大。
 
-> - [ ] Figure 24  **Algorithm of Lower Bound Pruning**
-
-In Figure 24, lines (1) – (4) compute a lower bound for the cost of Expr. If this lower bound is greater than the current upper bound, Limit, then the routine can return without having enumerated any input groups. The difference between this algorithm and the algorithm of Cascades is that there is no line (4) in the algorithm of Cascades.
-
-In Columbia, there is a group lower bound associated with a group, which represents the minimal cost of copying out tuples of the group and fetching tuples from the tables of the group (see details in section 4.1.2.3). This group lower bound is calculated and stored in the group before the optimization of an expression since it is based only on the logical properties of the group. Line (4) includes in the group lower bound of inputs which do not have optimal plans for the required properties, thus improves the lower bound of the cost of Expr and then the likelihood of group pruning.
-
-Figure 25 shows the situation when this lower bound group pruning happens. In this situation, Cascades’ algorithm will not prune the group [BC] since the lower bound cost of the expression being optimized is only the sum of operator cost and the winner cost of inputs if any. In this case, it equals to 1+2+0 = 3 and not greater than the upper bound in the context. The group [BC] still will be expanded.
-
-> - [ ] Figure 25  **A situation when lower bound pruning happens**
-
-Lower Bound Group pruning is safe, i.e., the optimizer using this pruning technique produces optimal plans. Because we will only prune a set of plans when a lower bound for the cost of the set is greater than the cost of another plan, and we proved in section 4.1.2.3 that the bound we used is a lower bound.
+<p align="center">
+ <img src="./EFFICIENCY IN THE COLUMBIA DATABASE QUERY OPTIMIZER/Figure_25.png" />
+ Figure 25  <B>A situation when lower bound pruning happens</B>
+</p>
+下界组剪枝是安全的，即优化器使用这种剪枝技术会产生最佳计划裁剪因为只有当一组计划的成本下界大于另一个计划的成本时，我们才会修剪一组计划，并且我们在  [4.2.1.3](#4.2.1.3 GROUP) 节中证明了我们使用的界是下界。
 
 #### 4.3.2 Global Epsilon Pruning
 
-**Motivation**: The concept of satisficing originated in economics. The idea is that, in theory, economic systems are governed by laws which require everyone to optimize their satisfaction, subject to satisfying some constraints.  In practice people do not act this way: they settle for almost optimal solutions which *almost* satisfy the constraints. This behavior is called satisficing. One way to view satisficing is to imagine that there is some constant epsilon and that everything is optimized/satisfied within epsilon. The idea of satisficing is motivation for the following idea.
+**动机**：满意度原则最初起源于经济学。理论上，经济系统遵循的法则要求每个人在满足一些约束的前提下，优化他们的满意度。然而，在实践中，人们并不是这样做的：他们会选择那些**几乎**满足约束条件的近似最优解。这种行为被称为满意度原则。从一个角度看，满意度原则就是设想有一个常数 ε，所有事情都在ε 之内被优化/满足。满意度原则的概念为以下的想法提供了动机
 
-**Global Epsilon Pruning**: A plan is considered as a final winner of a group if its cost is close enough (within epsilon) to the cost of an optimal plan. Once such a winner is declared, no further optimization is needed for the group, hence possibly prunes the search space. For example, supposed we are optimizing the group [ABC], we will calculate the cost of the first plan we get in the group, say (A0**L**B)0**L**C and it costs 5 seconds. If the epsilon we choose is 6 second, i.e., we consider that a plan less than 6 seconds is a final winner. Although it is not optimal, we are satisfied with it. So the plan (A0**L**B)0**L**C with cost 5 seconds is consider as a final winner for the group [ABC], hence no further search is pursued for the group [ABC]. In other word, search for [ABC] is done, although we even do not expand group [ABC]. A lot of expressions in the search space are pruned by this method.
+**全局 Epsilon 剪枝**：如果一个计划的成本足够接近于（ ε 内）最优计划的成本，那么该计划被视为其所在组的最终赢家。一旦确定了这样的赢家，这个组就不再需要进一步优化，从而可能剪去搜索空间。例如，假设我们正在优化组[ABC]，我们会计算组中获得的第一个计划的成本，比如 $(A \Join_L B)\Join_LC$，它的成本是5秒。如果我们选择的 ε是6秒，也就是说，我们认为一个计划少于6秒就算是最终的赢家。尽管它不是最优的，但我们对其满意。所以，成本为5秒的计划被 $(A \Join_L B)\Join_LC$ 认为是组[ABC]的最终赢家，因此不再为组 [ABC] 进一步搜索。换句话说，尽管我们甚至没有扩展组 [ABC]，但 [ABC] 的搜索已经完成。通过这种方法，搜索空间中的很多表达式被剪枝。
 
-This pruning technique is called Global Epsilon Pruning since the epsilon is used globally during the whole optimization instead of localizing to a specific group optimization.
+这种剪枝技术被称为全局 Epsilon 剪枝，因为在整个优化过程中，ε 是全局使用的，而不是局限于特定的组优化。
 
-> ***Algorithm:\*** Choose a global parameter Globeps > 0. Follow the usual optimization algorithm, except that a final winner is declared in a group if a plan is found with
->
-> cost(plan) < Globeps.
->
-> Enter the winner in the group and mark the search context done indicating that no further search is needed for this group.
+**算法**：选择一个全局参数 Globeps > 0。遵循通常的优化算法，只是在一个组中找到一个计划的 **cost(plan) < Globeps** 时，就会声明一个最终的赢家。 将赢家录入该组，并标记<u>搜索上下文</u>完成，表示该组不再需要进一步搜索。
 
-This algorithm is implemented in the task O_INPUTS, shown in “Note2” in Figure 22. After the cost of an optimizing expression is calculated, if the global epsilon pruning flag is set, the cost is compared with the global epsilon. The search is done if the cost is less than the epsilon.
+这个算法在任务 O_INPUTS 中实现，如图22的 **Note2** 中所示。优化表达式的成本计算后，如果设置了全局 epsilon 剪枝标记，就会将成本与全局 epsilon 进行比较。如果成本小于 epsilon，搜索就完成了。
 
-Obviously, Global Epsilon Pruning does not yield an optimal plan. But the distance from absolute optimality is bounded in some sense.
+显然，全局 Epsilon 剪枝不会产生最优计划。但是，从某种意义上说，距离绝对最优的距离是有界的。
 
-> ***Theorem:\*** Let "absolute-optimum" denote the result of the usual optimization and "Globeps-optimum" denote the result of optimization with Global Epsilon Pruning. If absolute-optimum has N nodes whose cost is less than Globeps, then the cost of Globeps-optimum differs by at most
+> [!TIP]
 >
-> N * Globeps
+> **定理**：设**绝对最优**表示通常优化的结果，**Globeps 最优**表示全局 Epsilon 剪枝优化的结果。如果绝对最优有 N 个节点，其成本小于 Globeps，那么 Globeps 最优的成本与绝对最优的成本之差最多为 $N \times Globeps$。
 >
->  
+> **证明**：首先，对**绝对最优**进行深度优先搜索，但是使用全局 Epsilon 剪枝来替换每一个最优输入，用第一个成本小于 Globeps 的计划替换，如果有这样的计划存在。N 个这样的最优输入将被替换。用 P 表示这个过程的结果计划。由于 P 与绝对最优的不同之处最多在 N 个输入上，最多为 Globeps，所以我们有 **cost(P) - cost(absolute-optimum) < N \* Globeps**。
 >
-> from the cost of absolute-optimum.
+> 由于 P 在全局 Epsilon 剪枝算法定义的搜索空间中，我们必须有 **Cost (Globeps-optimum) < cost(P)**。
 >
->  
->
-> ***Proof:\*** Begin by performing a depth-first search on the absolute-optimum, but use Global Epsilon Pruning to replace every optimal input with the first plan having cost less then Globeps, if such a plan exists. N such optimal inputs will be replaced. Denote the plan which is the result of this process by P. Since P differs from the abosolute-optimum in at most N inputs, by at most Globeps, we have
->
-> cost(P) - cost(absolute-optimum) < N * Globeps.
->
->  
->
-> Since P is in the search space defined by the Global Epsilon Pruning algorithm, We must have
->
-> Cost (Globeps-optimum) < cost(P).
->
->  
->
-> The theorem follows.
+> 定理得证。
 
-Different epsilons greatly affect the pruning. A very small epsilon will produce no pruning at all since the costs of all plans in a group are greater than the epsilon. On the other hand, A large epsilon will prune a significant amount of plans but may yield a plan that is far away to the optimal plan. Since this pruning technique relies heavily on the epsilon we choose, the above theorem gives us an idea of how to choose an epsilon. For example, suppose we want to optimize a join of 10 tables. We estimate the cost of the optimal plan of this join is 100 seconds and the optimal plan has 20 nodes. We also assume a plan with a distance of 10 seconds from the optimal plan is acceptable. According to the theorem, we can have a Globeps-optimum plan whose cost differs from the optimal cost by at most 20* Globeps = 10, which is acceptable. Hence, we can choose a global epsilon to be 0.5.
+不同的 epsilon 对剪枝影响很大。非常小的 epsilon 将不会产生任何剪枝，因为一个组中所有计划的成本都大于 epsilon。另一方面，较大的 epsilon 将剪去大量的计划，但可能产生一个远离最优计划的计划。由于这种剪枝技术严重依赖选择的 epsilon，所以上述定理为我们选择 epsilon 提供了一个思路。例如，假设我们想要优化 10 个表的 Join。我们估计这次联接的最优计划的成本是100 秒，最优的计划有 20 个节点。我们还假设一个距离最优计划 10 秒的计划是可以接受的。根据定理，我们可以有一个 Globeps-最优计划，其成本至多比最优成本多 20 * Globeps = 10，这是可接受的。因此，我们可以选择全局 epsilon 为 0.5。
 
 ### 4.4  Usability in the Columbia Optimizer
 

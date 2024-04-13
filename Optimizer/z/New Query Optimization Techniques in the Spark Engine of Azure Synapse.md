@@ -57,9 +57,6 @@ In summary, the paper makes the following core contributions.
 -   We propose a set of peephole optimizations that significantly improve the performance of Spark’s sort implementation.
 -   All these optimizations are implemented in the synapse spark, a production system available for general use. We demonstrate that these optimizations bring significant performance gains.
 
-    ![](media/bd44690e182fad4faeb9a0e798377c1e.png)
-
-Figure 2: Normalized cost of operators in top 20 queries. Each query has two bars, the left bar corresponds to costs in baseline Spark. The right bar shows the reduced percentages after our optimizations as implemented in synapse spark.
 
 ⋈
 
@@ -80,14 +77,32 @@ We enhanced the instrumentation done by Spark to measure the time spent in each 
 - *Exchange, hash-aggregate* and *sort* are the three most expensive operators. They contribute to 80% of the total task time in half the queries and 50 − 80% in another quarter of the queries.
 - Exchange is uniformly expensive and contributes 20 − 40% of the cost in all but a few ( 5%) scan heavy queries. 
 - *Sort* and *hash-aggregate* are almost equally expensive, they together contribute 20 − 50% of cost in most queries.
-- *Scan* and *Join*, the other two significant operators are much less expensive on average. However, they are the most expensive operator in specific queries (like *𝑄*88 and *𝑄*95 respectively).
+- *Scan* and *Join*, the other two significant operators are much less expensive on average. However, they are the most expensive operator in specific queries (like **𝑄88** and **𝑄95** respectively).
+
+|Figure 2: Normalized cost of operators in top 20 queries. Each query has two bars, the left bar corresponds to costs in baseline Spark. The right bar shows the reduced percentages after our optimizations as implemented in synapse spark.      |
+| ---- |
+|   ![](media/bd44690e182fad4faeb9a0e798377c1e.png)   |
+
+> [!NOTE]
+>  我们增强了 Spark 所做的检测，以测量每个任务在每个运算符 [^2] 上花费的时间。图 2 报告了 TPCDS 中最慢的 20 个查询在各种运算符中花费的时间（按 1TB 比例因子）。对于每个查询，它显示了优化之前和之后的细分，我们在本节中重点关注之前（左栏）的成本。我们提出以下意见。
+>
+> - **交换**、**哈希聚合**和**排序**是三个最<u>昂贵</u>的运算符。它们在一半的查询中占总任务时间的 80%，在另外四分之一的查询中占 50-80%。
+> - Exchange的成本一般都很高，除少数（5%）扫描量大的查询外，Exchange 占所有成本的 20 - 40%。
+> - **Sort** 和 **hash-aggregate** 几乎同样昂贵，它们在大多数查询中总共贡献了 20% - 50% 的成本。
+> - **扫描**和**加入**，另外两个重要的运算符平均成本要低得多。然而，在特定查询中，它们是最昂贵的运算符（例如分别为 **𝑄88** 和 **𝑄95**）。
 
 ### 2.2 Examples of optimizations
 
 Next we motivate the proposed optimizations with examples from TPCDS. Table 1 describes the notation we use to represent queries.
 
+> [!NOTE]
+>
+> 接下来，我们通过 TPCDS 的示例来说明这些出的优化 Why。表 1 描述了我们用来表示查询的符号。
+
 > [!TIP]
-> Table 1: Symbols used for SQL operators are as shown. We use *𝑇,𝑇*1*,𝑇*2*,𝑇*3 as table names and *𝑎,𝑏,𝑐,𝑑,𝑒* as column names. We sub-script column names with the numeric sub-script of tables they come from. For example *𝑏*2 come from table *𝑇*2. A *union* renames columns, we ensure that inputs have the same column names but differ in suffixes and we assign new suffixes to the output. Solid lines represent exchanges, and dashed connect operators in the same stage.
+> Table 1: Symbols used for SQL operators are as shown. We use  $𝑇,𝑇_1, 𝑇_2,𝑇_3$ as table names and $𝑎,𝑏,𝑐,𝑑,𝑒$ as column names. We sub-script column names with the numeric sub-script of tables they come from. For example $𝑏_2$ come from table $𝑇_2$. A *union* renames columns, we ensure that inputs have the same column names but differ in suffixes and we assign new suffixes to the output. Solid lines represent exchanges, and dashed connect operators in the same stage.
+>
+> > 表 1：用于 SQL 运算符的符号如下所示。我们使用 $𝑇,𝑇_1, 𝑇_2,𝑇_3$ 作为表名称，使用 $𝑎,𝑏,𝑐,𝑑,𝑒$ 作为列名称。我们用列名来自的表的数字下标作为列名的下标。例如 $𝑏_2$ 来自表 $𝑇_2$。*union* 重命名列，我们确保输入具有相同的列名称但后缀不同，并且我们为输出分配新的后缀。实线代表 exchange 所，虚线连接同一 stage 的运算符（表示没有 Shuffle）。
 >
 > | Operator             | Symbol                                                       |
 > | -------------------- | ------------------------------------------------------------ |
@@ -99,7 +114,7 @@ Next we motivate the proposed optimizations with examples from TPCDS. Table 1 de
 > | Union (all)          | $\cup(T_{1}, T_{2} \ldots T_{n})$                            |
 > | Intersect (distinct) | $\cap\left(T_{1}, T_{2}\right)$                              |
 > | Partial aggregate    | $\gamma_{\text {keys, }[\text { aggs }(\text { exprs })]}(T)$ |
-> 
+>
 
 #### 2.2.1 Exchange placement
 
@@ -129,6 +144,10 @@ In summary, combining exchange reuse opportunities with exchange overlap produce
 #### 2.2.2 Partial pushdown optimizations
 Next we demonstrate examples of partial aggregate push-down and semi-join push-down. Figure 5 shows a basic query that performs a join on a column *𝑏* followed by an aggregation on a different key *𝑎*. It also shows three existing optimizations for this type of query. These are described in the box below.
 
+> [!NOTE]
+>
+> 接下来我们演示部分聚合下推和半连接下推的示例。图 5 显示了一个基本查询，该查询对列 *𝑏* 执行 Join，然后对不同的键 *𝑎* 执行聚合。它还显示了针对此类查询的三种现有优化。这些在下面的框中进行了描述。
+
 <p align="center">
  <img src="./media/45aed12eefb3c3284902d0524541722c.png" />
 Figure 5: The figure shows the partial aggregation optimization as done in Spark today, the group-by push-down proposed in literature and the proposal made in this paper. 
@@ -137,11 +156,19 @@ Figure 5: The figure shows the partial aggregation optimization as done in Spark
 > [!NOTE]
 > **Previous work on partial push-down of aggregates**
 >
-> The first optimization is specific to the big-data setting, it is targeted at reducing the amount of data exchanged. Notice that the un-optimized plan in Figure 5 (bottom-left) would require 3 exchanges (on $b_1$, *𝑏*2 and *𝑎*1) as highlighted by bold lines. This optimization (bottom right) performs a partial aggregation where it would perform an additional aggregation before exchange, that is even before data is partitioned on the grouping key. Such partial aggregation would bring down the amount of data exchanged as it would produce only one row per group at each task in the stage before final aggregation.
+> The first optimization is specific to the big-data setting, it is targeted at reducing the amount of data exchanged. Notice that the un-optimized plan in Figure 5 (bottom-left) would require 3 exchanges (on $b_1$, $b_2$ and $a_1$) as highlighted by bold lines. This optimization (bottom right) performs a partial aggregation where it would perform an additional aggregation before exchange, that is even before data is partitioned on the grouping key. Such partial aggregation would bring down the amount of data exchanged as it would produce only one row per group at each task in the stage before final aggregation.
 >
 > The second optimization is one that pushes down an entire aggregation below the join [10, 20, 30]. This optimized plan (as shown on the top left) performs aggregations along the inputs to the join on a key set containing the join and aggregation keys available at that input. Previous literature describes conditions under which such rewrites are safe. It advocates doing such push-downs in a cost based manner to ensure that pushing the *group-by* actually brings down the amount of data joined. Note that in the big-data setting this optimization in itself does not save on exchanges as the *group-by* and *join* would likely get placed in the same stage by the exchange placement rule.
 >
 > A third optimization [22] that is closest to our proposal combines these two optimizations to produce the single machine plan shown in the top-right, where a partial aggregation is performed before the *join* instead of a full aggregation. As on a single machine all intermediate data remains in memory, they also propose a specialized implementation of such trees that performs the partial aggregation along the input phase of the subsequent *join*. Such an implementation is not feasible in the big-data setting where data is materialized at exchange.
+>
+> **关于部分聚合下推以前的工作**
+>
+> 第一个优化是针对大数据设置的，旨在减少交换的数据量。请注意，图 5（左下）中未优化的计划需要 3 次交换（在 $b_1$、 $b_2$ 和  $a_1$ 上），如粗线突出显示。此优化（右下角）执行部分聚合，在交换之前（甚至在分组键上对数据进行分区之前）执行额外的聚合。这种部分聚合会减少交换的数据量，因为在最终聚合之前的阶段，每个任务的每个组只产生一行数据。
+>
+> 第二个优化是将整个聚合下推到 Join [10, 20, 30] 以下。此优化计划（如左上方所示）在包含该输入可用的 Join 和聚合 Key 的键集上沿着 Join 的输入执行聚合。先前的文献描述了安全重写的条件。它提倡以基于成本的方式进行此类下推，以确保下推的 **Group by** 实际上会减少 Join 的数据量。请注意，在大数据设置中，这种优化本身不会节省交换，因为 *group-by* 和 *join* 可能会被交换放置规则放置在同一 Stage。
+>
+> 第三个优化 [22] 与我们的建议最接近，将这两个优化结合起来，生成右上角所示的单机计划，其中在 *join* 之前执行部分聚合，而不是完全聚合。由于在单台机器上所有中间数据都保留在内存中，因此他们还提出了此类树的专门实现，该实现沿着后续 *join* 的输入 Stage 执行部分聚合。这样的实现在大数据环境中是不可行的，因为数据是在交换时物化的。
 
 The proposal in [22] is specific to pushing aggregates below joins. We extend it to all other SQL operators and do so by adding *first class support for partial aggregation* during query optimization. We introduce a new logical operator (*𝛾*) to represent partial aggregates and introduce new rules into the optimizer that transform them. The distributed plan shown in the top-right of Figure 5 requires two rewrites. The first introduces a partial aggregation operator (*𝛾*) above the *join* and the second pushes it down below the *join*. Note that in our optimized plan the push-down does not introduce additional exchanges. In the big-data setting this optimization introduces an interesting trade-off, it increases the number of hashaggregates but reduces the amount of data exchanged. We propose a costing mechanism to determine if the optimization is beneficial.
 
@@ -225,10 +252,10 @@ Algorithm 3 describes our implementation to prune the exploration space by reduc
 > [!NOTE]
 > 算法 3 描述了我们的实现过程，这个过程是通过减少分区选项（在第5-7行）来裁剪探索空间。我们并没有依赖 `EnforceExchange` 来检测重叠机会，而是分两阶段来剪枝。我们首先找到那些与父运算符或子运算符有重叠的分区键。我们把他们全部添加[^3] 到一个叫做 **iKeys** 的集合中。
 
-<p align="center">
-<B>Algorithm 3</B> DetermineInterestingPartitionKeys
- <img src="./media/A3.png" />
-</p>
+
+| Algorithm 3 DetermineInterestingPartitionKeys  |
+| :--------------------------------------------: |
+| <img src="./media/A3.png" style="zoom:80%;" /> |
 
 [^3]: X*.*addAll(Y) indicates adding all elements from Set Y to Set X. X*.*add(Y) indicates adding the Set Y to Set X as a single entity.
 
@@ -242,13 +269,11 @@ Table 2: Examples showing overlap scenarios between two identical sub-trees’ k
 
 > [!NOTE]
 >
-> 在第二阶段，我们通过将 **iKeys** 的幂集与父节点的 key 和子节点的 key 的幂集相交来获取所有重叠选项。我们只使用 `checkAndAddAll`， 将算出来的分区选项插入 **iKeySet** 集合中，此方法在添加分区选项之前，**会检查集合的不同值的数量是否超过了所需要的分区数量**[^注1]（这是一个作业参数）。 表2演示了如何添加所有重叠选项。标记为 **Total** 的第三行列出了父节点（P1）和子节点（ST1）之间有 3 种不同的重叠方式，所有这些都被添加为**分区选项**。标有 **Partial** 的行（代表图 3 中的例子）只添加了一个分区选项。这足以生成最大重叠计划图 4(a)。最后，如果基于重叠没有添加任何分区选项（表中的 **None** 行），我们只会考虑一个分区选项，即整个键集（第 20 行）。当运算符有多列的组合键时（例如在 TPCDS 查询中），这种裁剪会大大减少搜索空间。[^注2]
+> 在第二阶段，我们通过将 **iKeys** 的幂集与父节点的 key 和子节点的 key 的幂集相交来获取所有重叠选项。我们只使用 `checkAndAddAll`， 将算出来的分区选项插入 **iKeySet** 集合中，此方法在添加分区选项之前，**会检查集合的不同值的数量是否超过了所需要的分区数量**[^注1]（这是一个作业参数）。表2演示了如何添加所有重叠选项。标记为 **Total** 的第三行列出了父节点（P1）和子节点（ST1）之间有 3 种不同的重叠方式，所有这些都被添加为**分区选项**。标有 **Partial** 的行（代表图 3 中的例子）只添加了一个分区选项。这足以生成最大重叠计划图 4(a)。最后，如果基于重叠没有添加任何分区选项（表中的 **None** 行），我们只会考虑一个分区选项，即整个键集（第 20 行）。当运算符有多列的组合键时（例如在 TPCDS 查询中），这种裁剪会大大减少搜索空间。[^注2]
 
 > [!TIP]
 > [^注1]:  **会检查集合的不同值的数量是否超过了所需要的分区数量**，这句话的含义是在选择分区选项时，所使用的方法会对每个候选选项进行检查，看是否有足够的唯一值来创建所需的分区。假设你有一个作业参数，它要求你需要 5 个分区。而你选取的特定集合（或者叫候选项）只有 3 个唯一值，那么这个集合就没有足够的唯一值来创建 5 个分区。这种情况下，`checkAndAddAll` 方法就不会将这个集合添加到iKeySet中作为分区选项。因此，这个检查过程可以确保所选的分区选项能满足创建所需分区数量的要求。
 > [^注2]: 这段文字中详细解释了表2中展现的不同重叠情况，并说明了这些重叠的选项如何被添加到方案中。这其中最为关键的是第三行（总计）和最后一行（无）。对于第三行中的总计，所有3种可能的重叠方案都被添加为选项，这一点对于理解如何处理完全重叠的情况非常关键。而对于没有重叠的情况，只有一个选项，就是全部的键集。这种处理方式不仅简化了查询过程，还显著减小了搜索空间，特别是在处理具有多列匹配关键字的查询时（如在TPCDS查询中）。这不仅节省了处理资源，也提高了查询的效率。
-
-
 
 ### 3.3 Incorporating exchange reuse
 As we saw in Section 2.2.1 *exchange reuse* can conflict with *exchange overlap*. This happens when there is an overlap between partitioning keys of the reusable sub-tree and its parent. For example, in Figure 3, there is an overlap in the partitioning keys of **join** having keys  $\{a_{1}\}$ and its parent **join** having keys  $\{a_{1}, b_{1}\}$ . If we simply maximize overlap we may not introduce an exchange after the **join** at all and hence there would be no scope for an **exchange reuse** (after **join**).
@@ -284,40 +309,47 @@ Since, we are depending on the costing model for the keys selection, we need to 
 >
 > 让我们重新审视表 2 中的 *Partial* 行。考虑图 3 中 $\Join_{𝑎_1=𝑎_2} (𝑇_1,𝑇_2)$ 处 $(𝑆𝑇_1, 𝑆𝑇_2)$ 的两个节点及其父节点 $(𝑃_1, 𝑃_2)$ 。我们已经确定他们基于重叠推理的 ***iKeysSet*** 将包含一个元素 $𝑎_1$。现在为了考虑重用，我们将在它们的 ***iKeysSet*** 中添加 $𝑃_1$ 和 $𝑃_2$ 之间的公共 **keys**。因此，父级新的 ***iKeysSet*** 将是 $\{a_1|b_1\}$ 。==探索现在将包括 $𝑏_1$​ 的交换作为一个选项==。如果成本计算正确，这应该会产生如图 4(b) 所示的计划。
 >
-> 由于 keys 的选择取决于成本计算模型，因此我们需要确保在成本计算过程中考虑到**交换重用**。为了实现这一点，我们在算法 2 的第 9 行之后添加一个子例程 `AddReuseExchange`。此时，*optPlan* 将在所需位置包含由`EnforceExchange`添加的交换运算符。 由于我们之前已经完成了计划标记，`AddReuseExchange` 将识别运算操作符，其这些运算符的子级被标记为可重用。 现在，对于每个组（由相同的子树组成），它用 *optPlan* 中的 *exchange-reuse* 运算符替换除一个交换运算符之外的所有交换运算符。现在，我们将在更新运算符的 *top k* 计划集时使用这个 *optPlanWithReuse*。
+> 由于 keys 的选择取决于成本计算模型，因此我们需要确保在成本计算过程中考虑到**交换重用**。为了实现这一点，我们在算法 2 的第 9 行之后添加一个子例程 `AddReuseExchange`。此时，*optPlan* 将在所需位置包含由`EnforceExchange`添加的交换运算符。由于我们之前已经完成了计划标记，`AddReuseExchange` 将识别运算操作符，其这些运算符的子级被标记为可重用。现在，对于每个组（由相同的子树组成），它用 *optPlan* 中的 *exchange-reuse* 运算符替换除一个交换运算符之外的所有交换运算符。现在，我们将在更新运算符的 *top k* 计划集时使用这个 *optPlanWithReuse*。
 
 ```
 optPlanWithReuse ← AddReuseExchange(optPlan)
 ```
-
 In summary, synapse spark incorporates cost based exploration to decide on the placement of exchanges. By detecting exchange reuse opportunity early and by using this along with overlap information it is able to prune the search space significantly to make exploration practical. Specifically, in synapse spark we desire to optimize every query within 30 seconds. We achieve this by dynamically choosing the values of *𝑘* based on the complexity of the query. We observe that because of pruning a value of *𝑘* = 4 is sufficient to find the optimal exchange placement for all queries. We show in Section 7.4 that a value above 16 (as would be needed without pruning) significantly slows down the optimizer.
 
 > [!NOTE]
 > 总之，Synapse Spark 结合了基于成本的探索来决定交换的位置。通过尽早检测交换重用机会，并将其与重叠信息一起使用，能够显著地裁剪搜索空间以使探索变得实用。具体来说，在 Synapse Spark 中，我们希望<u>在 30 秒内</u>优化每个查询。我们通过根据查询的复杂性动态选择 *𝑘* 的值来实现这一点。我们观察到，由于裁剪，*𝑘* = 4 的值足以找到所有查询的最佳交换位置。我们在第 7.4 节中表明，大于 16 的值（不需要修剪）会显著降低优化器的速度。
 
-## PARTIAL AGGREGATION PUSH-DOWN
+## 4 PARTIAL AGGREGATION PUSH-DOWN
 
 This sections discusses partial aggregate push-down. We discuss other partial push-down techniques in the next section.
 
-The spark optimizer has a physical operator *PhyOp-PartialAgg* to represent partial aggregates [3] and a physical rewrite rule to add them to the physical operator tree [1]. This rule in-fact replaces every *group-by* with a pair of partial and final aggregate operators (*PhyOp-PartialAgg* and *PhyOp-FinalAgg*). Today it does so without any costing. The two operators incrementally compute the result of standard commutative and associative aggregates
+The spark optimizer has a physical operator *PhyOp-PartialAgg* to represent partial aggregates [3] and a physical rewrite rule to add them to the physical operator tree [1]. This rule in-fact replaces every *group-by* with a pair of partial and final aggregate operators (*PhyOp-PartialAgg* and *PhyOp-FinalAgg*). Today it does so without any costing. The two operators incrementally compute the result of standard commutative and associative aggregates (*𝑠𝑢𝑚,𝑚𝑖𝑛,𝑚𝑎𝑥,𝑐𝑜𝑢𝑛𝑡*). *PhyOp-PartialAgg* has no partitioning requirements, it computes partial results of standard aggregates even before data is partitioned. *PhyOp-FinalAgg* has a required partitioning property, it expects inputs to be partitioned on a subset of the grouping keys. It combines the partial results for each unique combination of grouping key values to produce the final aggregates.
 
-(*𝑠𝑢𝑚,𝑚𝑖𝑛,𝑚𝑎𝑥,𝑐𝑜𝑢𝑛𝑡*). *PhyOp-PartialAgg* has no partitioning requirements, it computes partial results of standard aggregates even before data is partitioned. *PhyOp-FinalAgg* has a required partitioning property, it expects inputs to be partitioned on a subset of the grouping keys. It combines the partial results for each unique combination of grouping key values to produce the final aggregates.
+In synapse spark we introduce a new logical operator *LogOp-PartialAgg* to represent partial-aggregates. We use the shorthand $\gamma_{\text {keys, }[\text { aggs }(\text { exprs })]}$ whenever we need to refer to its arguments. Like a *group-by* ( $\Gamma_{\text {keys, }[\text { aggs }(\text { exprs })]}$​ ) the operator has two arguments, **𝑘𝑒𝑦𝑠** is a list of aggregation keys, and **𝑎𝑔𝑔𝑠(𝑒𝑥𝑝𝑟𝑠)** is a list of commutative and associative aggregate functions. Each aggregation **𝑎𝑔𝑔𝑖** is applied after computing **𝑒𝑥𝑝𝑟𝑖** on the elements of the group. The rest of the section describes how we utilize this operator.
 
-In synapse spark we introduce a new logical operator *LogOp-*
+> [!NOTE]
+>
+> 本节讨论部分聚合下推。我们将在下一节中讨论其他部分下推技术。
+>
+> Spark 优化器有一个物理运算符 *PhyOp-PartialAgg* 来表示部分聚合 [3] 和一个物理重写规则以将它们添加到物理运算符树 [1]。事实上，该规则将每个 *group-by* 替换为一对部分和最终聚合运算符（*PhyOp-PartialAgg* 和 *PhyOp-FinalAgg*）。今天，它不需要任何成本就可以做到这一点。这两个运算符增量计算==标准交换和关联聚合==的结果 (**𝑠𝑢𝑚,𝑚𝑖𝑛,𝑚𝑎𝑥,𝑐𝑜𝑢𝑛𝑡**)。*PhyOp-PartialAgg* 没有分区要求，它甚至在数据分区之前就计算标准聚合的部分结果。*PhyOp-FinalAgg* 具有必需的分区属性，它期望输入在分组键的子集上进行分区。它将分组键值的每个唯一组合的部分结果组合起来以生成最终聚合。
+>
+> 在 Synapse Spark 中，我们引入了一个新的逻辑运算符 *LogOp-PartialAgg* 来表示部分聚合。每当我们需要引用它的参数时，我们就使用简写 $\gamma_{\text {keys, }[\text { aggs }(\text { exprs })]}$ 。就像 *group-by* ( $\Gamma_{\text {keys, }[\text { aggs }(\text { exprs })]}$ ) 操作符有两个参数， **𝑘𝑒𝑦𝑠** 是一个列表 聚合键，**𝑎𝑔𝑔𝑠(𝑒𝑥𝑝𝑟𝑠)** 是==交换和关联聚合函数==的列表。每个聚合 **𝑎𝑔𝑔𝑖** 在对组的元素进行 **𝑒𝑥𝑝𝑟𝑖** 计算后应用。本节的其余部分描述了我们如何使用这个运算符。
 
-*PartialAgg* to represent partial-aggregates. We use the shorthand
-
-*𝛾𝑘𝑒𝑦𝑠,*[*𝑎𝑔𝑔𝑠*(*𝑒𝑥𝑝𝑟𝑠*)] whenever we need to refer to its arguments. Like a *group-by* (Γ*𝑘𝑒𝑦𝑠,*[*𝑎𝑔𝑔𝑠*[*𝑒𝑥𝑝𝑟𝑠*)]) the operator has two arguments,
-
-*𝑘𝑒𝑦𝑠* is a list of aggregation keys, and *𝑎𝑔𝑔𝑠*(*𝑒𝑥𝑝𝑟𝑠*) is a list of commutative and associative aggregate functions. Each aggregation
-
-*𝑎𝑔𝑔𝑖* is applied after computing *𝑒𝑥𝑝𝑟𝑖* on the elements of the group. The rest of the section describes how we utilize this operator.
-
-### Seed rules to derive partial aggregates
+### 4.1 Seed rules to derive partial aggregates
 
 We begin by describing *seed rules*, rules that introduce *partialaggregates* into the query tree.
 
-Figure 8: Seed rules to derive *partial agg* from SQL operators. Figure 8(a) depicts how we derive a *partial-aggregate 𝛾* from a *group-by* Γ. This rule is exactly like the physical rule that introduces *PhyOp-PartialAgg* (discussed above) except that its in the logical space. The rule introduces a *partial aggregate* with the same keys as the *group-by* and introduces appropriate aggregation functions to compute the aggregate incrementally. The figure shows partial functions for standard aggregates.
+Figure 8(a) depicts how we derive a *partial-aggregate 𝛾* from a *group-by* Γ. This rule is exactly like the physical rule that introduces *PhyOp-PartialAgg* (discussed above) except that its in the logical space. The rule introduces a *partial aggregate* with the same keys as the *group-by* and introduces appropriate aggregation functions to compute the aggregate incrementally. The figure shows partial functions for standard aggregates.
+
+> [!NOTE]
+>
+> 我们首先描述**种子规则**，即将**部分聚合**引入查询树的规则。
+>
+> 图 8(a) 描述了我们如何从 *group-by* Γ 导出 *partial-aggregate 𝛾*。该规则与引入*PhyOp-PartialAgg*（如上所述）的物理规则完全相同，只是它位于逻辑空间中。该规则引入了与 **group-by** 具有相同键的**部分聚合**，并引入了适当的聚合函数来增量计算聚合。该图显示了标准聚合的部分函数。
+
+| Figure 8: Seed rules to derive *partial agg* from SQL operators. |
+| :----------------------------------------------------------: |
+|                     ![](./media/F8.png)                      |
 
 We add two more seed rules which are not part of the optimizer today, even as physical rules. Figure 8(b) shows how we derive a partial aggregate from a *left semi-join*. The rule introduces a partialaggregate (*𝛾𝑎*2) on the right child of a *left semi-join*. The partial aggregate is keyed on the equi-join keys from the right side and it does not perform any aggregates (such an aggregate is also referred to as a distinct aggregation). This is semantics preserving as a *left semi-join* only checks for an existence of a match on the equi-join keys from the right side. The partial aggregate simply removes duplicate keys from the right side, this does not affect the existence check. A similar rule (not shown) derives partial aggregates on the left child of a *right semi-join*.
 
@@ -325,68 +357,70 @@ Figure 8(c) shows how we derive a *partial-aggregate* from an *Intersect* operat
 
 An important property of *partial-aggregates* that we exploit later is that they are *optional* operators, not including them in the plan does not affect the correctness of the optimization. Adding a partial aggregate below a *group-by* is optional as the final aggregate is responsible to producing the fully aggregated value. One detail that needs to be taken care of is that the partial and final aggregate for a *𝑐𝑜𝑢𝑛𝑡* (∗) are different, so it may appear that the plan would be different depending on whether or not a partial aggregate is introduced. We exploit the fact that its possible to simulate a *𝑐𝑜𝑢𝑛𝑡* (∗) with a *𝑠𝑢𝑚*(1) aggregate [31], which simply adds a constant 1 for every row in the group. So in the rest of the section we assume that every *group-by* with a *𝑐𝑜𝑢𝑛𝑡* (∗) is rewritten before the seed rule and hence the partial and final aggregate have then same functions. Its also obvious that partial aggregates derived from *semi-join* and *intersect* are optional as they just eliminate duplicates early.
 
-Figure 9: Rule to push-down partial-aggregate below join
+> [!NOTE]
+>
+> 我们添加了另外两个种子规则，它们不属于当今优化器的一部分，即使作为物理规则也是如此。图 8(b) 显示了我们如何从**左半连接**导出部分聚合。该规则在**左半连接**的右子节点上引入了部分聚合（*𝛾𝑎*2）。部分聚合以右侧的<u>等连接键</u>为键，并且不执行任何聚合函数（此类聚合也称为去重聚合）。这是保留为**左半连接**的语义，仅检查右侧等连接键上是否存在匹配。部分聚合只是从右侧删除重复的键，这不会影响存在检查。类似的规则（未显示）在**右半连接**的左子节点上派生部分聚合。
+>
+> 图 8(c) 显示了我们如何从 **Intersect** 运算符导出 *partial-aggregate*。**Intersect** [4] 是一个基于集合的运算符，它仅输出左侧与右侧行匹配的行。**Intersect** 的输出是一个集合（而不是一个==包==），因此从输出中消除了重复的行。考虑到这些语义，可以安全地消除 **Intersect** 的两个输入中的重复项。为此，我们在 **Intersect** 的每个输入上引入部分聚合。
+>
+> 我们稍后利用的**部分聚合**的一个重要特性是，它们是**可选**运算符，不将它们包含在计划中不会影响优化的正确性。在 *group-by* 下面添加部分聚合是可选的，因为最终聚合负责生成完全聚合的值。需要注意的一个细节是 **𝑐𝑜𝑢𝑛𝑡 (\*)** 的部分和最终聚合是不同的，因此根据是否引入部分聚合，计划可能会有所不同。我们利用这样一个事实，即可以使用 **𝑠𝑢𝑚(1)** 聚合 [31] 来模拟 **𝑐𝑜𝑢𝑛𝑡 (\*)**，它只需为组中的每一行添加一个常数 1。因此，在本节的其余部分中，我们假设每个具有  **𝑐𝑜𝑢𝑛𝑡 (\*)** 的 *group-by* 在种子规则之前被重写，因此部分和最终聚合具有相同的函数。同样明显的是，从 *semi-join* 和 *intersect* 派生的部分聚合是可选的，因为它们只是尽早消除重复项。
 
-### Partial aggregate push-down rules
+### 4.2 Partial aggregate push-down rules
 
-Push-down below joins*.* Our rules for pushing down *partialaggregates* below *join* are based on rules from past literature [10, 20,
+**Push-down below joins**. Our rules for pushing down **partialaggregates** below **join** are based on rules from past literature [10, 20, 30] that describe how to push a *group-by* below a *join*. We describe the rewrite in detail in the box below. Note that the same rule can be used when every instance of *𝛾* is replaced with a *group-by* Γ and the correctness of our *partial-aggregate* push-down follows from the correctness of the *group-by* push down rule.
 
-30] that describe how to push a *group-by* below a *join*. We describe the rewrite in detail in the box below. Note that the same rule can be used when every instance of *𝛾* is replaced with a *group-by* Γ and the correctness of our *partial-aggregate* push-down follows from the correctness of the *group-by* push down rule.
+> [!NOTE]
+>
+> **Push-down below joins** 我们将 **partialaggregates** 下推到 **join** 之下的规则基于过去文献 [10,20, 30] 中的规则，这些文献描述了如何将 *group-by* 下推到 *join* 之下。 我们在下面的框中详细描述了重写。 请注意，当 *𝛾* 的每个实例都替换为 *group-by* Γ 时，可以使用相同的规则，并且我们的 *partial-aggregate* 下推的正确性来自 *group-by* 下推规则的正确性。
 
-Pushing down *partial aggregates* based on rule from literature to push-down *group-by* below *join*
-
-We describe how a partial aggregate *𝛾𝑝𝑘𝑒𝑦𝑠,*[*𝑝𝑎𝑔𝑔𝑠*(*𝑝𝑒𝑥𝑝𝑟𝑠*)] can be pushed down below a join *⊲⊳𝑎*1=*𝑎*2 (*𝑇*1*,𝑇*2)). Figure 9 shows an example plan before and after the rule is applied. The rule has a pre-condition that checks if for each aggregation
-
-(*𝑝𝑎𝑔𝑔𝑠𝑖*) its parameter (*𝑝𝑒𝑥𝑝𝑟𝑠𝑖*) can be computed from exactly one of the inputs to the join. In Figure 9, *𝑑*1 comes from the left and *𝑒*2 comes from the right. So the pre-conditions are satisfied. After checking the pre-condition the rule rewrites the tree by introducing *partial- aggregates* at both inputs to the *join*. Further, it adds a *project* above the join that combines results from the newly introduced operators.
-
-The arguments of the *partial-aggregates* on each side and the *project* are derived as follows. The keys for the new *partialaggregates* are derived by splitting the parent keys between the left and the right. These sets are then appended with the *join* keys from that side. In the example, (*𝑎*1*,𝑏*1) become the keys for the *𝛾* on the left and (*𝑎*2*,𝑐*2) become the keys for the right. Next, the aggregation functions on the two sides are derived by splitting the *𝑎𝑔𝑔𝑠* into those whose expressions can be computed from the left and those from the right. In the example, *𝑠𝑢𝑚*(*𝑑*1) comes from left and *𝑚𝑖𝑛*(*𝑒*2) comes from right. Each aggregation is then replaced with the corresponding partial computation. Further, if any of the aggregates on the right (left) side perform a *𝑠𝑢𝑚* or *𝑐𝑜𝑢𝑛𝑡*, a *𝑐𝑜𝑢𝑛𝑡* aggregate is added on the left (right). These counts are needed in the final project (Π) to scale up the partial results from that side appropriately. For the example query we introduce a partial count on the right as the left has a *𝑠𝑢𝑚* aggregate. The *project* after the *join* is used to scale up the partial results. In the example, *𝑐𝑛𝑡𝑝𝑟𝑒* is used to scale up the partial sum from the left *𝑑*1*𝑝𝑟𝑒* to compute the new partial sum *𝑑𝑝𝑟𝑒*.
-
-Figure 10: push-down of partial aggregates below *union*
+> [!TIP]
+>
+> Pushing down **partial aggregates** based on rule from literature to push-down **group-by** below **join**
+>
+> We describe how a partial aggregate *𝛾𝑝𝑘𝑒𝑦𝑠,*[*𝑝𝑎𝑔𝑔𝑠*(*𝑝𝑒𝑥𝑝𝑟𝑠*)] can be pushed down below a join *⊲⊳𝑎*1=*𝑎*2 (*𝑇*1*,𝑇*2)). Figure 9 shows an example plan before and after the rule is applied. The rule has a pre-condition that checks if for each aggregation (*𝑝𝑎𝑔𝑔𝑠𝑖*) its parameter (*𝑝𝑒𝑥𝑝𝑟𝑠𝑖*) can be computed from exactly one of the inputs to the join. In Figure 9, *𝑑*1 comes from the left and *𝑒*2 comes from the right. So the pre-conditions are satisfied. After checking the pre-condition the rule rewrites the tree by introducing *partial- aggregates* at both inputs to the *join*. Further, it adds a *project* above the join that combines results from the newly introduced operators.
+>
+> |Figure 9: Rule to push-down partial-aggregate below join |
+> | :----------------------------------------------------------: |
+> |                     ![](./media/F9.png)                      |
+>
+> The arguments of the *partial-aggregates* on each side and the *project* are derived as follows. The keys for the new *partialaggregates* are derived by splitting the parent keys between the left and the right. These sets are then appended with the *join* keys from that side. In the example, (*𝑎*1*,𝑏*1) become the keys for the *𝛾* on the left and (*𝑎*2*,𝑐*2) become the keys for the right. Next, the aggregation functions on the two sides are derived by splitting the *𝑎𝑔𝑔𝑠* into those whose expressions can be computed from the left and those from the right. In the example, *𝑠𝑢𝑚*(*𝑑*1) comes from left and *𝑚𝑖𝑛*(*𝑒*2) comes from right. Each aggregation is then replaced with the corresponding partial computation. Further, if any of the aggregates on the right (left) side perform a *𝑠𝑢𝑚* or *𝑐𝑜𝑢𝑛𝑡*, a *𝑐𝑜𝑢𝑛𝑡* aggregate is added on the left (right). These counts are needed in the final project (Π) to scale up the partial results from that side appropriately. For the example query we introduce a partial count on the right as the left has a *𝑠𝑢𝑚* aggregate. The *project* after the *join* is used to scale up the partial results. In the example, $cnt^{𝑝𝑟𝑒}$ is used to scale up the partial sum from the left $𝑑_1^{𝑝𝑟𝑒}$  to compute the new partial sum $𝑑^{𝑝𝑟𝑒}$.
 
 One important difference between rules for *partial-aggregate* push-down and prior work on partial push-down of a *group-by* below a *join* is that the newly introduced partial aggregates are optional. As the parent is optional its clear that retaining any subset of (left, right, parent) aggregates leads to a valid plan. In particular its possible to push-down a partial aggregate on one side alone without having a parent aggregate. On the other hand with a *group-by* push-down more care needs to be taken. A *group-by* in the original query can only rarely[^4] be completely eliminated [10]. Pushing down on one side without having a parent *group-by* is even more rare. Such push-downs are always possible with *partial-aggregates*.
 
 [^4]: If there is a primary key, foreign key relationship between the joining tables. Such constraints are neither enforced nor tracked in Spark.
 
-Push down below unions*.* A union is an n-ary operator that concatenates *𝑛* inputs that have the same number of columns. A push-down below *union* is simple. Unlike *join*, the other multi-input operator, there are no pre-conditions to check and no additional keys to be added. We can simply push down the parent aggregate
+**Push down below unions**. A union is an n-ary operator that concatenates *𝑛* inputs that have the same number of columns. A push-down below *union* is simple. Unlike *join*, the other multi-input operator, there are no pre-conditions to check and no additional keys to be added. We can simply push down the parent aggregate (*𝛾𝑘𝑒𝑦𝑠,*[*𝑎𝑔𝑔𝑠*]) on each side, replacing the aggregate functions with their partial computations. Figure 10 shows an example with a *𝑠𝑢𝑚* aggregate , other aggregates can be supported as we have already seen in this section. Like with *joins* any subset of partial aggregates can be pushed down and retaining the parent partial aggregate is optional regardless of which subset was pushed down. 
 
-(*𝛾𝑘𝑒𝑦𝑠,*[*𝑎𝑔𝑔𝑠*]) on each side, replacing the aggregate functions with their partial computations. Figure 10 shows an example with a *𝑠𝑢𝑚* aggregate , other aggregates can be supported as we have already seen in this section. Like with *joins* any subset of partial aggregates can be pushed down and retaining the parent partial aggregate is optional regardless of which subset was pushed down. Push down below row-wise SQL operators*.* Partial aggregates can be pushed down below *select* and *project*. To push-down below a *Select* we need to extend the keys with the columns refer-
+|Figure 10: push-down of partial aggregates below *union* |
+| :----------------------------------------------------------: |
+|                     ![](./media/F10.png)                      |
 
-enced in the selection predicates. For example, *𝛾𝑎,*[*𝑠𝑢𝑚*(*𝑑*)] can be
+**Push down below row-wise SQL operators**. Partial aggregates can be pushed down below *select* and *project*. To push-down below a *Select* we need to extend the keys with the columns referenced in the selection predicates. For example, *𝛾𝑎,*[*𝑠𝑢𝑚*(*𝑑*)] can be pushed below *𝜎𝑏\>𝑐* as *𝛾𝑎,𝑏,𝑐,*[*𝑠𝑢𝑚*(*𝑑*)]. Prior work [20] describes a similar rule that can push a *group-by* below a *select*. A *partialaggregate* can also be pushed down below a *project*. A project can assign results of expressions on input columns to its output columns (e.g. *𝑜𝑝* =Π*𝑎,𝑏*+*𝑐*→*𝑑*). We enable push-down under the simple precondition that the *project* uses expressions only to compute the aggregation keys but not columns used in aggregation expressions. For example we push down *𝛾𝑑,*[*𝑚𝑎𝑥* (*𝑎*)] below *𝑜𝑝* as *𝛾𝑏,𝑐,*[*𝑚𝑎𝑥* (*𝑎*)] but disallow push-down of*𝛾𝑎,*[*𝑚𝑎𝑥* (*𝑑*)] as here*𝑑* which is used in an aggregation function is the result of an expression in *𝑜𝑝*. Its easy to see that these push-downs are semantics preserving as they retain every unique combination of the columns used in the *𝑠𝑒𝑙𝑒𝑐𝑡* and *𝑝𝑟𝑜 𝑗𝑒𝑐𝑡*. Its also obvious that the pushed down *partial-aggregates* are optional. Finally we introduce rules to push a partial-aggregates below *𝑒𝑥𝑝𝑎𝑛𝑑* [2], an operator that produces multiple output rows for each input row. This operator is used to evaluate advance SQL operators, *roll-up* and *cube*, and also for aggregation functions that apply on *distinct* values of a column (e.g. *count(distinct c)*) . We do not describe the rules in details here in the interest of space.
 
-pushed below *𝜎𝑏\>𝑐* as *𝛾𝑎,𝑏,𝑐,*[*𝑠𝑢𝑚*(*𝑑*)]. Prior work [20] describes a similar rule that can push a *group-by* below a *select*. A *partialaggregate* can also be pushed down below a *project*. A project can assign results of expressions on input columns to its output columns (e.g. *𝑜𝑝* =Π*𝑎,𝑏*+*𝑐*→*𝑑*). We enable push-down under the simple precondition that the *project* uses expressions only to compute the aggregation keys but not columns used in aggregation expressions.
-
-For example we push down *𝛾𝑑,*[*𝑚𝑎𝑥* (*𝑎*)] below *𝑜𝑝* as *𝛾𝑏,𝑐,*[*𝑚𝑎𝑥* (*𝑎*)] but disallow push-down of*𝛾𝑎,*[*𝑚𝑎𝑥* (*𝑑*)] as here*𝑑* which is used in an aggregation function is the result of an expression in *𝑜𝑝*. Its easy to see that these push-downs are semantics preserving as they retain every unique combination of the columns used in the *𝑠𝑒𝑙𝑒𝑐𝑡* and *𝑝𝑟𝑜 𝑗𝑒𝑐𝑡*. Its also obvious that the pushed down *partial-aggregates* are optional. Finally we introduce rules to push a partial-aggregates below *𝑒𝑥𝑝𝑎𝑛𝑑* [2], an operator that produces multiple output rows for each input row. This operator is used to evaluate advance SQL operators, *roll-up* and *cube*, and also for aggregation functions that apply on *distinct* values of a column (e.g. *count(distinct c)*) . We do not describe the rules in details here in the interest of space.
-
-### Cost based placement of partial aggregates
+### 4.3 Cost based placement of partial aggregates
 
 A partial aggregate introduced by the seed rules in Section 4.1 can be pushed down to multiple places in a logical tree by recursively applying rules in Section 4.2. A partial aggregate can be expensive as it requires building a hash-table, sometimes on more keys than the *seed* aggregate. We rely on costing to decide which partial aggregates to retain if any. We exploit the property that all partial aggregates are optional to cost each *𝛾* independently. We apply the following two costing heuristics to determine which all partial aggregates pushed down from a single seed rule to retain.
 
 1.  As the primary benefit of partial aggregation is a reduction in the amount of data exchanged we only consider a single partialaggregate in each stage. In particular, we consider the top-most partial aggregate as it occurs right before the exchange.
-2.  We only retain a partial aggregate if the number of rows exchanged reduces by a threshold value. That is, at the parent exchange we check if the reduction ratio:
+2.  We only retain a partial aggregate if the number of rows exchanged reduces by a threshold value. That is, at the parent exchange we check if the reduction ratio: *𝑟𝑟* = *𝑟𝑜𝑤𝑠𝑎𝑓 𝑡𝑒𝑟* /*𝑟𝑜𝑤𝑠𝑏𝑒𝑓 𝑜𝑟𝑒 \< 𝑇ℎ* where *𝑟𝑜𝑤𝑠𝑎𝑓 𝑡𝑒𝑟* and *𝑟𝑜𝑤𝑠𝑏𝑒𝑓 𝑜𝑟𝑒* are the number of rows exchanged with and without the partial aggregate respectively. Empirically we find that a value*𝑇ℎ* = 0*.*5 leads to good benefits (see Section 7.2 for sensitivity analysis).
 
-*𝑟𝑟* = *𝑟𝑜𝑤𝑠𝑎𝑓 𝑡𝑒𝑟* /*𝑟𝑜𝑤𝑠𝑏𝑒𝑓 𝑜𝑟𝑒 \< 𝑇ℎ*
+To determine *𝑟𝑜𝑤𝑠𝑏𝑒𝑓 𝑜𝑟𝑒* and *𝑟𝑜𝑤𝑠𝑎𝑓 𝑡𝑒𝑟* we build upon the statistics propagation done by the optimizer.
 
-where *𝑟𝑜𝑤𝑠𝑎𝑓 𝑡𝑒𝑟* and *𝑟𝑜𝑤𝑠𝑏𝑒𝑓 𝑜𝑟𝑒* are the number of rows exchanged with and without the partial aggregate respectively. Empirically we find that a value*𝑇ℎ* = 0*.*5 leads to good benefits (see Section 7.2 for sensitivity analysis).
+> [!TIP]
+>
+> **Statistics propagation in Spark and the combinatorial blow-up for group-by**
+>
+> Today the optimizer maintains an estimate of the total number of rows and some column level statistics (number of distinct values, range of values etc) at each node in the plan. Starting from statistics on input tables, it derives the statistics for the output at each operator from the statistics at its input. Statistics propagation is well-studied [9] and the Spark optimizer builds on this literature. We only discuss propagation across a *group-by* here as it is relevant to how we derive cost for partial aggregates. A *group-by* produces one output row per distinct combination of its keys, so to calculate *𝑟𝑜𝑤𝑠𝑎𝑓 𝑡𝑒𝑟* we need an estimate for the number of distinct values for a set of keys. A well established conservative way (upper-bound) to determine the number of distinct values of a set of keys is to multiply the distinct values of individual columns. This is what the optimizer uses today. It is well known that with keys spanning many columns this can lead to a large over count. As it assumes every combination of values is possible this estimator suffers from a *combinatorial blow-up*.
+>
+> Finally note that statistics are computed for logical plans and apply to the entire result of the operator. Propagation in itself is not specialized to the distributed nature of execution, where each operator is executed with several tasks that each compute parts of the results.
 
-To determine *𝑟𝑜𝑤𝑠𝑏𝑒𝑓 𝑜𝑟𝑒* and *𝑟𝑜𝑤𝑠𝑎𝑓 𝑡𝑒𝑟* we build upon the sta-
+We derive costs for *partial-aggregate* from statistics by taking into account the distributed nature of execution. In particular its possible that some of the columns for partial aggregate overlap with the input/exchange partitioning of that stage. Figure 11 shows an example where *𝛾𝑟𝑟* and *𝛾𝑟* have a key *𝑏*3 that is also the partitioning key for that stage. So we make use of this to scale down the distinct values of the partition keys by the degree of parallelism, *𝑑𝑜𝑝* (which is a configuration parameter). For all other keys we (conservatively) assume that each task can get all distinct values for such columns. As shown in the figure, the costs formula for*𝛾𝑟𝑟* and*𝛾𝑟* are products of distinct values of columns scaled down by the *𝑑𝑜𝑝*.
 
-tistics propagation done by the optimizer.
+|Figure 11: Costing partial aggregates |
+| :----------------------------------------------------------: |
+|                     ![](./media/F11.png)                      |
 
-Statistics propagation in Spark and the combinatorial blow-up for group-by
-
-Today the optimizer maintains an estimate of the total number of rows and some column level statistics (number of distinct values, range of values etc) at each node in the plan. Starting from statistics on input tables, it derives the statistics for the output at each operator from the statistics at its input. Statistics propagation is well-studied [9] and the Spark optimizer builds on this literature. We only discuss propagation across a *group-by* here as it is relevant to how we derive cost for partial aggregates. A *group-by* produces one output row per distinct combination of its keys, so to calculate *𝑟𝑜𝑤𝑠𝑎𝑓 𝑡𝑒𝑟* we need an estimate for the number of distinct values for a set of keys. A well established conservative way (upper-bound) to determine the number of distinct values of a set of keys is to multiply the distinct values of individual columns. This is what the optimizer uses today. It is well known that with keys spanning many columns this can lead to a large over count. As it assumes every combination of values is possible this estimator suffers from a *combinatorial blow-up*.
-
-Finally note that statistics are computed for logical plans and apply to the entire result of the operator. Propagation in itself is not specialized to the distributed nature of execution, where each operator is executed with several tasks that each compute parts of the results.
-
-Figure 11: Costing partial aggregates
-
-We derive costs for *partial-aggregate* from statistics by taking into account the distributed nature of execution. In particular its possible that some of the columns for partial aggregate overlap with the input/exchange partitioning of that stage. Figure 11 shows an example where *𝛾𝑟𝑟* and *𝛾𝑟* have a key *𝑏*3 that is also the partitioning key for that stage. So we make use of this to scale down the distinct values of the partition keys by the degree of parallelism, *𝑑𝑜𝑝* (which is a configuration parameter). For all other keys we (conservatively) assume that each task can get all distinct values for such columns.
-
-As shown in the figure, the costs formula for*𝛾𝑟𝑟* and*𝛾𝑟* are products of distinct values of columns scaled down by the *𝑑𝑜𝑝*.
-
-Another improvement we make is for stages that perform broadcast joins. Such stages usually have a single large input that is joined with multiple small tables (small enough to fit in memory even without partitioning) using one or more *broadcast join*s. Figure 11 shows a plan where a large input is joined with two other broadcastable inputs. In such stages the partial aggregates at the lower levels may include partition keys (like in the example) of the stage while the aggregate at the end of stage does not. To enable partial aggregation in this scenario we check if the reduction ratio at any of the partial aggregates along the chain from the large input is above threshold. If so we place a partial aggregate in the stage.
-
-So in the example we check the reduction ratio at *𝛾𝑟𝑟* and *𝛾𝑟* and based on that make decisions for *𝛾*⊤. This can help mitigate the combinatorial blow-up that statistics propagation suffers from. *𝛾*⊤ has 5 multiplication terms while *𝛾𝑟𝑟* has only 2!, one of which is a partition key. These extensions to costing enable partial aggregate push-down in 8 additional TPCDS queries.
+Another improvement we make is for stages that perform broadcast joins. Such stages usually have a single large input that is joined with multiple small tables (small enough to fit in memory even without partitioning) using one or more *broadcast join*s. Figure 11 shows a plan where a large input is joined with two other broadcastable inputs. In such stages the partial aggregates at the lower levels may include partition keys (like in the example) of the stage while the aggregate at the end of stage does not. To enable partial aggregation in this scenario we check if the reduction ratio at any of the partial aggregates along the chain from the large input is above threshold. If so we place a partial aggregate in the stage. So in the example we check the reduction ratio at *𝛾𝑟𝑟* and *𝛾𝑟* and based on that make decisions for *𝛾*⊤. This can help mitigate the combinatorial blow-up that statistics propagation suffers from. *𝛾*⊤ has 5 multiplication terms while *𝛾𝑟𝑟* has only 2!, one of which is a partition key. These extensions to costing enable partial aggregate push-down in 8 additional TPCDS queries.
 
 ## OTHER FORMS OF PARTIAL PUSH-DOWN
 
@@ -500,10 +534,10 @@ This paper describes new query optimization techniques we incorporate in synapse
 
 ## REFERENCES
 
-1.  Spark SQL Aggregate Rewrite Rule. [https://github.com/apache/spark/blob/](https://github.com/apache/spark/blob/master/sql/core/src/main/scala/org/apache/spark/sql/execution/aggregate/AggUtils.scala) [master/sql/core/src/main/scala/org/apache/spark/sql/execution/aggregate/](https://github.com/apache/spark/blob/master/sql/core/src/main/scala/org/apache/spark/sql/execution/aggregate/AggUtils.scala) [AggUtils.scala.](https://github.com/apache/spark/blob/master/sql/core/src/main/scala/org/apache/spark/sql/execution/aggregate/AggUtils.scala)
-2.  Spark SQL Expand Operator. [https://github.com/apache/spark/blob/master/](https://github.com/apache/spark/blob/master/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/plans/logical/basicLogicalOperators.scala) [sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/plans/logical/](https://github.com/apache/spark/blob/master/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/plans/logical/basicLogicalOperators.scala) [basicLogicalOperators.scala.](https://github.com/apache/spark/blob/master/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/plans/logical/basicLogicalOperators.scala)
-3.  Spark SQL HashAggregate Operator. [https://github.com/apache/spark/blob/](https://github.com/apache/spark/blob/master/sql/core/src/main/scala/org/apache/spark/sql/execution/aggregate/HashAggregateExec.scala) [master/sql/core/src/main/scala/org/apache/spark/sql/execution/aggregate/](https://github.com/apache/spark/blob/master/sql/core/src/main/scala/org/apache/spark/sql/execution/aggregate/HashAggregateExec.scala) [HashAggregateExec.scala.](https://github.com/apache/spark/blob/master/sql/core/src/main/scala/org/apache/spark/sql/execution/aggregate/HashAggregateExec.scala)
-4.  Spark SQL Set Operators. [https://spark.apache.org/docs/latest/sql-ref-syntax](https://spark.apache.org/docs/latest/sql-ref-syntax-qry-select-setops.html)[qry-select-setops.html.](https://spark.apache.org/docs/latest/sql-ref-syntax-qry-select-setops.html)
+1.  [Spark SQL Aggregate Rewrite Rule](https://github.com/apache/spark/blob/master/sql/core/src/main/scala/org/apache/spark/sql/execution/aggregate/AggUtils.scala).
+2.  [Spark SQL Expand Operator](https://github.com/apache/spark/blob/master/sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/plans/logical/basicLogicalOperators.scala).
+3.  [Spark SQL HashAggregate Operator](https://github.com/apache/spark/blob/master/sql/core/src/main/scala/org/apache/spark/sql/execution/aggregate/HashAggregateExec.scala).
+4.  [Spark SQL Set Operators](https://spark.apache.org/docs/latest/sql-ref-syntax-qry-select-setops.html).
 5.  Apache Spark the Fastest Open Source Engine for Sorting a Petabyte. [https:](https://databricks.com/blog/2014/10/10/spark-petabyte-sort.html) [//databricks.com/blog/2014/10/10/spark-petabyte-sort.html,](https://databricks.com/blog/2014/10/10/spark-petabyte-sort.html) 2014.
 6.  Michael Armbrust, Reynold S. Xin, Cheng Lian, Yin Huai, Davies Liu, Joseph K.
 

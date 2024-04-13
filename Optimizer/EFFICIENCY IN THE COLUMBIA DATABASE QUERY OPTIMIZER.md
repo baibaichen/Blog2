@@ -175,48 +175,30 @@ The remainder of this chapter will review some fundamental concepts used in solv
 
 ### 2.5. The Search Space
 
-> The **search space** represents logical query trees and physical plans for a given initial query. To save space, the search space is represented as a set of groups, each group takes some groups as input. There is a top group designated as the final group, corresponding to the final result from the evaluation of the initial query. Figure 7 shows the initial search space of the given query.
->
-> > - [x] Figure 7. Initial Search Space of a given query
->
-> In the **initial search space**, each group includes only one logical expression, which came from the initial query tree. In figure 7, the top group, group [ABC], is the final group of the query. It corresponds to the final result of the joins of three relations. <u>We can derive the initial query tree from an initial search space</u>. **Each node in a query tree corresponds to an operator of a multi-expression in each group of the search space**. In Figure 7, top group [ABC] has a multi-expression which consists of an operator EQJOIN and two groups, [AB] and [C], as inputs. We can derive a query tree with the EQJOIN as the top operator and the input operators are derived from group [AB] and group [C], keep deriving input operators of the query tree from the input groups recursively until the considering groups are leaves (no input). The query tree derived from this initial search space is exactly the initial query tree. In other words, initial search space represents initial query tree.
->
-> In the course of optimization, the logically equivalent logical and physical expressions for each group are generated and the search space greatly expands. Each group will have a large number of logical and physical expressions. At the same time as the optimization generates physical expressions, the execution costs of the physical expressions (i.e., execution plans) are calculated. In some sense, generating all the physical expressions is the goal of the optimization since we want to find the cheapest plan and we know that costs are only related to physical expressions. But in order to generate all the physical expressions, all the logical expressions must be generated since each physical expression is the physical implementation of a logical expression. After the optimization is done, namely, all equivalent physical expressions are generated for each group and the costs of all possible execution plans are calculated, the cheapest execution plan can be located in the search space and served as the output of the optimizer. A completely expanded search space is called a final search space. Normally^6^, a final search space represents all the logically equivalent expressions (logical and physical) of a given query. ==In fact, all the possible query trees and execution plans can be derived from the final search space by using the recursive method we use to derive the initial query tree from the initial search space==. Each (logical or physical) operator of a multi-expression in the search space serves as an operator node in a query tree or an execution plan. Since a group in the search space contains a number of logical equivalent expressions, the final search space represents a large number of query trees and execution plans.
->
-> > 6. In some cases, pruning applies to the expansion of the search space, and then some expressions may not be generated. It may be that entire groups are not expanded. Some pruning techniques will be described in Section 4.4.
->
-> Table 1 [Bil97] shows the complexity of complete logical search space of join of n relations. (Only the numbers of logical expressions are showed.) For example, the search space of join of 4 relations has 15 groups, includes 54 logical expressions and represents 120 query trees.
->
-> > - [x] Table 1. Complexity of Join of n Relations [Bil97]
->
-> As can be seen from Table 1, even considering only the logical expressions, the size of the search space increases dramatically (exponentially) as the number of the  joined relations increases. The number of physical expressions depends on how many^7^ implementation algorithms used for the logical operators. For example, if there are N logical expressions in the search space, and M (M>=1) join algorithms are used in the database systems, then there will be M*N total physical expressions in the search space. So the number of physical expressions is at least the same as the number of logical expressions or larger.
->
-> > 7. Different database systems may choose a certain different number of algorithms to implement one logical operator. For example, nested-loops, sort-merge and indexnested-loops are the common join algorithms database systems choose.
->
-
-**搜索空间**表示给定初始查询的逻辑查询树和物理计划。为了节省空间，搜索空间被表示为 Group 的集合，每个 Group 接受一些 Group 作为输入。有一个顶层 Group 被指定为最终 Group，与初始查询的计算结果相对应。图 7 显示了给定查询的初始搜索空间
+The **search space** represents logical query trees and physical plans for a given initial query. To save space, the search space is represented as a set of groups, each group takes some groups as input. There is a top group designated as the final group, corresponding to the final result from the evaluation of the initial query. Figure 7 shows the initial search space of the given query.
 
 <p align="center">
  <img src="./EFFICIENCY IN THE COLUMBIA DATABASE QUERY OPTIMIZER/Figure_7.png" />
- 图 7. Initial Search Space of a given query
+ Figure 7. Initial Search Space of a given query
 </p>
 
-在**初始搜索空间**中，每个组只包含一个逻辑表达式，它来自于初始查询树。图 7 中，顶部 Group [ABC] 是查询的最后一组，对应三张表 Join 的最终结果。<u>我们可以从初始搜索空间推导出初始查询树</u>。**查询树中的每个节点对应搜索空间中每组多表达式的一个运算符**。图 7 中，顶部 Group  [ABC] 有一个多表达式，它由一个运算符 EQJOIN 和两个组 [AB] 和 [C] 作为输入组成。我们可以推导出一个以 EQJOIN 为顶层运算符的查询树，输入运算符从组 [AB] 和组 [C] 中导出，不断从输入组中递归地导出查询树的输入算子，直到考虑的组是叶子（ 没有输入）。 从这个初始搜索空间派生的查询树正是初始查询树。 换句话说，初始搜索空间代表初始查询树。
+In the **initial search space**, each group includes only one logical expression, which came from the initial query tree. In figure 7, the top group, group [ABC], is the final group of the query. It corresponds to the final result of the joins of three relations. <u>We can derive the initial query tree from an initial search space</u>. **Each node in a query tree corresponds to an operator of a multi-expression in each group of the search space**. In Figure 7, top group [ABC] has a multi-expression which consists of an operator EQJOIN and two groups, [AB] and [C], as inputs. We can derive a query tree with the EQJOIN as the top operator and the input operators are derived from group [AB] and group [C], keep deriving input operators of the query tree from the input groups recursively until the considering groups are leaves (no input). The query tree derived from this initial search space is exactly the initial query tree. In other words, initial search space represents initial query tree.
 
-优化过程中，为每组生成逻辑上等价的逻辑和物理表达式，大大扩展了搜索空间。每个组都会有大量的逻辑和物理表达式。在优化器生成物理表达式的同时，计算物理表达式（即执行计划）的执行成本。在某种意义上，生成所有物理表达式是优化的目标，因为我们想找到成本最低的计划，而且我们知道成本只与物理表达式有关。但是为了生成所有物理表达式，必须生成所有逻辑表达式，因为每个物理表达式都是逻辑表达式的物理实现。优化完成后，即为每个组生成所有等价的物理表达式，并计算出所有可能的执行计划的成本，可以在搜索空间中找到成本最低的执行计划，作为优化器的输出。一个完全扩展的搜索空间称为最终搜索空间。通常^6^，最终搜索空间表示给定查询的所有逻辑等价表达式（逻辑和物理）。==事实上，通过使用<u>从初始搜索空间推导出初始查询树</u>的递归方法，所有可能的查询树和执行计划都可以从最终的搜索空间中推导出来==。搜索空间中多表达式的每个（逻辑或物理）运算符充当查询树或执行计划中的运算符节点。由于搜索空间中的 Group 包含多个逻辑等价表达式，因此最终的搜索空间有大量的查询树和执行计划。
+In the course of optimization, the logically equivalent logical and physical expressions for each group are generated and the search space greatly expands. Each group will have a large number of logical and physical expressions. At the same time as the optimization generates physical expressions, the execution costs of the physical expressions (i.e., execution plans) are calculated. In some sense, generating all the physical expressions is the goal of the optimization since we want to find the cheapest plan and we know that costs are only related to physical expressions. But in order to generate all the physical expressions, all the logical expressions must be generated since each physical expression is the physical implementation of a logical expression. After the optimization is done, namely, all equivalent physical expressions are generated for each group and the costs of all possible execution plans are calculated, the cheapest execution plan can be located in the search space and served as the output of the optimizer. A completely expanded search space is called a final search space. Normally[^6], a final search space represents all the logically equivalent expressions (logical and physical) of a given query. ==In fact, all the possible query trees and execution plans can be derived from the final search space by using the recursive method we use to derive the initial query tree from the initial search space==. Each (logical or physical) operator of a multi-expression in the search space serves as an operator node in a query tree or an execution plan. Since a group in the search space contains a number of logical equivalent expressions, the final search space represents a large number of query trees and execution plans.
 
-> 6. 在某些情况下，如果将剪枝应用于搜索空间的扩展，则可能无法生成某些表达式。可能是整个组都没有扩展。一些修剪技术将在第4.4 节中描述。
+[^6]: In some cases, pruning applies to the expansion of the search space, and then some expressions may not be generated. It may be that entire groups are not expanded. Some pruning techniques will be described in Section 4.4.
 
-表 1 [Bil97] 给出了 n 张表 Join 的完整逻辑搜索空间的复杂读。（只显示了逻辑表达式的个数）例如，4 张表的 Join 搜索空间有 15 个 Group，包含 54 个逻辑表达式，代表 120 棵查询树。
+Table 1 [Bil97] shows the complexity of complete logical search space of join of n relations. (Only the numbers of logical expressions are showed.) For example, the search space of join of 4 relations has 15 groups, includes 54 logical expressions and represents 120 query trees.
 
 <p align="center">
  <img src="./EFFICIENCY IN THE COLUMBIA DATABASE QUERY OPTIMIZER/table_1.png" />
- 表 1. Complexity of Join of n Relations [Bil97]
+ Table 1. Complexity of Join of n Relations [Bil97]
 </p>
 
-从表 1 中可以看出，即使只考虑逻辑表达式，搜索空间的大小也会随着 Join 表数量的增加而急剧增加（呈指数级）。物理表达式的数量取决于用于逻辑运算符的 ^7^ 实现算法的数量。例如，如果搜索空间中有 N 个逻辑表达式，并且数据库系统中使用了 M(M>=1) 个 Join 算法，那么搜索空间中总共会有 $M\times N$ 个物理表达式。所以物理表达式的数量至少与逻辑表达式的数量相同或更大。
+As can be seen from Table 1, even considering only the logical expressions, the size of the search space increases dramatically (exponentially) as the number of the  joined relations increases. The number of physical expressions depends on how many[^7] implementation algorithms used for the logical operators. For example, if there are N logical expressions in the search space, and M (M>=1) join algorithms are used in the database systems, then there will be M*N total physical expressions in the search space. So the number of physical expressions is at least the same as the number of logical expressions or larger.
 
-> 7. 不同的数据库系统可能会选择不同数量的算法来实现一个逻辑运算符。 例如，嵌套循环、归并排序和索引嵌套循环是数据库系统常见 Join 算法。
+[^7]: Different database systems may choose a certain different number of algorithms to implement one logical operator. For example, nested-loops, sort-merge and indexnested-loops are the common join algorithms database systems choose.
+
 
 ### 2.6 Rules
 
@@ -932,13 +914,23 @@ In this section, two pruning techniques in Columbia are discussed. They extend C
 
 Since Columbia searches top-down and memoizes, bounds could be used to prune entire groups. For example, suppose the optimizer’s input is $(A \Join B) \Join C$. The optimizer will first calculate the cost of one plan in the group ==[ABC]==, say $(A \Join_L B) \Join_L C$; imagine **its cost is 5 seconds**. It expanded the group [AB] and did not consider the groups [AC] or [BC] in calculating this 5 second cost. Now we are considering optimizing another expression in the group, say $[AC]\Join_L[B]$​. Suppose the group [AC] represents a Cartesian product, it is so huge that it takes more than 5 seconds just to copy out tuples from [AC] to [ABC]. It means the plans containing [AC] will never be the optimal plan for [ABC]. In this case the optimizer does not generate, so effectively prunes, all the plans in the group [AC]. Figure 23 shows the content of the search space after the optimization of the two expressions discussed above. Notice that the [AC] group was not expanded. On the other hand, Starburst and other bottom-up optimizers optimize the groups [AB], [AC] and [BC] before beginning to process [ABC], thus losing any chance to prune multiple plans.
 
-> - [ ] Figure 23  **Search space during optimization ( [AC] is Cartesian product )**
-
-We say that an optimality group G is pruned if it is never enumerated. A pruned group will thus contain only one expression, namely the expression which created it. Group pruning can be very effective: a group representing the join of k tables can contain 2^k^ –2 logical expressions. And there are normally more than two times physical expressions than logical expressions in a group.
+<p align="center">
+ <img src="./EFFICIENCY IN THE COLUMBIA DATABASE QUERY OPTIMIZER/Figure_23.png" />
+ Figure 23  <B>Search space during optimization ( [AC] is Cartesian product )</B>
+</p>
 
 **Algorithm**: In this section we will describe how Columbia increases the likelihood of achieving group pruning, through the use of an improved optimization algorithm, which is shown in Figure 24. This algorithm is one part of task O_INPUTS (section 4.2.3.5), and is the detail description of “Note1” line in Figure 22
 
-> - [ ] Figure 24  **Algorithm of Lower Bound Pruning**
+```
+Figure 24  Algorithm of Lower Bound Pruning
+When optimizing a physical expression Expr under a context:
+(1) Compute a lower bound for the cost of Expr, equal to
+(2)   Cost of Expr’s operator +
+(3)   Cost of inputs that have optimal plans for the required properties +
+(4)   Group Lower Bound of other inputs ;
+(5) If this lower bound is > UpperBound of the context, return NULL;
+(6) For each input without an optimal plan for the required properties Optimize the input;
+```
 
 In Figure 24, lines (1) – (4) compute a lower bound for the cost of Expr. If this lower bound is greater than the current upper bound, Limit, then the routine can return without having enumerated any input groups. The difference between this algorithm and the algorithm of Cascades is that there is no line (4) in the algorithm of Cascades.
 
@@ -946,49 +938,33 @@ In Columbia, there is a group lower bound associated with a group, which represe
 
 Figure 25 shows the situation when this lower bound group pruning happens. In this situation, Cascades’ algorithm will not prune the group [BC] since the lower bound cost of the expression being optimized is only the sum of operator cost and the winner cost of inputs if any. In this case, it equals to 1+2+0 = 3 and not greater than the upper bound in the context. The group [BC] still will be expanded.
 
-> - [ ] Figure 25  **A situation when lower bound pruning happens**
+<p align="center">
+ <img src="./EFFICIENCY IN THE COLUMBIA DATABASE QUERY OPTIMIZER/Figure_25.png" />
+ Figure 25  <B>A situation when lower bound pruning happens</B>
+</p>
 
 Lower Bound Group pruning is safe, i.e., the optimizer using this pruning technique produces optimal plans. Because we will only prune a set of plans when a lower bound for the cost of the set is greater than the cost of another plan, and we proved in section 4.1.2.3 that the bound we used is a lower bound.
 
 #### 4.3.2 Global Epsilon Pruning
 
-**Motivation**: The concept of satisficing originated in economics. The idea is that, in theory, economic systems are governed by laws which require everyone to optimize their satisfaction, subject to satisfying some constraints.  In practice people do not act this way: they settle for almost optimal solutions which *almost* satisfy the constraints. This behavior is called satisficing. One way to view satisficing is to imagine that there is some constant epsilon and that everything is optimized/satisfied within epsilon. The idea of satisficing is motivation for the following idea.
+**Motivation**: The concept of satisficing originated in economics. The idea is that, in theory, economic systems are governed by laws which require everyone to optimize their satisfaction, subject to satisfying some constraints.  In practice people do not act this way: ==they settle for almost optimal solutions which *almost* satisfy the constraints==. This behavior is called satisficing. One way to view satisficing is to imagine that there is some constant epsilon and that everything is optimized/satisfied within epsilon. The idea of satisficing is motivation for the following idea.
 
-**Global Epsilon Pruning**: A plan is considered as a final winner of a group if its cost is close enough (within epsilon) to the cost of an optimal plan. Once such a winner is declared, no further optimization is needed for the group, hence possibly prunes the search space. For example, supposed we are optimizing the group [ABC], we will calculate the cost of the first plan we get in the group, say (A0**L**B)0**L**C and it costs 5 seconds. If the epsilon we choose is 6 second, i.e., we consider that a plan less than 6 seconds is a final winner. Although it is not optimal, we are satisfied with it. So the plan (A0**L**B)0**L**C with cost 5 seconds is consider as a final winner for the group [ABC], hence no further search is pursued for the group [ABC]. In other word, search for [ABC] is done, although we even do not expand group [ABC]. A lot of expressions in the search space are pruned by this method.
+**Global Epsilon Pruning**: A plan is considered as a final winner of a group if its cost is close enough (within epsilon) to the cost of an optimal plan. Once such a winner is declared, no further optimization is needed for the group, hence possibly prunes the search space. For example, supposed we are optimizing the group [ABC], we will calculate the cost of the first plan we get in the group, say $(A \Join_L B)\Join_LC$ and it costs 5 seconds. If the epsilon we choose is 6 second, i.e., we consider that a plan less than 6 seconds is a final winner. Although it is not optimal, we are satisfied with it. So the plan $(A \Join_L B)\Join_LC$ with cost 5 seconds is consider as a final winner for the group [ABC], hence no further search is pursued for the group [ABC]. In other word, search for [ABC] is done, although we even do not expand group [ABC]. A lot of expressions in the search space are pruned by this method.
 
 This pruning technique is called Global Epsilon Pruning since the epsilon is used globally during the whole optimization instead of localizing to a specific group optimization.
 
-> ***Algorithm:\*** Choose a global parameter Globeps > 0. Follow the usual optimization algorithm, except that a final winner is declared in a group if a plan is found with
->
-> cost(plan) < Globeps.
->
-> Enter the winner in the group and mark the search context done indicating that no further search is needed for this group.
+**Algorithm**: Choose a global parameter Globeps > 0. Follow the usual optimization algorithm, except that a final winner is declared in a group if a plan is found with **cost(plan) < Globeps**.  Enter the winner in the group and mark the search context done indicating that no further search is needed for this group.
 
 This algorithm is implemented in the task O_INPUTS, shown in “Note2” in Figure 22. After the cost of an optimizing expression is calculated, if the global epsilon pruning flag is set, the cost is compared with the global epsilon. The search is done if the cost is less than the epsilon.
 
 Obviously, Global Epsilon Pruning does not yield an optimal plan. But the distance from absolute optimality is bounded in some sense.
 
-> ***Theorem:\*** Let "absolute-optimum" denote the result of the usual optimization and "Globeps-optimum" denote the result of optimization with Global Epsilon Pruning. If absolute-optimum has N nodes whose cost is less than Globeps, then the cost of Globeps-optimum differs by at most
+> [!TIP]
+> **Theorem**: Let "absolute-optimum" denote the result of the usual optimization and "Globeps-optimum" denote the result of optimization with Global Epsilon Pruning. If absolute-optimum has N nodes whose cost is less than Globeps, then the cost of Globeps-optimum differs by at most $N \times Globeps$ from the cost of absolute-optimum.  
 >
-> N * Globeps
+> **Proof**: Begin by performing a depth-first search on the absolute-optimum, but use Global Epsilon Pruning to replace every optimal input with the first plan having cost less then Globeps, if such a plan exists. N such optimal inputs will be replaced. Denote the plan which is the result of this process by P. Since P differs from the abosolute-optimum in at most N inputs, by at most Globeps, we have **cost(P) - cost(absolute-optimum) < N \* Globeps** .
 >
->  
->
-> from the cost of absolute-optimum.
->
->  
->
-> ***Proof:\*** Begin by performing a depth-first search on the absolute-optimum, but use Global Epsilon Pruning to replace every optimal input with the first plan having cost less then Globeps, if such a plan exists. N such optimal inputs will be replaced. Denote the plan which is the result of this process by P. Since P differs from the abosolute-optimum in at most N inputs, by at most Globeps, we have
->
-> cost(P) - cost(absolute-optimum) < N * Globeps.
->
->  
->
-> Since P is in the search space defined by the Global Epsilon Pruning algorithm, We must have
->
-> Cost (Globeps-optimum) < cost(P).
->
->  
+> Since P is in the search space defined by the Global Epsilon Pruning algorithm, We must have **Cost (Globeps-optimum) < cost(P)**.
 >
 > The theorem follows.
 
