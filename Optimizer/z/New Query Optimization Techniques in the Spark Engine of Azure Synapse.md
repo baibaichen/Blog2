@@ -171,11 +171,10 @@ Figure 7: Exchange placement overview
 > 本节介绍我们在 Synapse Spark 中使用的==交换放置==算法。图 7 概述了现有系统目前的功能以及我们的建议。大体上有两种系统。Scope[35]，采用基于成本的探索来选择不同的节点来放置 Exchange [34]。正如我们稍后描述的，这种探索允许它最大限度地**重叠交换**。另一方面，像 Spark 这样的系统不支持探索，而是只维护一个单一的计划，自下而上遍历计划，执行完==本地重叠检查==后引入交换。如图所示，两个系统在交换放置后分别应用**交换重用**规则。两个系统都会在不进行探索的情况下转换最终选择的计划。
 >
 > 在 Synapse Spark 中，我们以基于成本的方式<u>执行交换放置</u>，同时考虑**交换重叠**和**交换重用**机会。现在，基于成本的探索可能会很昂贵，并且 Scope 采用大量优化时间预算（几分钟）。另一方面，在 Synapse Spark 中，我们对优化器时间（按秒为单位）施加严格限制，以满足客户的期望。为了实现这一目标，我们改进了<u>具有较大探索空间的最先进算法</u>（第 3.1 节）。仅当存在多种**重叠交换**方式或**交换重叠**与**交换重用**冲突时（第 3.2 节），我们才会探索多种选项。最后，为了确定相互冲突的选项，我们需要尽早确定**交换重用**的可能性。我们采用平面标记（第3.3节）。
->
 
 ### 3.1 Exploration based exchange placement
 
-Lets begin by examining the state-of-the-art algorithm for exchange placement [34]. Algorithm 1 shows pseudo-code for a recursive routine that computes the interesting partitioning options at each operator in the plan. For ease of exposition, we assume that the plan only consists of key based operators. The implementation of-course deals with all SQL operators. First, we define $\mathcal{P}^{\prime}(\mathrm{X})=\mathcal{P}(\mathrm{X}) \backslash \emptyset$​ where $\mathcal{P}(\mathrm{X})$ is the power set of $\mathrm{X}$. In the this section when we mention power set, we refer to $\mathcal{P}^{\prime}$. Now in this method, the interesting partitioning options consists of all possible combinations of the operator keys i.e. $\mathcal{P}^{\prime}(\mathrm{\text{plan.keys}})$. In Figure 3, the *join* having $\{a_{1}, b_{1}\}$ as keys, would have $\left\{a_{1}\left|b_{1}\right| a_{1}, b_{1}\right\}$ in its *iKeysSet*.
+Lets begin by examining the state-of-the-art algorithm for exchange placement [34]. Algorithm 1 shows pseudo-code for a recursive routine that computes the interesting partitioning options at each operator in the plan. For ease of exposition, we assume that the plan only consists of key based operators. The implementation of-course deals with all SQL operators. First, we define $\mathcal{P}^{\prime}(\mathrm{X})=\mathcal{P}(\mathrm{X}) \backslash \emptyset$​ where $\mathcal{P}(\mathrm{X})$ is the power set of $\mathrm{X}$. In the this section when we mention power set, we refer to $\mathcal{P}^{\prime}$. Now in this method, the interesting partitioning options consists of all possible combinations of the operator keys i.e. $\mathcal{P}^{\prime}(\mathrm{\text{plan.keys}})$. In Figure 3, the *join* having $\{a_{1}, b_{1}\}$ as keys, would have $\{a_1|b_1| a_1, b_1\}$ in its *iKeysSet*.
 
 ```
 # Algorithm 1 DetermineInterestingPartitionKeysDefault
@@ -186,7 +185,7 @@ Require: Physical Plan 𝑝𝑙𝑎𝑛
 ```
 
 > [!NOTE]
-> 让我们首先检查最先进的交换放置算法 [34]。算法 1 显示了递归函数的伪代码，该递归函数计算计划中每个运算符感兴趣的分区选项。为了便于说明，我们假设该计划仅由基于 ***key*** 的运算符组成。当然，该实现涉及所有 SQL 运算符。首先，我们定义 $\mathcal{P}^{\prime}(\mathrm{X})=\mathcal{P}(\mathrm{X}) \backslash \emptyset$ 其中 $\mathcal{P}(\mathrm {X})$ 是 $\mathrm{X}$ 的**幂集**。在本节中，当我们提到幂集时，我们指的是$\mathcal{P}^{\prime}$。现在，在此方法中，感兴趣的分区选项由运算符的 ***key*** 的所有可能组合组成，即 $\mathcal{P}^{\prime}(\mathrm{\text{plan.keys}})$。在图 3 中，以 $\{a_{1}, b_{1}\}$ 作为键的 **Join** 其 *iKeysSet* 是 $\left\{a_{1}\left|b_{1}\right| a_{1}, b_{1}\right\}$ 。
+> 让我们首先检查最先进的交换放置算法 [34]。算法 1 显示了递归函数的伪代码，该递归函数计算计划中每个运算符感兴趣的分区选项。为了便于说明，我们假设该计划仅由基于 ***key*** 的运算符组成。当然，该实现涉及所有 SQL 运算符。首先，我们定义 $\mathcal{P}^{\prime}(\mathrm{X})=\mathcal{P}(\mathrm{X}) \backslash \emptyset$ 其中 $\mathcal{P}(\mathrm {X})$ 是 $\mathrm{X}$ 的**幂集**。在本节中，当我们提到幂集时，我们指的是$\mathcal{P}^{\prime}$。现在，在此方法中，感兴趣的分区选项由运算符的 ***key*** 的所有可能组合组成，即 $\mathcal{P}^{\prime}(\mathrm{\text{plan.keys}})$。在图 3 中，以 $\{a_{1}, b_{1}\}$ 作为键的 **Join** 其 *iKeysSet* 是 $\{a_1|b_1| a_1, b_1\}$ 。
 
 > [!IMPORTANT]
 > 在数学上，Power set 被称为幂集，是一个集合中所有可能子集的集合。假设我们有一个集合 X={a,b}，那么集合的幂集 P(X) 就是{{},{a},{b},{a,b}}。换句话说，它包含原集合的所有可能的组合，包括空集和原集合本身。正在讨论的公式 $\mathcal{P}^{\prime}(\mathrm{X})=\mathcal{P}(\mathrm{X}) \backslash \emptyset$  是用来定义一个新的集合 ，它就是原集合 $\mathrm{X}$ 的幂集去掉空集后的结果。
