@@ -1,6 +1,5 @@
 # EFFICIENCY IN THE COLUMBIA DATABASE QUERY OPTIMIZER
 
-[TOC]
 
 ## Chapter 1 . Introduction
 
@@ -66,112 +65,69 @@ The remainder of this chapter will review some fundamental concepts used in solv
 
 ### 2.2. Logical Operators and Query Tree
 
-> **Logical operators** are **==high-level==** operators that specify data transformations without specifying the physical execution algorithms to be used. In the relational model, logical operators generally take tables^3^ as inputs, and produce a single table as output. Each logical operator takes a fixed number of inputs (which is called the arity of the operator) and may have parameters that distinguish the variant of an operator. Two typical logical operators are GET and EQJOIN. The GET operator has no input and one argument, which is the name of the stored relation. GET retrieves the tuples of the relation from disk and outputs the tuples for further operations. The EQJOIN operator has two inputs, namely the left and right tables to be joined, and one argument which is a set of join predicates relating to the left and right tables.
->
-> > 3. Here, we define table as a collection of tuples. In the relational model, it can be a real stored relation (roughly, a disk file) or a temporary collection of tuples produced in the evaluation of a query.
->
-> A **query tree** is a tree representation of a query and serves as the input to an optimizer. Typically a query tree is represented as a tree of logical operators in which each node is a logical operator having zero or more logical operators as its inputs. The number of children of the node is exactly the arity of the operator. Leaves of the tree are operators with zero arity. An example of a query tree representation of a query is showed in Figure 2.
->
-> Query trees are used to specify the order in which operators are to be applied. In order to apply the top operator in the tree, its inputs must be applied first. In this example, EQJOIN has two inputs, which are taken from the outputs of two GET operators. The argument of EQJOIN, i.e., “Emp.dno=Dept.dno”, describes the condition of the join operation. The output of EQJOIN will produce the result of query. GET operators have no input, so they are the leaves of the tree and generally provide data sources of the query evaluation. The argument of each GET operator defines which stored relation will be retrieved.
->
+**Logical operators** are **==high-level==** operators that specify data transformations without specifying the physical execution algorithms to be used. In the relational model, logical operators generally take tables[^3] as inputs, and produce a single table as output. Each logical operator takes a fixed number of inputs (which is called the arity of the operator) and may have parameters that distinguish the variant of an operator. Two typical logical operators are GET and EQJOIN. The GET operator has no input and one argument, which is the name of the stored relation. GET retrieves the tuples of the relation from disk and outputs the tuples for further operations. The EQJOIN operator has two inputs, namely the left and right tables to be joined, and one argument which is a set of join predicates relating to the left and right tables.
 
-**逻辑运算符**是高级运算符，它指定了数据转换，但没有指定要使用的物理执行算法。在关系模型中，逻辑运算符通常将表^3^作为输入，并产生单个表作为输出。每个逻辑运算符接受固定数量的输入（称为运算符的元数），并且可以**<u>有区分运算符变体</u>**的参数。两个典型的逻辑运算符是 GET 和 EQJOIN。GET 运算符没有输入，只有一个参数，即关系的名称。GET 从磁盘中检索关系的元组，并输出这些元组以进行进一步的操作。EQJOIN 运算符有两个输入，即要 Join 的左表和右表，以及一个参数，它是与左表和右表相关的一组  Join 谓词。
+[^3]: Here, we define table as a collection of tuples. In the relational model, it can be a real stored relation (roughly, a disk file) or a temporary collection of tuples produced in the evaluation of a query.
 
-> 3. 在这里，我们将**表**定义为元组的集合。在关系模型中，它可以是真实存储的关系（大致上，磁盘文件）或在查询计算中生成的临时元组集合。
-
-**查询树**是查询的树状表示，是优化器的输入。通常，查询树表示为逻辑运算符树，其中每个节点是一个逻辑运算符，其输入为 0 个或多个逻辑运算符。节点的子节点数正好是运算符的元数。树的叶节点是没有输入的运算符。图 2 显示了一个查询的查询树表示示例。
+A **query tree** is a tree representation of a query and serves as the input to an optimizer. Typically a query tree is represented as a tree of logical operators in which each node is a logical operator having zero or more logical operators as its inputs. The number of children of the node is exactly the arity of the operator. Leaves of the tree are operators with zero arity. An example of a query tree representation of a query is showed in Figure 2.
 
 <p align="center">
  <img src="./EFFICIENCY IN THE COLUMBIA DATABASE QUERY OPTIMIZER/Figure_2.png" />
- 图 2. Query Representation
+ Figure 2. Query Representation
 </p>
 
-查询树用于指定应用运算符的顺序。为了计算树中顶部的运算符，必须首先计算它的输入。在本例中，EQJOIN 有两个输入，它们取自两个 GET 运算符的输出。EQJOIN 的参数，即 `Emp.dno=Dept.Dno`，描述 Join 运算的条件。EQJOIN 的输出将产生查询的结果。GET 操作符没有输入，因此它们是树的叶子，通常是提供查询计算的数据源。每个 GET 运算符的参数表示将读取那张表。
+Query trees are used to specify the order in which operators are to be applied. In order to apply the top operator in the tree, its inputs must be applied first. In this example, EQJOIN has two inputs, which are taken from the outputs of two GET operators. The argument of EQJOIN, i.e., “Emp.dno=Dept.dno”, describes the condition of the join operation. The output of EQJOIN will produce the result of query. GET operators have no input, so they are the leaves of the tree and generally provide data sources of the query evaluation. The argument of each GET operator defines which stored relation will be retrieved.
 
 ### 2.3. Physical Operators and Execution Plan
 
-> Physical Operators represent specific algorithms that implement particular database operations. One or more physical execution algorithms can be used in a database for implementing a given query logical operator. For instance, the EQJOIN operator can be implemented using **nested-loops** or **sort-merge** or other algorithms. These specific algorithms can be implemented in different physical operators. Thus, two typical physical operators are LOOPS_JOIN, which implements the nested-loops join algorithm, and MERGE_JOIN, which implements the sort-merge join algorithm. The typical implementing algorithm for the GET logical operator is scanning the table in stored order, which is implemented in another physical operator FILE_SCAN. Like logical operators, each physical operator also has fixed number of inputs (which is the arity of the operator), and may have parameters.
->
-> Replacing the logical operators in a query tree by the physical operators which can implement them gives rise to a tree of physical operators which is called an Execution Plan or access plan for the given query. Figure 3 shows two possible execution plans corresponding to the query tree in Figure 2(b).
->
-> > - [x] Figure 3. Execution plans
->
-> Execution plans specify how to evaluate the query. Each plan has an execution cost corresponding to the cost model and catalog information. In general, a good execution plan for a given query is generated by the optimizer and serves as the input to the Query Execution Engine which executes the overall algorithms against the data of database systems to produce the output result of the given query.
->
+Physical Operators represent specific algorithms that implement particular database operations. One or more physical execution algorithms can be used in a database for implementing a given query logical operator. For instance, the EQJOIN operator can be implemented using **nested-loops** or **sort-merge** or other algorithms. These specific algorithms can be implemented in different physical operators. Thus, two typical physical operators are LOOPS_JOIN, which implements the nested-loops join algorithm, and MERGE_JOIN, which implements the sort-merge join algorithm. The typical implementing algorithm for the GET logical operator is scanning the table in stored order, which is implemented in another physical operator FILE_SCAN. Like logical operators, each physical operator also has fixed number of inputs (which is the arity of the operator), and may have parameters.
 
-**物理运算符**表示实现数据库特定操作的具体算法。数据库可以使用一个或多个物理执行算法来实现给定的查询逻辑运算符。例如，可以使用 **nested-loops** 或 **sort-merge** 或其他算法来实现 EQJOIN 运算符。这些特定的算法可以在不同的物理运算符中实现。因此，两个典型的物理操作符是 LOOPS_JOIN，它实现了**嵌套循环连接算法**，以及 MERGE_JOIN，它实现了归并排序连接算法。GET 逻辑运算符的典型实现算法是按存储顺序扫描表，这是在另一个物理运算符 FILE_SCAN 中实现。与逻辑运算符一样，每个物理运算符也有固定数量的输入（这是运算符的元数），并且可能有参数。
-
-将查询树中的逻辑运算符替换为可以实现这些运算符符的物理运算符符，就会生成一个物理运算符符树，它被称为给定查询的执行计划或访问计划。 图 3 显示了对应于图 2(b) 中的查询树，它有两种可能的执行计划。
+Replacing the logical operators in a query tree by the physical operators which can implement them gives rise to a tree of physical operators which is called an Execution Plan or access plan for the given query. Figure 3 shows two possible execution plans corresponding t
+o the query tree in Figure 2(b).
 
 <p align="center">
  <img src="./EFFICIENCY IN THE COLUMBIA DATABASE QUERY OPTIMIZER/Figure_3.png" />
- 图 3. Execution plans
+ Figure 3. Execution plans
 </p>
 
-执行计划指定如何计算查询。每个计划都有一个与成本模型和 Catalog 信息相对应的执行成本。通常，给定查询好的执行计划由优化器生成，并作为查询执行引擎的输入，查询执行引擎对数据库系统中的数据执行整体算法，以产生给定查询的输出结果。
+Execution plans specify how to evaluate the query. Each plan has an execution cost corresponding to the cost model and catalog information. In general, a good execution plan for a given query is generated by the optimizer and serves as the input to the Query Execution Engine which executes the overall algorithms against the data of database systems to produce the output result of the given query.
 
 ### 2.4. Groups
 
-> A given query can be represented by one or another query tree that is logically equivalent. Two query trees are logically equivalent if they output exactly the same result for any population of the database [Gra95]. For each query tree, in general, there are one or more corresponding execution plans implementing the query tree and producing exactly the same result. Analogously, these execution plans are logically equivalent. Figure 4 shows several logically equivalent query trees and logically equivalent execution plans implementing the query trees.
->
-> > - [x] Figure 4. Logically equivalent query trees and plans
->
-> As shown in Figure 4, we denote an **EQJOIN** operator by $\Join$, **LOOPS_JOIN** by $\Join_L$, and **MERGE_JOIN** by $\Join_M$. To simplify, we also denote a **GET** operator by its argument and **FILE_SCAN** by its argument plus sub F. In Figure 4, (a) and (b) are two logically equivalent query trees. The difference is the order of logical operators. (a-i) and (a-ii) are two logically equivalent execution plans implementing query tree (a). They use two different join algorithms.
->
-> We can also use **expressions** to represent query trees and execution plans (or sub trees and sub plans). An expression consists of an operator plus zero or more input expressions. We refer to an expression as logical or physical based on the type of its operator. So query trees are logical expressions and execution plans are physical expressions.
->
-> Given a logical expression, there are a number of logically equivalent logical and physical expressions. It is useful to collect them into groups and define their common characteristics. A Group is a set of logically equivalent expressions^4^. In general, a group will contain all equivalent logical forms of an expression, plus all physical expressions derivable based on selecting allowable physical operators for the corresponding logical forms. Usually, there will be more than one physical expression for each logical expression in a group. Figure 5 shows a group containing the expressions in Figure 4 and other equivalent expressions.
->
-> > 4. Note that a group might not contain all equivalent expressions. In some case where a pruning technique has been applied, some expressions will not be considered and do not need to be included in the group.
->
-> > - [x] Figure 5. Equivalent expressions in groups [ABC]
->
-> We usually denote a group by one of its logical expressions. For instance, $(A \Join B) \Join C$, or simply [ABC]. Figure 5 shows all^5^ equivalent logical expressions for the group [ABC] and some physical expressions. We can see that there are a number of equivalent expressions, even for logical expressions.
->
-> > 5. For simple cases, the group consists of join operators only.
->
-> To reduce the number of expressions in a group, **Multi-expressions** are introduced. A **Multi-expression** consists of a logical or physical operator and takes groups as inputs. <u>A multi-expression is the same as an expression except it takes groups as inputs while expressions take other expressions as inputs</u>. For instance, the multi-expression “$[AB] \Join [C]$ ” denotes the EQJOIN operator taking the groups [AB] and [C] as its inputs. ==The advantage of multi-expressions is the great savings in space because there will be fewer equivalent multi-expressions in a group==. Figure 6 shows the equivalent multi-expressions in the group [ABC]. There are many fewer multi-expressions than expressions in figure 5. In fact, one multi-expression represents several expressions by taking groups as inputs. With multi-expressions, a group can be re-defined as a set of logically equivalent multi-expressions.
->
-> > - [ ] Figure 6. Equivalent multi-expressions in group [ABC]
->
-> In the typical processing of a query, many intermediate results (collections of tuples) are produced before the final result is produced. An intermediate result is produced by computing an execution plan (or a physical expression) of a group. In this meaning, groups correspond to intermediate results (these groups are called intermediate groups). There is only one final result, whose group is called the final group).
->
-> The **Logical properties** of a group are defined as the logical properties of the result, regardless of how the result is physically computed and organized. These properties include the cardinality (number of tuples), the schema, and other properties. Logical properties apply to all expressions in a group.
->
-
-给定的查询可以由逻辑上等价的多个查询树表示。如果无论数据库内有什么数据，两个查询树都输出完全相同的结果，那么它们在逻辑上是等价的[Gra95]。对于每个查询树，通常都有一个或多个相应的**==执行计划==**来实现并生成完全相同的结果。类似地，这些执行计划在逻辑上是等价。图 4 是逻辑上等价的查询树和（实现它们的）执行计划。
+A given query can be represented by one or another query tree that is logically equivalent. Two query trees are logically equivalent if they output exactly the same result for any population of the database [Gra95]. For each query tree, in general, there are one or more corresponding execution plans implementing the query tree and producing exactly the same result. Analogously, these execution plans are logically equivalent. Figure 4 shows several logically equivalent query trees and logically equivalent execution plans implementing the query trees.
 
 <p align="center">
  <img src="./EFFICIENCY IN THE COLUMBIA DATABASE QUERY OPTIMIZER/Figure_4.png" />
- 图 4. Logically equivalent query trees and plans
+ Figure 4. Logically equivalent query trees and plans
 </p>
-如图 4 所示，我们用 $\Join$ 表示 **EQJOIN** 运算符，用 $\Join_L$ 表示 **LOOPS_JOIN**，用 $\Join_M$ 表示 **MERGE_JOIN **。为了简化，我们还通过其参数表示 **GET** 运算符，参数加下标 **F** 表示 **FILE_SCAN**。图 4 中，（a）和（b）是逻辑上等价的两个查询树。区别在于逻辑运算符的顺序。（a-i）和（a-ii）是实现查询树（a）的两个逻辑上等价的执行计划。它们使用两种不同的 Join 算法。
 
-我们还可以使用**表达式**来表示查询树和执行计划（或子树和子计划）。表达式由一个运算符加上零个或多个输入表达式组成。根据运算符的类型，我们将表达式称为逻辑或物理表达式。 **因此，查询树是逻辑表达式，执行计划是物理表达式**。
+As shown in Figure 4, we denote an **EQJOIN** operator by $\Join$, **LOOPS_JOIN** by $\Join_L$, and **MERGE_JOIN** by $\Join_M$. To simplify, we also denote a **GET** operator by its argument and **FILE_SCAN** by its argument plus sub F. In Figure 4, (a) and (b) are two logically equivalent query trees. The difference is the order of logical operators. (a-i) and (a-ii) are two logically equivalent execution plans implementing query tree (a). They use two different join algorithms.
 
-给定一个逻辑表达式，存在许多逻辑等价的逻辑和物理表达式。将它们分组并定义其共同特征很有用。 **Group** 是一组逻价上等价的表达式^4^。通常，**Group** 将包含表达式所有等价的逻辑形式，加上由此派生的物理表达式（只能产生允许的物理运算符）。通常，一个 Group 中每个逻辑表达式都会有多个物理表达式。图 5 中的这组表达式都和图 4 的表达式等价。
+We can also use **expressions** to represent query trees and execution plans (or sub trees and sub plans). An expression consists of an operator plus zero or more input expressions. We refer to an expression as logical or physical based on the type of its operator. So query trees are logical expressions and execution plans are physical expressions.
 
-> 4. 请注意，Group 不一定包含所有等价的表达式。在裁剪的情况下，某些表达式将不被考虑并且不会包含在组中。
+Given a logical expression, there are a number of logically equivalent logical and physical expressions. It is useful to collect them into groups and define their common characteristics. A Group is a set of logically equivalent expressions[^4]. In general, a group will contain all equivalent logical forms of an expression, plus all physical expressions derivable based on selecting allowable physical operators for the corresponding logical forms. Usually, there will be more than one physical expression for each logical expression in a group. Figure 5 shows a group containing the expressions in Figure 4 and other equivalent expressions.
+
+[^4]: Note that a group might not contain all equivalent expressions. In some case where a pruning technique has been applied, some expressions will not be considered and do not need to be included in the group.
 
 <p align="center">
  <img src="./EFFICIENCY IN THE COLUMBIA DATABASE QUERY OPTIMIZER/Figure_5.png" />
- 图 5.Equivalent expressions in groups [ABC]
+ Figure 5. Equivalent expressions in groups [ABC]
 </p>
 
-我们通常用一个逻辑表达式来表示一个 Group。例如，$(A \Join B) \Join C$，或简称为 [ABC]。图 5 显示了组 [ABC] 所有^5^等价的逻辑表达式和一些物理表达式。我们可以看到，即使对于逻辑表达式，也存在许多等价表达式。
+We usually denote a group by one of its logical expressions. For instance, $(A \Join B) \Join C$, or simply [ABC]. Figure 5 shows all[^5] equivalent logical expressions for the group [ABC] and some physical expressions. We can see that there are a number of equivalent expressions, even for logical expressions.
 
-> 5. 对于简单的情况，Group 仅由联接运算符组成。
+[^5]: For simple cases, the group consists of join operators only.
 
-为了减少 Group 中表达式的数量，引入了**==多表达式==**。**多表达式**由逻辑或物理运算符组成，并将 **<u>Group</u>** 作为输入。**多表达式与表达式相同，只是它将组作为输入，而表达式将其他表达式作为输入**。例如，多表达式 $[AB]\Join[C]$ 表示 **EQJOIN** 运算符将 Group [AB] 和 [C] 作为其输入。多表达式的优点是极大地节省了空间，因为 Group 中等价的<u>==多表达式==</u>会更少。图 6 是 Group [ABC] 中等价的多表达式。与图 5 的表达式相比，多表达式要少得多。实际上，一个多表达式通过将 Group 作为输入来表示多个表达式。**对于多表达式，可以将 Group 重新定义为一组逻辑等价的多表达式**。
+To reduce the number of expressions in a group, **Multi-expressions** are introduced. A **Multi-expression** consists of a logical or physical operator and takes groups as inputs. <u>A multi-expression is the same as an expression except it takes groups as inputs while expressions take other expressions as inputs</u>. For instance, the multi-expression “$[AB] \Join [C]$ ” denotes the EQJOIN operator taking the groups [AB] and [C] as its inputs. ==The advantage of multi-expressions is the great savings in space because there will be fewer equivalent multi-expressions in a group==. Figure 6 shows the equivalent multi-expressions in the group [ABC]. There are many fewer multi-expressions than expressions in figure 5. In fact, one multi-expression represents several expressions by taking groups as inputs. With multi-expressions, a group can be re-defined as a set of logically equivalent multi-expressions.
 
 <p align="center">
  <img src="./EFFICIENCY IN THE COLUMBIA DATABASE QUERY OPTIMIZER/Figure_6.png" />
- 图 6. Equivalent multi-expressions in group [ABC]
+ Figure 6. Equivalent multi-expressions in group [ABC]
 </p>
 
-在典型的查询处理过程中，会在生成最终结果之前生成许多中间结果（元组集合）。通过计算 Group 的执行计划（或物理表达式）生成中间结果。在这个意义上，Group 对应于中间结果（这些 Group 称为中间 Group）。只有一个最终结果，它的 Group 被称为最终 Group。
+In the typical processing of a query, many intermediate results (collections of tuples) are produced before the final result is produced. An intermediate result is produced by computing an execution plan (or a physical expression) of a group. In this meaning, groups correspond to intermediate results (these groups are called intermediate groups). There is only one final result, whose group is called the final group).
 
-组的逻辑属性定义为结果的逻辑属性，而不管物理上如何计算和组织结果。这些属性包括基数（元组数）、schema 和其他属性。逻辑属性应用于组中所有表达式。
+The **Logical properties** of a group are defined as the logical properties of the result, regardless of how the result is physically computed and organized. These properties include the cardinality (number of tuples), the schema, and other properties. Logical properties apply to all expressions in a group.
 
 ### 2.5. The Search Space
 
@@ -216,25 +172,21 @@ Cascades used expressions to represent patterns and substitutes. Patterns are al
 </p>
 
 ## Chapter 3. Related Work
-> Pioneering work in query optimization can be traced back to two decades ago. IBM’s System R optimizer [SAC+79] succeeded and worked so well that it has served as the foundation for many current commercial optimizers.
->
-> Database systems and applications evolve and demand new generations of optimizers to handle new extensions to database systems. The relational data model is extended with more features, such as supporting new data types and new operations. The object oriented data model is introduced to handle more complex data. Since early optimizers were designed to use with a relatively simple relational data model, new generations of extensible optimizers were developed to meet the requirements of evolving database systems. The new generations of optimizers focus on extensibility as well as the difficult goal of all optimizers: efficiency. This chapter will look at some notable optimizers that contribute significantly to the query optimization literature.
+Pioneering work in query optimization can be traced back to two decades ago. IBM’s System R optimizer [SAC+79] succeeded and worked so well that it has served as the foundation for many current commercial optimizers.
 
-查询优化方面的开创性工作可以追溯到==二十年==前。IBM 的 System R 优化器 [SAC+79] 取得了成功，并且工作得非常好，成为当前许多商业优化器的基础。
-
-数据库系统和应用程序不断发展，需要新一代的优化器来处理数据库系统的新扩展。关系数据模型扩展了更多的特性，例如支持新的数据类型和新的操作。引入了面向对象的数据模型来处理更复杂的数据。由于早期的优化器被设计成与相对简单的关系数据模型一起使用，因此新一代的可扩展优化器被开发出来以满足不断发展的数据库系统的需求。新一代的优化器关注的是可扩展性，以及所有优化器的艰巨目标：效率。本章将介绍查询优化文献中，做出重要贡献的著名优化器。
+Database systems and applications evolve and demand new generations of optimizers to handle new extensions to database systems. The relational data model is extended with more features, such as supporting new data types and new operations. The object oriented data model is introduced to handle more complex data. Since early optimizers were designed to use with a relatively simple relational data model, new generations of extensible optimizers were developed to meet the requirements of evolving database systems. The new generations of optimizers focus on extensibility as well as the difficult goal of all optimizers: efficiency. This chapter will look at some notable optimizers that contribute significantly to the query optimization literature.
 
 ### 3.1 The System R and Starburst Optimizer
 
-Current relational query optimizers have been greatly influenced by techniques used in the design of IBM’s System R query optimizer [SAC+79]. One of the important contributions of the System R optimizer is cost-based optimization. The optimizer use statistics about relations and indexes stored in the system catalog to estimate the cost of a query evaluation plan. There are two parts to estimating the cost: one is estimating the cost of performing the operators. The other is estimating the size of the result of a query block^8^, and whether it is sorted.
+Current relational query optimizers have been greatly influenced by techniques used in the design of IBM’s System R query optimizer [SAC+79]. One of the important contributions of the System R optimizer is cost-based optimization. The optimizer use statistics about relations and indexes stored in the system catalog to estimate the cost of a query evaluation plan. There are two parts to estimating the cost: one is estimating the cost of performing the operators. The other is estimating the size of the result of a query block[^8], and whether it is sorted.
 
-> 8. System R decomposes queries into a collection of smaller units call query blocks.
+[^8]: System R decomposes queries into a collection of smaller units call query blocks.
 
 Estimating the cost of operators requires knowledge of various parameters of the input relations, such as the cardinality (size of the relation), number of pages and available indexes. Such statistics are maintained in the DBMS’s system catalogs. Size estimation plays an important role in cost estimation because the output of one operator can be the input to another operator, and the cost of an operator depends on the size of its inputs. System R defined a series of size estimation formulas which are also used by current query optimizers, although more sophisticated techniques based on more detailed statistics (e.g., histograms of the values in a system) have been proposed in recent years [Ioa93] [PIH96].
 
-Another important contribution of the System R optimizer is the bottom-up dynamic programming search strategy. The idea of dynamic programming is to find the best plans of the lower level query blocks^9^ in the query tree and only keep the best plans for consideration with the upper level query blocks. It is a bottom-up style, since it always optimizes the lower level expressions first. In order to calculate the cost of an upper level expression, all the costs (as well as the sizes of the results) of its lower level inputs (also expressions) must be calculated. The dynamic programming trick is: after we optimize a query block (i.e., we find a best plan), we throw away all the equivalent expressions of this query block and only keep the best plan for this query block. [OnL90] pointed out that dynamic programming needs to consider O(3^N^) expressions (plans). Because of this exponential growth rate, when N is large, the number of expressions which the optimizer needs to consider is still unacceptable. So the System R optimizer also use heuristics such as delaying optimization of Cartesian products until final processing or considering only left deep trees (which excludes a large number of query trees, like bushy trees) when optimizing large queries [GLS93]. However, the exclusion of Cartesian products or considering only left deep trees may force a poor plan to be chosen, hence optimality can not be guaranteed.
+Another important contribution of the System R optimizer is the bottom-up dynamic programming search strategy. The idea of dynamic programming is to find the best plans of the lower level query blocks[^9] in the query tree and only keep the best plans for consideration with the upper level query blocks. It is a bottom-up style, since it always optimizes the lower level expressions first. In order to calculate the cost of an upper level expression, all the costs (as well as the sizes of the results) of its lower level inputs (also expressions) must be calculated. The dynamic programming trick is: after we optimize a query block (i.e., we find a best plan), we throw away all the equivalent expressions of this query block and only keep the best plan for this query block. [OnL90] pointed out that dynamic programming needs to consider O(3^N^) expressions (plans). Because of this exponential growth rate, when N is large, the number of expressions which the optimizer needs to consider is still unacceptable. So the System R optimizer also use heuristics such as delaying optimization of Cartesian products until final processing or considering only left deep trees (which excludes a large number of query trees, like bushy trees) when optimizing large queries [GLS93]. However, the exclusion of Cartesian products or considering only left deep trees may force a poor plan to be chosen, hence optimality can not be guaranteed.
 
-> 9. In some sense, a query block in System R is like a group in Cascades and Columbia.
+[^9]: In some sense, a query block in System R is like a group in Cascades and Columbia.
 
 IBM’s Starburst optimizer [HCL90] extends the System R optimizer with an extensible and more efficient approach. The Starburst optimizer consists of two rule- based sub systems: the query re-write or Query Graph Model (QGM) optimizer and the plan optimizer. A QGM is the internal, semantic representation of a query. The QGM optimizer uses a set of production rules to transform a QGM heuristically into a semantically equivalent “better” QGM. The purposes of this phrase are simplification and amelioration [JaK84]: eliminating redundancy and deriving expressions that are easier for the plan optimizer to optimize in a cost-based manner. The plan optimizer is a select-project-join optimizer consisting of a join enumerator and a plan generator. The join enumerator uses two kinds of join feasibility criteria (mandatory and heuristic) to limit the number of joins. The join enumerator algorithm is not rule-based and written in C and its modular design allows it to be replaced by alternative enumeration algorithms. The plan generator uses grammar-like production rules to construct access plans for joins. These parameterized production rules are called STrategic Alternative Rules (or STARs). The STARs can determine which table is the inner and which is the outer, which join methods to consider, etc.
 
