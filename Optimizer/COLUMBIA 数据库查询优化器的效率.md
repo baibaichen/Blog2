@@ -177,23 +177,21 @@ Cascades 使用表达式表示模式和替代。**模式总是逻辑表达式**�
 
 ### 3.1 The System R and Starburst Optimizer
 
-Current relational query optimizers have been greatly influenced by techniques used in the design of IBM’s System R query optimizer [SAC+79]. One of the important contributions of the System R optimizer is cost-based optimization. The optimizer use statistics about relations and indexes stored in the system catalog to estimate the cost of a query evaluation plan. There are two parts to estimating the cost: one is estimating the cost of performing the operators. The other is estimating the size of the result of a query block[^8], and whether it is sorted.
+当前的关系查询优化器受到 IBM System R 查询优化器 [SAC+79] 设计中使用的技术的极大影响。System R 优化器的重要贡献之一是基于成本的优化。优化器使用有关存储在系统目录中的关系和索引的统计信息来估计查询评估计划的成本。成本估算分为两部分：一是估算执行操作的成本。另一个是估计查询块[^8]结果的大小，以及是否已排序。
 
-[^8]: System R decomposes queries into a collection of smaller units call query blocks.
+[^8]: System R 将查询分解为一组被称为查询块的小单位。
 
-Estimating the cost of operators requires knowledge of various parameters of the input relations, such as the cardinality (size of the relation), number of pages and available indexes. Such statistics are maintained in the DBMS’s system catalogs. Size estimation plays an important role in cost estimation because the output of one operator can be the input to another operator, and the cost of an operator depends on the size of its inputs. System R defined a series of size estimation formulas which are also used by current query optimizers, although more sophisticated techniques based on more detailed statistics (e.g., histograms of the values in a system) have been proposed in recent years [Ioa93] [PIH96].
+估计运算符的成本需要了解输入关系的各种参数，例如基数（关系的大小）、页数和可用索引。此类统计信息保存在 DBMS 的系统目录中。大小估计在成本估计中起着重要作用，因为一个算子的输出可以是另一个算子的输入，而算子的成本取决于其输入的大小。System R 定义了一系列大小估计公式，当前的查询优化器也使用这些公式，尽管近年来提出了基于更详细的统计数据（例如，系统中值的直方图）的更复杂的技术 [Ioa93] [PIH96] 。
 
-> Another important contribution of the System R optimizer is the bottom-up dynamic programming search strategy. The idea of dynamic programming is to find the best plans of the lower level query blocks[^9] in the query tree and only keep the best plans for consideration with the upper level query blocks. It is a bottom-up style, since it always optimizes the lower level expressions first. In order to calculate the cost of an upper level expression, all the costs (as well as the sizes of the results) of its lower level inputs (also expressions) must be calculated. The dynamic programming trick is: after we optimize a query block (i.e., we find a best plan), we throw away all the equivalent expressions of this query block and only keep the best plan for this query block. [OnL90] pointed out that dynamic programming needs to consider O(3^N^) expressions (plans). Because of this exponential growth rate, when N is large, the number of expressions which the optimizer needs to consider is still unacceptable. So the System R optimizer also use heuristics such as delaying optimization of Cartesian products until final processing or considering only left deep trees (which excludes a large number of query trees, like bushy trees) when optimizing large queries [GLS93]. However, the exclusion of Cartesian products or considering only left deep trees may force a poor plan to be chosen, hence optimality can not be guaranteed.
+System R 优化器的另一个重要贡献是**自下而上的动态规划搜索策略**。动态规划的理念是在查询树中找出下层查询块[^9]的最佳计划，并只保留最佳计划供较高级别查询块考虑。这是一种从底层优化的方式，因为它总是优先优化低级别的表达式。为了计算上级表达式的成本，必须计算所有下级输入（也是表达式）的成本（以及结果的大小）。动态规划的技巧是：在我们优化一个查询块（即，我们找到一个最佳计划）后，我们丢弃这个查询块的所有等价表达式，只保留这个查询块的最佳计划。[OnL90]指出，**动态规划需要考虑O(3^N^)的表达式（计划）**。由于这种指数增长率，当 N 很大时，优化器需要考虑的表达式的数量仍然是不可接受的。因此，System R优化器也使用启发式方法，比如在最后处理时延迟优化笛卡尔积，或者在优化大型查询时只考虑左深度树（这排除了大量的查询树，比如灌木树）[GLS93]。然而，排除笛卡尔积或只考虑左深度树可能会迫使选择一个差的计划，因此不能保证最优解。
 
-System R 优化器的另一个重要贡献是**自下而上的动态规划搜索策略**。动态规划的理念是在查询树中找出下层查询块[^9]的最佳计划，并只保留最佳计划供较高级别查询块考虑。这是一种从底层优化的方式，因为它总是优先优化低级别的表达式。为了计算上级表达式的成本，必须计算所有下级输入（也是表达式）的成本（以及结果的大小）。动态规划的技巧是：在我们优化一个查询块（即，我们找到一个最佳计划）后，我们丢弃这个查询块的所有等价表达式，只保留这个查询块的最佳计划。[OnL90]指出，**动态规划需要考虑O(3^N^)的表达式（计划）**。由于这种指数增长率，当N很大时，优化器需要考虑的表达式的数量仍然是不可接受的。因此，System R优化器也使用启发式方法，比如在最后处理时延迟优化笛卡尔积，或者在优化大型查询时只考虑左深度树（这排除了大量的查询树，比如灌木树）[GLS93]。然而，排除笛卡尔积或只考虑左深度树可能会迫使选择一个差的计划，因此不能保证最优解。
+[^9]: 从某种意义上说，System R 中的查询块就像 Cascades 和 Columbia 中的一个组。
 
-[^9]: In some sense, a query block in System R is like a group in Cascades and Columbia.
+IBM 的 Starburst 优化器 [HCL90] 扩展了 System R 优化器，提供了一个更可扩展、更高效的方法。Starburst 优化器由两个基于规则的子系统组成：**查询重写或查询图模型 (QGM) 优化器**和**计划优化器**。QGM 是查询的内部语义表示。QGM 优化器使用一组产生式规则将 QGM 启发式转换为语义上等效的**更好**的 QGM。**这个阶段的目的是简化和改善[JaK84]：消除冗余，产生计划优化器更易以基于成本的方式优化的表达式**。计划优化器是一个选择-投影- Join 优化器，由 Join 枚举器和计划生成器组成。Join 枚举器使用两种类型的 Join 可行性标准（强制和启发式）来限制 Join 的数量。Join 枚举器算法不是基于规则的，用 C 语言编写，其模块化设计允许它被替换为其他的枚举算法。计划生成器使用类似语法的产生规则来构建 Join 的访问计划。这些参数化的生产规则称为 STrategic  替代规则（或 STAR）。STAR 可以确定哪个表是内部表、哪个表是外部表、要考虑哪些连接方法等。
 
-IBM’s Starburst optimizer [HCL90] extends the System R optimizer with an extensible and more efficient approach. The Starburst optimizer consists of two rule- based sub systems: the query re-write or Query Graph Model (QGM) optimizer and the plan optimizer. A QGM is the internal, semantic representation of a query. The QGM optimizer uses a set of production rules to transform a QGM heuristically into a semantically equivalent “better” QGM. The purposes of this phrase are simplification and amelioration [JaK84]: eliminating redundancy and deriving expressions that are easier for the plan optimizer to optimize in a cost-based manner. The plan optimizer is a select-project-join optimizer consisting of a join enumerator and a plan generator. The join enumerator uses two kinds of join feasibility criteria (mandatory and heuristic) to limit the number of joins. The join enumerator algorithm is not rule-based and written in C and its modular design allows it to be replaced by alternative enumeration algorithms. The plan generator uses grammar-like production rules to construct access plans for joins. These parameterized production rules are called STrategic Alternative Rules (or STARs). The STARs can determine which table is the inner and which is the outer, which join methods to consider, etc.
+在 Starburst 中，查询优化是一个两步过程。在第一阶段，表示为 QGM 的初始查询被传递到 QGM 优化器，并被重写为新的更好的 QGM。然后新的 QGM 被传递给计划优化器。在第二阶段，计划优化器与 QGM 优化器通信以产生访问计划，并以类似于 System R 优化器的自下而上的方式构造最佳执行计划。
 
-In Starburst, Query optimization is a two step process. In the first phase, An initial query expressed as a QGM is passed to the QGM optimizer and be re-written to a new better QGM. The new QGM is then passed to the plan optimizer. In the second phase, the plan optimizer communicates with the QGM optimizer to produce access plans, and construct an optimal execution plan in a bottom up fashion similar to the System R optimizer.
-
-The QGM optimizer is capable of sophisticated heuristic optimization. Thus it contributes to the efficiency of the Starburst optimizer. However, as [KaD96] pointed out, the heuristics sometimes make incorrect decisions because they are based on only logical information, i.e., not based on cost estimates. Also, heuristics are hard to extend to more complicated queries containing non-relational operators. Obviously, the grammar-like rule-based approach to transform QGMs and plans is a contribution to extensible query optimization, but is not clear how this can be used to optimize queries containing non-relational operators and complicated transformations.
+QGM 优化器能够进行复杂的启发式优化。因此，它有助于提高 Starburst 优化器的效率。然而，正如 [KaD96] 指出，启发式有时会做出错误的决定，因为它们仅基于逻辑信息，即不基于成本估计。此外，启发式方法很难扩展到包含非关系运算符的更复杂的查询。显然，转换 QGM 和计划的类似语法的基于规则的方法有助于可扩展查询优化，但尚不清楚如何将其用于优化包含非关系运算符和复杂转换的查询。
 
 ### 3.2 The Exodus and Volcano Optimizer Generators
 
@@ -201,7 +199,7 @@ Exodus 优化器生成器 [GrD87] 是第一个使用**自顶向下优化**的可
 
 Exodus 的主要贡献是自顶向下优化器生成器框架，它将优化器的搜索策略与数据模型分离，并将**转换规则和逻辑运算符**与**实现规则和物理运算符**分开。尽管构建高效优化器很困难，但它为下一代可扩展优化器提供了一个有用的基础。
 
-Volcano Optimizer Generator [GrM93] 的主要目标是提高 Exodus 的效率，以实现更高的性能、进一步的可扩展性和有效性。**将动态规划与基于物理性质的有向搜索、分枝定界剪枝和启发式引导相结合，形成一种新的搜索算法，称为有向动态规划，从而实现高效率**。Volcano 中的搜索策略是一种自上而下、面向目标的控制策略：只在必要时优化子表达式。<u>也就是说，只有那些真正参与有前途的更大计划的**表达式和计划**才会被考虑优化</u>。它还使用动态规划来存储所有最优子计划以及失败的优化，直到完全优化完查询。由于它通过使用物理特性（系统 R 中**感兴趣的特性**的泛化），因此非常面向目标，并且只转换那些有希望的表达式和计划，所以搜索算法较高效。通过从**数据模型规范**中生成优化器源代码，并将成本以及逻辑和物理属性封装到抽象数据类型中，Volcano 实现了更多的可扩展性。有效性是通过穷举搜索来实现，只由优化器实现者来决定是否进行裁剪。
+Volcano 优化器生成器 [GrM93] 的主要目标是提高 Exodus 的效率，以实现更高的性能、更大的扩展性和有效性。将动态规划与基于物理性质的有向搜索、分枝定界剪枝和启发式引导相结合，形成一种新的搜索算法，称为有向动态规划，从而实现高**效率**。Volcano 的搜索策略是一种自上而下、面向目标的控制策略：**只在必要时优化子表达式**。<u>也就是说，只有那些真正参与有前途的更大计划的**表达式和计划**才会被考虑优化</u>。它还使用动态规划来存储所有最优子计划以及失败的优化，直到查询完全优化。由于它通过使用物理特性（系统 R 中**关键属性**的泛化），因此非常面向目标，并且只转换那些有希望的表达式和计划，所以搜索算法较高效。通过从**数据模型规范**中生成优化器源代码，并将成本以及逻辑和物理属性封装到抽象数据类型中，Volcano 实现了更多的可扩展性。**有效性**是通过穷举搜索来实现，只由优化器实现者来决定是否进行裁剪。
 
 Volcano 搜索策略的效率允许生成真正的优化器，一个用于面向对象的数据库系统 [BMG93]，另一个用于有许多规则的原型科学数据库系统 [Wog93]。
 
@@ -348,9 +346,9 @@ return init_val mod table_size
 ##### 4.2.1.3 GROUP
 `GROUP` 类是**自顶向下**优化的核心，是逻辑上等价的**逻辑和物理多重表达式**的集合。由于所有这些多重表达式都具有相同的逻辑属性，因此 `GROUP` 还存储了指向这些多重表达式共享的<u>逻辑属性</u>的指针。对于动态规划和记忆化搜索，包含了一个记录了组内最优计划的 `WINNER`。除了这些基本元素外，Columbia 还改进了 `GROUP`，使得搜索策略更加高效。与 Cascade 相比，该算法增加了一个下界成员，分离了**物理表达式**和**逻辑多重表达式**，并为胜者提供了更好的结构。
 
-**Group 的下界**。Group 的下界是一个值 L，Group 中的每个计划 P ^15^ 都满足：$cost(P) >= L$。下界是自上而下优化的重要措施，当组的下界大于当前上界（即当前优化的成本限制）时，可能会裁剪该组，它可以避免枚举整个输入组而不会丢失最优方案。第 4.4.1 节将讨论在 Columbia 中裁剪组的细节，这是 Columbia 优化器对提高效率的主要贡献。在创建组并将其追加到搜索空间时，将计算组的下界，以便后续优化时使用。
+**Group 的下界**。Group 的下界是一个值 L，Group 中的每个计划 P[^15] 都满足：$cost(P) >= L$。下界是自上而下优化的重要措施，当组的下界大于当前上界（即当前优化的成本限制）时，可能会裁剪该组，它可以避免枚举整个输入组而不会丢失最优方案。第 4.4.1 节将讨论在 Columbia 中裁剪组的细节，这是 Columbia 优化器对提高效率的主要贡献。在创建组并将其追加到搜索空间时，将计算组的下界，以便后续优化时使用。
 
-> 15. 实际上，Group 中的计划是从显式存储在组中的物理**多重表达式**<u>派生的</u>。
+[^15]: 实际上，Group 中的计划是从显式存储在组中的物理**多重表达式**<u>派生的</u>。
 
 本节介绍如何在 Columbia 中计算组的下界。**显然，下界越高越好**。我们的目标是根据我们从组中收集到的信息找到==最高==的下界。构造组时，将收集逻辑属性，包括基数和组的 Schema，并从中计算出下界。**由于计算下界仅基于组的逻辑属性，因此可以在不枚举组中任何表达式的情况下进行计算**。
 
@@ -468,9 +466,9 @@ class EXPR_LIST {
 
 #### 4.2.2 Rules
 
-**规则集**中定义了引导优化搜索的**<u>规则</u>**，**规则集**与搜索结构和算法无关。通过添加或删除一些规则，可以独立地修改规则集。附录 C 是一个简单规则集，用于优化简单的联接查询。
+**规则集**中定义了引导优化搜索的**规则**，**规则集**与搜索结构和算法无关。通过添加或删除一些规则，可以独立地修改规则集。附录 C 是一个简单规则集，用于优化简单的 Join 查询。
 
-所有规则都是 `RULE` 类的实例，它提供了<u>**规则名称**</u>，一个<u>**模式**</u>和一个<u>**替换项**</u>。<u>**模式**</u>和<u>**替换项**</u>表示为包含<u>叶运算符</u>的表达式（`EXPR` 对象）。叶运算符是只在规则中使用的**特殊运算符**。它没有输入，是**模式**或**替换项**<u>表达式树</u>中的叶节点。在匹配规则期间，模式的<u>叶运算符节点</u>会**匹配**<u>任何子树</u>。如，从左到右（`LTOR`）联接规则具有以下成员数据，其中 $L(i)$ 表示叶运算符 $i$：
+所有规则都是 `RULE` 类的实例，它提供了**规则名称**，一个**模式**和一个**替换项**。**模式**和**替换项**表示为包含<u>叶运算符</u>的表达式（`EXPR` 对象）。叶运算符是只在规则中使用的**特殊运算符**。它没有输入，是**模式**或**替换项**<u>表达式树</u>中的叶节点。在匹配规则期间，模式的<u>叶运算符节点</u>会**匹配**<u>任何子树</u>。如，从左到右（`LTOR`）联接规则具有以下成员数据，其中 $L(i)$ 表示叶运算符 $i$：
 
 1. 模式：$( L(1) \Join L(2) ) \Join L(3)$
 
@@ -478,7 +476,7 @@ class EXPR_LIST {
 
 模式和替代描述了如何在搜索空间中产生新的多重表达式。这些新的多重表达式由 `APPLY_RULE::perform()` 分为两步生成：首先，一个 `BINDERY` 对象在搜索空间中将模式绑定到 `EXPR`。然后 `RULE::next_substitute()`  产生新的表达式，该表达式通过 `SSP::copy_in()` 集成到搜索空间中。
 
-`RULE` 类中还有其他方法可以方便规则的操作。`top_match()` 检查规则的顶层的运算符，是否与<u>要应用规则的当前表达式</u>的顶层运算符匹配。顶层匹配是在规则的实际绑定之前完成的，因此消除了许多明显不匹配的表达式。
+`RULE` 类中还有其他方法可以方便规则的操作。`top_match()` 检查规则的顶层的运算符，是否与要应用规则的当前表达式的顶层运算符匹配。顶层匹配是在规则的实际绑定之前完成的，因此消除了许多明显不匹配的表达式。
 
 方法 `promise()` 用于确定应用规则的顺序，或者不应用规则。`promise()`  会根据优化的上下文（例如所需的物理属性）返回规则的<u>**承诺**</u>值。因此，它是一个运行时值，并通知优化器该规则可能多有用。该值等于或小于 0 意味着不在此处应用此规则。较高的**<u>承诺</u>**值意味着可以更早地应用此规则。默认情况下，<u>**==实现规则==**</u>的承诺值为 2，其他规则的承诺值为 1，表示总是更早应用<u>**==实现规则==**</u>。这种规则调度机制使得优化器可以控制搜索顺序，并通过规则调度，以尽可能快的速度、尽可能低的成本获得搜索边界，从而从中获益。
 
@@ -497,7 +495,7 @@ $(G_7 \Join G_4 ) \Join G_{10}$
 
 其中 G~i~ 是 `GROUP_NO`  为 $i$ 的 Group。
 
-`BINDERY` 对象的重要任务是**识别**<u>给定模式所有绑定</u>，将在其生命周期内产生所有此类绑定。为了产生绑定，必须为每个输入子 Group 生成一个 `BINDERY` 实例。
+`BINDERY` 对象的重要任务是**识别**给定模式所有绑定，将在其生命周期内产生所有此类绑定。为了产生绑定，必须为每个输入子 Group 生成一个 `BINDERY` 实例。
 
 例如，考虑联接规则 `LTOR`  的 bindery。它将为左输入生成一个 bindery，该 bindery 将查找模式 $L(1) \Join L(2)$ 的所有绑定，并为右输入生成一个 bindery，该 bindery 将查找模式 L(3) 的所有绑定。右侧的 bindery 只会找到整个右输入组的一个绑定。左侧的 bindery 通常会找到许多绑定，左输入组中每个联接一个绑定。
 
@@ -912,7 +910,7 @@ When optimizing a physical expression Expr under a context:
 
 这种剪枝技术被称为全局 Epsilon 剪枝，因为在整个优化过程中，ε 是全局使用的，而不是局限于特定的组优化。
 
-**算法**：选择一个全局参数 Globeps > 0。遵循通常的优化算法，只是在一个组中找到一个计划的 **cost(plan) < Globeps** 时，就会声明一个最终的赢家。 将赢家录入该组，并标记<u>搜索上下文</u>完成，表示该组不再需要进一步搜索。
+**算法**：选择一个全局参数 Globeps > 0。遵循通常的优化算法，只是在一个组中找到一个计划的 **cost(plan) < Globeps** 时，就会声明一个最终的赢家。将赢家录入该组，并标记<u>搜索上下文</u>完成，表示该组不再需要进一步搜索。
 
 这个算法在任务 O_INPUTS 中实现，如图22的 **Note2** 中所示。优化表达式的成本计算后，如果设置了全局 epsilon 剪枝标记，就会将成本与全局 epsilon 进行比较。如果成本小于 epsilon，搜索就完成了。
 
