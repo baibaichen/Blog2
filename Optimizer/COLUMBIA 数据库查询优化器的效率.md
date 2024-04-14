@@ -917,12 +917,13 @@ if (either there is no winner in G or CostSoFar is cheaper than the cost of the 
 
 **动机**：自上而下的优化器在生成一些低级计划之前计算高级物理计划的成本。这些早期成本可作为后续优化的上限。在许多情况下，这些上限可用于避免生成整组表达式。我们称之为组裁剪。
 
-由于 Columbia 从上到下记忆化搜索，因此可以使用**==边界==**来裁剪整个组。例如，假设优化器的输入是$(A\Join B)\Join C$。优化器将首先计算组[ABC]中一个计划的成本，比如$(A\Join_L B)\Join_LC$；假设**它的成本是5秒**。它扩展了组[AB]，在计算这 5 秒成本时，没有考虑组 [AC] 或 [BC]。现在我们正在考虑优化组中的另一个表达式，比如 $[AC]\Join_L[B]$。假设组[AC]表示笛卡尔乘积，它是如此巨大，以至于仅将元组从 [AC] 复制到 [ABC] 就超过 5 秒。**这意味着包含 [AC] 的计划永远不会是 [ABC] 的最佳计划**。在这种情况下，优化器不会生成组 [AC] 中的所有计划，因此有效地裁剪组[AC]。图 23 显示了对上述两个表达式进行优化后的搜索空间的内容。注意，[AC] 组未展开。另一方面，Starburst 和其他自下而上的优化器在开始处理 [ABC] 之前优化组 [AB]、[AC] 和 [BC]，从而失去了裁剪多个计划的机会。
+由于 Columbia 从上到下记忆化搜索，因此可以使用==边界==来裁剪整个组。例如，假设优化器的输入是 $(A\Join B)\Join C$。优化器将首先计算组 [ABC] 中一个计划的成本，比如 $(A\Join_L B)\Join_LC$；假设**它的成本是5秒**。它扩展了组 [AB]，在计算这 5 秒成本时，没有考虑组 [AC] 或 [BC]。现在我们正在考虑优化组中的另一个表达式，比如 $[AC]\Join_L[B]$。假设组 [AC] 表示笛卡尔乘积，它是如此巨大，以至于仅将元组从 [AC] 复制到 [ABC] 就超过 5 秒。**这意味着包含 [AC] 的计划永远不会是 [ABC] 的最佳计划**。在这种情况下，优化器不会生成组 [AC] 中的所有计划，因此有效地裁剪组[AC]。图 23 显示了对上述两个表达式进行优化后的搜索空间的内容。注意，[AC] 组未展开。另一方面，Starburst 和其他自下而上的优化器在开始处理 [ABC] 之前优化组 [AB]、[AC] 和 [BC]，从而失去了裁剪多个计划的机会。
 
 <p align="center">
  <img src="./EFFICIENCY IN THE COLUMBIA DATABASE QUERY OPTIMIZER/Figure_23.png" />
  Figure 23  <B>Search space during optimization ( [AC] is Cartesian product )</B>
 </p>
+
 **如果最优组 G 从未被枚举过，我们就说它被剪枝了**。因此，裁剪后的组将仅包含一个表达式，即创建它的表达式。组裁剪非常有效：表示 k 个表的 Join 的组可以包含 2^k^ –2 个逻辑表达式。**在一组中，物理表达式的数量通常是逻辑表达式的两倍以上**。
 
 **算法**：在本节中，我们将描述 Columbia 如何通过使用改进的优化算法，来增加实现组剪枝的可能性，如图 24 所示。该算法是任务 O_INPUTS 的一部分（[第 4.2 3.5节](#4.2.3.5 O_INPUTS - Task to optimize inputs and derive cost of an expression)），是图 22 中 Note1 行的详细说明
@@ -948,6 +949,7 @@ When optimizing a physical expression Expr under a context:
  <img src="./EFFICIENCY IN THE COLUMBIA DATABASE QUERY OPTIMIZER/Figure_25.png" />
  Figure 25  <B>A situation when lower bound pruning happens</B>
 </p>
+
 下界组剪枝是安全的，即优化器使用这种剪枝技术会产生最佳计划裁剪因为只有当一组计划的成本下界大于另一个计划的成本时，我们才会修剪一组计划，并且我们在  [4.2.1.3](#4.2.1.3 GROUP) 节中证明了我们使用的界是下界。
 
 #### 4.3.2 Global Epsilon Pruning
