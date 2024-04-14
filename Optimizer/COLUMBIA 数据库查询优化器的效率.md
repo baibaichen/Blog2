@@ -14,7 +14,7 @@
 
 第三代查询优化器框架，如 Cascades [Gra95]、OPT++ [KaD96]、EROC [MBH96] 和 METU [ONK95]，使用面向对象的设计来简化实现、扩展和修改优化器的任务，同时保持效率，使搜索策略更加灵活。最新一代优化器达到了满足现代商业数据库系统要求和需求的复杂程度。这些优化器的行业实现证明了这一点，例如 Microsoft [Gra96] 和 Tandem [Cel96] 的 Cascades，NCR [MBH96] 的 EROC。
 
-这三代查询优化器可以分为两种搜索策略，Starburst 风格自底向上动态规划优化器和 Cascades 风格自顶向下基于成本的优化器，==基于分支和约束规则驱动==。自底向上优化被广泛应用于传统的商业数据库系统中，因为它被认为是高效的，至少在传统应用中是这样。**但是自底向上的优化天生就没有自顶向下的优化那么可扩展，因为它需要将原始问题分解成子问题**。此外，为了在大型查询中获得可接受的性能，自底向上优化中需要采用启发式方法。
+这三代查询优化器可以分为两种搜索策略，Starburst 式自底向上动态规划优化器和 Cascades 式自顶向下基于成本、规则驱动、采用分支和限定的优化器。由于认为自下而上的优化在传统应用中至少是有效的，因此它被广泛用于当前传统的商业数据库系统中。**但是，自下而上的优化本质上不如自上而下的优化具有扩展性，因为它需要将原始问题分解成子问题**。此外，为了在大型查询中获得可接受的性能，自底向上优化中需要采用启发式方法。
 
 尽管以前的自顶向下优化器的实现表明，它们很难像自底向上优化那样调优出有竞争力的性能。但我们认为自上而下优化器在效率和可扩展性方面具有优势。本论文的其余部分描述了我们尝试开发另一种自上而下的优化器 Columbia，以证明可以在自上而下的方法中实现高效率。
 
@@ -183,7 +183,9 @@ Current relational query optimizers have been greatly influenced by techniques u
 
 Estimating the cost of operators requires knowledge of various parameters of the input relations, such as the cardinality (size of the relation), number of pages and available indexes. Such statistics are maintained in the DBMS’s system catalogs. Size estimation plays an important role in cost estimation because the output of one operator can be the input to another operator, and the cost of an operator depends on the size of its inputs. System R defined a series of size estimation formulas which are also used by current query optimizers, although more sophisticated techniques based on more detailed statistics (e.g., histograms of the values in a system) have been proposed in recent years [Ioa93] [PIH96].
 
-Another important contribution of the System R optimizer is the bottom-up dynamic programming search strategy. The idea of dynamic programming is to find the best plans of the lower level query blocks[^9] in the query tree and only keep the best plans for consideration with the upper level query blocks. It is a bottom-up style, since it always optimizes the lower level expressions first. In order to calculate the cost of an upper level expression, all the costs (as well as the sizes of the results) of its lower level inputs (also expressions) must be calculated. The dynamic programming trick is: after we optimize a query block (i.e., we find a best plan), we throw away all the equivalent expressions of this query block and only keep the best plan for this query block. [OnL90] pointed out that dynamic programming needs to consider O(3^N^) expressions (plans). Because of this exponential growth rate, when N is large, the number of expressions which the optimizer needs to consider is still unacceptable. So the System R optimizer also use heuristics such as delaying optimization of Cartesian products until final processing or considering only left deep trees (which excludes a large number of query trees, like bushy trees) when optimizing large queries [GLS93]. However, the exclusion of Cartesian products or considering only left deep trees may force a poor plan to be chosen, hence optimality can not be guaranteed.
+> Another important contribution of the System R optimizer is the bottom-up dynamic programming search strategy. The idea of dynamic programming is to find the best plans of the lower level query blocks[^9] in the query tree and only keep the best plans for consideration with the upper level query blocks. It is a bottom-up style, since it always optimizes the lower level expressions first. In order to calculate the cost of an upper level expression, all the costs (as well as the sizes of the results) of its lower level inputs (also expressions) must be calculated. The dynamic programming trick is: after we optimize a query block (i.e., we find a best plan), we throw away all the equivalent expressions of this query block and only keep the best plan for this query block. [OnL90] pointed out that dynamic programming needs to consider O(3^N^) expressions (plans). Because of this exponential growth rate, when N is large, the number of expressions which the optimizer needs to consider is still unacceptable. So the System R optimizer also use heuristics such as delaying optimization of Cartesian products until final processing or considering only left deep trees (which excludes a large number of query trees, like bushy trees) when optimizing large queries [GLS93]. However, the exclusion of Cartesian products or considering only left deep trees may force a poor plan to be chosen, hence optimality can not be guaranteed.
+
+System R 优化器的另一个重要贡献是**自下而上的动态规划搜索策略**。动态规划的理念是在查询树中找出下层查询块[^9]的最佳计划，并只保留最佳计划供较高级别查询块考虑。这是一种从底层优化的方式，因为它总是优先优化低级别的表达式。为了计算上级表达式的成本，必须计算所有下级输入（也是表达式）的成本（以及结果的大小）。动态规划的技巧是：在我们优化一个查询块（即，我们找到一个最佳计划）后，我们丢弃这个查询块的所有等价表达式，只保留这个查询块的最佳计划。[OnL90]指出，**动态规划需要考虑O(3^N^)的表达式（计划）**。由于这种指数增长率，当N很大时，优化器需要考虑的表达式的数量仍然是不可接受的。因此，System R优化器也使用启发式方法，比如在最后处理时延迟优化笛卡尔积，或者在优化大型查询时只考虑左深度树（这排除了大量的查询树，比如灌木树）[GLS93]。然而，排除笛卡尔积或只考虑左深度树可能会迫使选择一个差的计划，因此不能保证最优解。
 
 [^9]: In some sense, a query block in System R is like a group in Cascades and Columbia.
 
@@ -775,7 +777,7 @@ APPLY_RULE::perform( mexpr, rule, context, exploring ) {
 
 > 优化输入并推导表达式成本的任务
 
-在优化期间应用了**实现规则**之后，即对查询树中的一个节点考虑了实现算法后，则要通过优化实现算法的每个输入来继续优化。任务 O_INPUTS 的目标是计算物理多重表达式的成本。它首先计算多重表达式输入的成本，然后将它们与顶层运算符的成本相加。`O_INPUTS` 类中的数据成员 `input_no`（初始为 0），表示对哪个输入已经计算了成本。==此任务和其他任务相比，比较独特，因为它不会在调度其他任务后终止。它首先将自己压入堆栈，然后对其输入进行优化==。当所有输入都计算完成本后，它会计算整个物理多重表达式的成本。
+在优化期间应用了**实现规则**之后，即对查询树中的一个节点考虑了实现算法后，则要通过优化实现算法的每个输入来继续优化。任务 O_INPUTS 的目标是计算物理多重表达式的成本。它首先计算多重表达式输入的成本，然后将它们与顶层运算符的成本相加。`O_INPUTS` 类中的数据成员 `input_no`（初始为 0），表示对哪个输入已经计算了成本。此任务和其他任务相比，比较独特，因为它不会在调度其他任务后终止。它首先将自己压入堆栈，然后对其输入进行优化。**当所有输入都计算完成本后，它会计算整个物理多重表达式的成本**。
 
 该任务是执行 Columbia 裁剪技术的主要任务，在 4.3 节中详细讨论。基于 Cascades 中的相同任务，Columbia 中的 O_INPUTS  重新设计了算法，并添加了剪枝相关的逻辑来实现 Columbia 中新的剪枝技术。
 
