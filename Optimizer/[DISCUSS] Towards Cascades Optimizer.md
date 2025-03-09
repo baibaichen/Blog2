@@ -1,11 +1,13 @@
 # [DISCUSS] Towards Cascades Optimizer
 ## Haisheng Yuan - Sunday, April 19, 2020 11:52:22 AM GMT+8
 
+### Message
+
 In the past few months, we have discussed a lot about Cascades style top-down optimization, including on-demand trait derivation/request, rule apply, branch and bound space pruning. Now we think it is time to move towards these targets.
 
 We will separate it into several small issues, and each one can be integrated as a standalone, independent feature, and most importantly, meanwhile keep backward compatibility.
 
-### 1 Top-down trait request
+#### 1 Top-down trait request
 In other words, pass traits requirements from parent nodes to child nodes. The trait requests happens after all the logical transformation rules and physical implementation rules are done, in a top-down manner, driven from root set. e.g.:
 
 ```sql
@@ -61,13 +63,13 @@ Calcite user may choose to ignore / not implement the interface to keep the orig
 - a non-null RelNode, which means it can pass down
 - null object, which means can't pass down
 
-### 2. Provide option to disable AbstractConverter
+#### 2. Provide option to disable AbstractConverter
 Once the plan can request traits in top-down way in the framework, many system don't need `AbstractConverter` anymore, since it is just a intermediate operator to generate physical sort / exchange. For those, we can provide option to disable `AbstractConverter`, generate physical enforcer directly by adding a method to interface Convention:
 - `RelNode enforce(RelNode node, RelTraitSet traits);`
 
 The default implementation may just calling `changeTraitsUsingConverters()`, but people may choose to override it if the system has special needs, like several traits must implement together, or the position of collation in `RelTraitSet` is before distribution.
 
-###  3. Top-down driven, on-demand rule apply
+####  3. Top-down driven, on-demand rule apply
 For every `RelNode` in a RelSet, rule is matched and applied sequentially, newly generated `RelNode`s are added to the end of `RelNode` list in the `RelSet` waiting for rule apply. `RuleQueue` and `DeferringRuleCall` is not needed anymore. This will make space pruning and rule mutual exclusivity check possible.
 
 There are 3 stages for each `RelSet`:
@@ -110,7 +112,7 @@ Basically it is a state machine with several states: Initialized, Explored, Expl
 To achieve this, we need to mark the rules either logical rule or physical rule.
 To keep backward compatibility, all the un-marked rules will be treated as logical rules, except rules that uses `AbstractConverter` as rule operand, these rules still need to applied top-down, or random order.
 
-###  4. On-demand, bottom-up trait derivation
+####  4. On-demand, bottom-up trait derivation
 > 按需、自下而上的特征推导
 
 It is called bottom-up, but actually driven by top-down, happens same time as top-down trait request, in optimization stage mentioned above. Many Calcite based bigdata system only propagate traits on Project and Filter by writing rules, which is very limited. In fact, we can extend trait propagation/derivation to all the operators, without rules, by adding interface `PhysicalNode` (or extending RelNode) with method:
@@ -164,7 +166,7 @@ For system that doesn't have a fine-tuned stats and cost model, it may not be ab
 
 Of course, all above methods are optional to implement for those who doesn't need this feature.
 
-### 5. Branch and Bound Space Pruning
+#### 5. Branch and Bound Space Pruning
 After we implement on-demand, top-down trait enforcement and rule-apply, we can pass the cost limit at the time of passing down required traits, as described in the classical Cascades paper. Right now, Calcite doesn't provide group level logical properties, including stats info, each operator in the same group has its own logical property and the stats may vary, so we can only do limited space pruning for trait enforcement, still good. But if we agree to add option to share group level stats between relnodes in a RelSet, we will be able to do more aggresive space pruning, which will help boost the performance of join reorder planning.
 
 
@@ -193,3 +195,23 @@ RelSubset 是 Apache Calcite 中描述具有相同物理属性的关系表达式
 4. 加快查询优化过程：由于 RelSubset 中的关系表达式是物理相等的，所以能避免在物理优化阶段进行无意义的比较和计算。这一点对于加快查询优化过程和提高优化效率是非常有帮助的。
 
 通过以上方式，RelSubset 可以帮助优化器更好地找到最佳的查询计划。
+
+### **Seliverstov Igor** - Sunday, 19 April 2020 19:31:27 GMT+8
+
+Ok, then such notification isn't needed.
+
+But in this case we don't have any control over how long planning tasks.
+
+For some systems it's necessary to get good enough plan right now instead of best one after while For example we've been considering a case when a query is optimised several times in short iterations in case it's impossible to get the best plan in reasonable period of time (for example there is an SLA for response time).
+
+This mean we need all needed physical implementations after each logical transformation is applied. Regards, Igor
+
+> [!NOTE]
+>
+> 好的，那么就不需要这样的通知了。
+>
+> 但在这种情况下，我们无法控制计划任务的时间。
+>
+> 对于某些系统，有必要立即获得足够好的计划，而不是一个最好的计划。例如，我们一直在考虑一个情况，即查询在短迭代中优化了几次，以防在合理的时间内无法获得最佳计划（例如，有一个响应时间的SLA）。
+>
+> 这意味着在应用每个逻辑转换之后，我们需要所有需要的物理实现。
