@@ -2,25 +2,15 @@
 
 The human visual system is one of the wonders of the world. Consider the following sequence of handwritten digits:
 
-
-
 ![img](http://neuralnetworksanddeeplearning.com/images/digits.png)
-
-
 
 Most people effortlessly recognize those digits as 504192. That ease is deceptive. In each hemisphere of our brain, humans have a primary visual cortex, also known as V1, containing 140 million neurons, with tens of billions of connections between them. And yet human vision involves not just V1, but an entire series of visual cortices - V2, V3, V4, and V5 - doing progressively more complex image processing. We carry in our heads a supercomputer, tuned by evolution over hundreds of millions of years, and superbly adapted to understand the visual world. Recognizing handwritten digits isn't easy. Rather, we humans are stupendously, astoundingly good at making sense of what our eyes show us. But nearly all that work is done unconsciously. And so we don't usually appreciate how tough a problem our visual systems solve.
 
 The difficulty of visual pattern recognition becomes apparent if you attempt to write a computer program to recognize digits like those above. What seems easy when we do it ourselves suddenly becomes extremely difficult. Simple intuitions about how we recognize shapes - "a 9 has a loop at the top, and a vertical stroke in the bottom right" - turn out to be not so simple to express algorithmically. When you try to make such rules precise, you quickly get lost in a morass of exceptions and caveats and special cases. It seems hopeless.
 
-
-
 Neural networks approach the problem in a different way. The idea is to take a large number of handwritten digits, known as training examples,
 
-
-
 ![img](http://neuralnetworksanddeeplearning.com/images/mnist_100_digits.png)
-
-
 
 and then develop a system which can learn from those training examples. In other words, the neural network uses the examples to automatically infer rules for recognizing handwritten digits. Furthermore, by increasing the number of training examples, the network can learn more about handwriting, and so improve its accuracy. So while I've shown just 100 training digits above, perhaps we could build a better handwriting recognizer by using thousands or even millions or billions of training examples.
 
@@ -30,11 +20,7 @@ We're focusing on handwriting recognition because it's an excellent prototype pr
 
 Of course, if the point of the chapter was only to write a computer program to recognize handwritten digits, then the chapter would be much shorter! But along the way we'll develop many key ideas about neural networks, including two important types of artificial neuron (the perceptron and the sigmoid neuron), and the standard learning algorithm for neural networks, known as stochastic gradient descent. Throughout, I focus on explaining *why* things are done the way they are, and on building your neural networks intuition. That requires a lengthier discussion than if I just presented the basic mechanics of what's going on, but it's worth it for the deeper understanding you'll attain. Amongst the payoffs, by the end of the chapter we'll be in position to understand what deep learning is, and why it matters.
 
-
-
 ### 1.1 [Perceptrons](http://neuralnetworksanddeeplearning.com/chap1.html#perceptrons)
-
-
 
 What is a neural network? To get started, I'll explain a type of artificial neuron called a *perceptron*. Perceptrons were [developed](http://books.google.ca/books/about/Principles_of_neurodynamics.html?id=7FhRAAAAMAAJ) in the 1950s and 1960s by the scientist [Frank Rosenblatt](http://en.wikipedia.org/wiki/Frank_Rosenblatt), inspired by earlier [work](http://scholar.google.ca/scholar?cluster=4035975255085082870) by [Warren McCulloch](http://en.wikipedia.org/wiki/Warren_McCulloch) and [Walter Pitts](http://en.wikipedia.org/wiki/Walter_Pitts). Today, it's more common to use other models of artificial neurons - in this book, and in much modern work on neural networks, the main neuron model used is one called the *sigmoid neuron*. We'll get to sigmoid neurons shortly. But to understand why sigmoid neurons are defined the way they are, it's worth taking the time to first understand perceptrons.
 
@@ -48,8 +34,6 @@ output={01if ∑jwjxj≤ thresholdif ∑jwjxj> threshold(1)(1)output={0if ∑jwj
 
 That's all there is to how a perceptron works!
 
-
-
 That's the basic mathematical model. A way you can think about the perceptron is that it's a device that makes decisions by weighing up evidence. Let me give an example. It's not a very realistic example, but it's easy to understand, and we'll soon get to more realistic examples. Suppose the weekend is coming up, and you've heard that there's going to be a cheese festival in your city. You like cheese, and are trying to decide whether or not to go to the festival. You might make your decision by weighing up three factors:
 
 1. Is the weather good?
@@ -57,8 +41,6 @@ That's the basic mathematical model. A way you can think about the perceptron is
 3. Is the festival near public transit? (You don't own a car).
 
 We can represent these three factors by corresponding binary variables x1,x2x1,x2, and x3x3. For instance, we'd have x1=1x1=1 if the weather is good, and x1=0x1=0 if the weather is bad. Similarly, x2=1x2=1 if your boyfriend or girlfriend wants to go, and x2=0x2=0 if not. And similarly again for x3x3 and public transit.
-
-
 
 Now, suppose you absolutely adore cheese, so much so that you're happy to go to the festival even if your boyfriend or girlfriend is uninterested and the festival is hard to get to. But perhaps you really loathe bad weather, and there's no way you'd go to the festival if the weather is bad. You can use perceptrons to model this kind of decision-making. One way to do this is to choose a weight w1=6w1=6 for the weather, and w2=2w2=2 and w3=2w3=2 for the other conditions. The larger value of w1w1 indicates that the weather matters a lot to you, much more than whether your boyfriend or girlfriend joins you, or the nearness of public transit. Finally, suppose you choose a threshold of 55 for the perceptron. With these choices, the perceptron implements the desired decision-making model, outputting 11 whenever the weather is good, and 00 whenever the weather is bad. It makes no difference to the output whether your boyfriend or girlfriend wants to go, or whether public transit is nearby.
 
@@ -70,8 +52,6 @@ Obviously, the perceptron isn't a complete model of human decision-making! But w
 
 In this network, the first column of perceptrons - what we'll call the first *layer* of perceptrons - is making three very simple decisions, by weighing the input evidence. What about the perceptrons in the second layer? Each of those perceptrons is making a decision by weighing up the results from the first layer of decision-making. In this way a perceptron in the second layer can make a decision at a more complex and more abstract level than perceptrons in the first layer. And even more complex decisions can be made by the perceptron in the third layer. In this way, a many-layer network of perceptrons can engage in sophisticated decision making.
 
-
-
 Incidentally, when I defined perceptrons I said that a perceptron has just a single output. In the network above the perceptrons look like they have multiple outputs. In fact, they're still single output. The multiple output arrows are merely a useful way of indicating that the output from a perceptron is being used as the input to several other perceptrons. It's less unwieldy than drawing a single output line which then splits.
 
 Let's simplify the way we describe perceptrons. The condition ∑jwjxj>threshold∑jwjxj>threshold is cumbersome, and we can make two notational changes to simplify it. The first change is to write ∑jwjxj∑jwjxj as a dot product, w⋅x≡∑jwjxjw⋅x≡∑jwjxj, where ww and xx are vectors whose components are the weights and inputs, respectively. The second change is to move the threshold to the other side of the inequality, and to replace it by what's known as the perceptron's *bias*, b≡−thresholdb≡−threshold. Using the bias instead of the threshold, the perceptron rule can be rewritten:
@@ -80,16 +60,11 @@ output={01if w⋅x+b≤0if w⋅x+b>0(2)(2)output={0if w⋅x+b≤01if w⋅x+b>0
 
 You can think of the bias as a measure of how easy it is to get the perceptron to output a 11. Or to put it in more biological terms, the bias is a measure of how easy it is to get the perceptron to *fire*. For a perceptron with a really big bias, it's extremely easy for the perceptron to output a 11. But if the bias is very negative, then it's difficult for the perceptron to output a 11. Obviously, introducing the bias is only a small change in how we describe perceptrons, but we'll see later that it leads to further notational simplifications. Because of this, in the remainder of the book we won't use the threshold, we'll always use the bias.
 
-
-
 I've described perceptrons as a method for weighing evidence to make decisions. Another way perceptrons can be used is to compute the elementary logical functions we usually think of as underlying computation, functions such as `AND`, `OR`, and `NAND`. For example, suppose we have a perceptron with two inputs, each with weight −2−2, and an overall bias of 33. Here's our perceptron:
 
 ![img](http://neuralnetworksanddeeplearning.com/images/tikz2.png)
 
 Then we see that input 0000 produces output 11, since (−2)∗0+(−2)∗0+3=3(−2)∗0+(−2)∗0+3=3 is positive. Here, I've introduced the ∗∗ symbol to make the multiplications explicit. Similar calculations show that the inputs 0101 and 1010 produce output 11. But the input 1111 produces output 00, since (−2)∗1+(−2)∗1+3=−1(−2)∗1+(−2)∗1+3=−1 is negative. And so our perceptron implements a `NAND` gate!
-
-
-
 
 
 The `NAND` example shows that we can use perceptrons to compute simple logical functions. In fact, we can use networks of perceptrons to compute *any* logical function at all. The reason is that the `NAND` gate is universal for computation, that is, we can build any computation up out of `NAND` gates. For example, we can use `NAND` gates to build a circuit which adds two bits, x1x1 and x2x2. This requires computing the bitwise sum, x1⊕x2x1⊕x2, as well as a carry bit which is set to 11 when both x1x1 and x2x2 are 11, i.e., the carry bit is just the bitwise product x1x2x1x2:
@@ -114,8 +89,6 @@ This notation for input perceptrons, in which we have an output, but no inputs,
 
 is a shorthand. It doesn't actually mean a perceptron with no inputs. To see this, suppose we did have a perceptron with no inputs. Then the weighted sum ∑jwjxj∑jwjxj would always be zero, and so the perceptron would output 11 if b>0b>0, and 00 if b≤0b≤0. That is, the perceptron would simply output a fixed value, not the desired value (x1x1, in the example above). It's better to think of the input perceptrons as not really being perceptrons at all, but rather special units which are simply defined to output the desired values, x1,x2,…x1,x2,….
 
-
-
 The adder example demonstrates how a network of perceptrons can be used to simulate a circuit containing many `NAND` gates. And because `NAND` gates are universal for computation, it follows that perceptrons are also universal for computation.
 
 The computational universality of perceptrons is simultaneously reassuring and disappointing. It's reassuring because it tells us that networks of perceptrons can be as powerful as any other computing device. But it's also disappointing, because it makes it seem as though perceptrons are merely a new type of `NAND` gate. That's hardly big news!
@@ -126,11 +99,7 @@ However, the situation is better than this view suggests. It turns out that we c
 
 Learning algorithms sound terrific. But how can we devise such algorithms for a neural network? Suppose we have a network of perceptrons that we'd like to use to learn to solve some problem. For example, the inputs to the network might be the raw pixel data from a scanned, handwritten image of a digit. And we'd like the network to learn weights and biases so that the output from the network correctly classifies the digit. To see how learning might work, suppose we make a small change in some weight (or bias) in the network. What we'd like is for this small change in weight to cause only a small corresponding change in the output from the network. As we'll see in a moment, this property will make learning possible. Schematically, here's what we want (obviously this network is too simple to do handwriting recognition!):
 
-
-
 ![img](http://neuralnetworksanddeeplearning.com/images/tikz8.png)
-
-
 
 If it were true that a small change in a weight (or bias) causes only a small change in output, then we could use this fact to modify the weights and biases to get our network to behave more in the manner we want. For example, suppose the network was mistakenly classifying an image as an "8" when it should be a "9". We could figure out how to make a small change in the weights and biases so the network gets a little closer to classifying the image as a "9". And then we'd repeat this, changing the weights and biases over and over to produce better and better output. The network would be learning.
 
@@ -162,19 +131,11 @@ To understand the similarity to the perceptron model, suppose z≡w⋅x+bz≡w�
 
 What about the algebraic form of σσ? How can we understand that? In fact, the exact form of σσ isn't so important - what really matters is the shape of the function when plotted. Here's the shape:
 
-
-
 -4-3-2-1012340.00.20.40.60.81.0zsigmoid function
-
-
 
 This shape is a smoothed out version of a step function:
 
-
-
 -4-3-2-1012340.00.20.40.60.81.0zstep function
-
-
 
 If σσ had in fact been a step function, then the sigmoid neuron would *be* a perceptron, since the output would be 11 or 00 depending on whether w⋅x+bw⋅x+b was positive or negative**Actually, when w⋅x+b=0w⋅x+b=0 the perceptron outputs 00, while the step function outputs 11. So, strictly speaking, we'd need to modify the step function at that one point. But you get the idea.. By using the actual σσ function we get, as already implied above, a smoothed out perceptron. Indeed, it's the smoothness of the σσ function that is the crucial fact, not its detailed form. The smoothness of σσ means that small changes ΔwjΔwj in the weights and ΔbΔb in the bias will produce a small change ΔoutputΔoutput in the output from the neuron. In fact, calculus tells us that ΔoutputΔoutput is well approximated by
 
@@ -182,13 +143,9 @@ If σσ had in fact been a step function, then the sigmoid neuron would *be* a p
 
 where the sum is over all the weights, wjwj, and ∂output/∂wj∂output/∂wj and ∂output/∂b∂output/∂b denote partial derivatives of the outputoutput with respect to wjwj and bb, respectively. Don't panic if you're not comfortable with partial derivatives! While the expression above looks complicated, with all the partial derivatives, it's actually saying something very simple (and which is very good news): ΔoutputΔoutput is a *linear function* of the changes ΔwjΔwj and ΔbΔb in the weights and bias. This linearity makes it easy to choose small changes in the weights and biases to achieve any desired small change in the output. So while sigmoid neurons have much of the same qualitative behaviour as perceptrons, they make it much easier to figure out how changing the weights and biases will change the output.
 
-
-
 If it's the shape of σσ which really matters, and not its exact form, then why use the particular form used for σσ in Equation (3)? In fact, later in the book we will occasionally consider neurons where the output is f(w⋅x+b)f(w⋅x+b) for some other *activation function* f(⋅)f(⋅). The main thing that changes when we use a different activation function is that the particular values for the partial derivatives in Equation (5) change. It turns out that when we compute those partial derivatives later, using σσ will simplify the algebra, simply because exponentials have lovely properties when differentiated. In any case, σσ is commonly-used in work on neural nets, and is the activation function we'll use most often in this book.
 
 How should we interpret the output from a sigmoid neuron? Obviously, one big difference between perceptrons and sigmoid neurons is that sigmoid neurons don't just output 00 or 11. They can have as output any real number between 00 and 11, so values such as 0.173…0.173… and 0.689…0.689… are legitimate outputs. This can be useful, for example, if we want to use the output value to represent the average intensity of the pixels in an image input to a neural network. But sometimes it can be a nuisance. Suppose we want the output from the network to indicate either "the input image is a 9" or "the input image is not a 9". Obviously, it'd be easiest to do this if the output was a 00 or a 11, as in a perceptron. But in practice we can set up a convention to deal with this, for example, by deciding to interpret any output of at least 0.50.5 as indicating a "9", and any output less than 0.50.5 as indicating "not a 9". I'll always explicitly state when we're using such a convention, so it shouldn't cause any confusion.
-
-
 
 #### [Exercises](http://neuralnetworksanddeeplearning.com/chap1.html#exercises_191892)
 
@@ -214,12 +171,7 @@ How should we interpret the output from a sigmoid neuron? Obviously, one big dif
   Suppose we have the same setup as the last problem - a network of perceptrons. Suppose also that the overall input to the network of perceptrons has been chosen. We won't need the actual input value, we just need the input to have been fixed. Suppose the weights and biases are such that w⋅x+b≠0w⋅x+b≠0 for the input xx to any particular perceptron in the network. Now replace all the perceptrons in the network by sigmoid neurons, and multiply the weights and biases by a positive constant c>0c>0. Show that in the limit as c→∞c→∞ the behaviour of this network of sigmoid neurons is exactly the same as the network of perceptrons. How can this fail when w⋅x+b=0w⋅x+b=0 for one of the perceptrons?
 
 
-
-
-
 ### 1.3 [The architecture of neural networks](http://neuralnetworksanddeeplearning.com/chap1.html#the_architecture_of_neural_networks)
-
-
 
 In the next section I'll introduce a neural network that can do a pretty good job classifying handwritten digits. In preparation for that, it helps to explain some terminology that lets us name different parts of a network. Suppose we have the network:
 
@@ -231,12 +183,7 @@ As mentioned earlier, the leftmost layer in this network is called the input lay
 
 Somewhat confusingly, and for historical reasons, such multiple layer networks are sometimes called *multilayer perceptrons* or *MLPs*, despite being made up of sigmoid neurons, not perceptrons. I'm not going to use the MLP terminology in this book, since I think it's confusing, but wanted to warn you of its existence.
 
-
-
 The design of the input and output layers in a network is often straightforward. For example, suppose we're trying to determine whether a handwritten image depicts a "9" or not. A natural way to design the network is to encode the intensities of the image pixels into the input neurons. If the image is a 6464 by 6464 greyscale image, then we'd have 4,096=64×644,096=64×64 input neurons, with the intensities scaled appropriately between 00 and 11. The output layer will contain just a single neuron, with output values of less than 0.50.5 indicating "input image is not a 9", and values greater than 0.50.5 indicating "input image is a 9 ".
-
-
-
 
 
 While the design of the input and output layers of a neural network is often straightforward, there can be quite an art to the design of the hidden layers. In particular, it's not possible to sum up the design process for the hidden layers with a few simple rules of thumb. Instead, neural networks researchers have developed many design heuristics for the hidden layers, which help people get the behaviour they want out of their nets. For example, such heuristics can be used to help determine how to trade off the number of hidden layers against the time required to train the network. We'll meet several such design heuristics later in this book.
@@ -245,39 +192,21 @@ Up to now, we've been discussing neural networks where the output from one layer
 
 However, there are other models of artificial neural networks in which feedback loops are possible. These models are called [recurrent neural networks](http://en.wikipedia.org/wiki/Recurrent_neural_network). The idea in these models is to have neurons which fire for some limited duration of time, before becoming quiescent. That firing can stimulate other neurons, which may fire a little while later, also for a limited duration. That causes still more neurons to fire, and so over time we get a cascade of neurons firing. Loops don't cause problems in such a model, since a neuron's output only affects its input at some later time, not instantaneously.
 
-
-
 Recurrent neural nets have been less influential than feedforward networks, in part because the learning algorithms for recurrent nets are (at least to date) less powerful. But recurrent networks are still extremely interesting. They're much closer in spirit to how our brains work than feedforward networks. And it's possible that recurrent networks can solve important problems which can only be solved with great difficulty by feedforward networks. However, to limit our scope, in this book we're going to concentrate on the more widely-used feedforward networks.
-
-
 
 ### 1.4 [A simple network to classify handwritten digits](http://neuralnetworksanddeeplearning.com/chap1.html#a_simple_network_to_classify_handwritten_digits)
 
-
-
 Having defined neural networks, let's return to handwriting recognition. We can split the problem of recognizing handwritten digits into two sub-problems. First, we'd like a way of breaking an image containing many digits into a sequence of separate images, each containing a single digit. For example, we'd like to break the image
-
-
 
 ![img](http://neuralnetworksanddeeplearning.com/images/digits.png)
 
-
-
 into six separate images,
-
-
 
 ![img](http://neuralnetworksanddeeplearning.com/images/digits_separate.png)
 
-
-
 We humans solve this *segmentation problem* with ease, but it's challenging for a computer program to correctly break up the image. Once the image has been segmented, the program then needs to classify each individual digit. So, for instance, we'd like our program to recognize that the first digit above,
 
-
-
 ![img](http://neuralnetworksanddeeplearning.com/images/mnist_first_digit.png)
-
-
 
 is a 5.
 
@@ -285,11 +214,7 @@ We'll focus on writing a program to solve the second problem, that is, classifyi
 
 To recognize individual digits we will use a three-layer neural network:
 
-
-
 ![img](http://neuralnetworksanddeeplearning.com/images/tikz12.png)
-
-
 
 The input layer of the network contains neurons encoding the values of the input pixels. As discussed in the next section, our training data for the network will consist of many 2828 by 2828 pixel images of scanned handwritten digits, and so the input layer contains 784=28×28784=28×28 neurons. For simplicity I've omitted most of the 784784 input neurons in the diagram above. The input pixels are greyscale, with a value of 0.00.0 representing white, a value of 1.01.0 representing black, and in between values representing gradually darkening shades of grey.
 
@@ -301,75 +226,37 @@ You might wonder why we use 1010 output neurons. After all, the goal of the netw
 
 To understand why we do this, it helps to think about what the neural network is doing from first principles. Consider first the case where we use 1010 output neurons. Let's concentrate on the first output neuron, the one that's trying to decide whether or not the digit is a 00. It does this by weighing up evidence from the hidden layer of neurons. What are those hidden neurons doing? Well, just suppose for the sake of argument that the first neuron in the hidden layer detects whether or not an image like the following is present:
 
-
-
 ![img](http://neuralnetworksanddeeplearning.com/images/mnist_top_left_feature.png)
-
-
 
 It can do this by heavily weighting input pixels which overlap with the image, and only lightly weighting the other inputs. In a similar way, let's suppose for the sake of argument that the second, third, and fourth neurons in the hidden layer detect whether or not the following images are present:
 
-
-
 ![img](http://neuralnetworksanddeeplearning.com/images/mnist_other_features.png)
-
-
 
 As you may have guessed, these four images together make up the 00 image that we saw in the line of digits shown [earlier](http://neuralnetworksanddeeplearning.com/chap1.html#complete_zero):
 
-
-
 ![img](http://neuralnetworksanddeeplearning.com/images/mnist_complete_zero.png)
 
-
-
 So if all four of these hidden neurons are firing then we can conclude that the digit is a 00. Of course, that's not the *only* sort of evidence we can use to conclude that the image was a 00 - we could legitimately get a 00 in many other ways (say, through translations of the above images, or slight distortions). But it seems safe to say that at least in this case we'd conclude that the input was a 00.
-
-
-
-
-
 
 
 Supposing the neural network functions in this way, we can give a plausible explanation for why it's better to have 1010 outputs from the network, rather than 44. If we had 44 outputs, then the first output neuron would be trying to decide what the most significant bit of the digit was. And there's no easy way to relate that most significant bit to simple shapes like those shown above. It's hard to imagine that there's any good historical reason the component shapes of the digit will be closely related to (say) the most significant bit in the output.
 
 Now, with all that said, this is all just a heuristic. Nothing says that the three-layer neural network has to operate in the way I described, with the hidden neurons detecting simple component shapes. Maybe a clever learning algorithm will find some assignment of weights that lets us use only 44 output neurons. But as a heuristic the way of thinking I've described works pretty well, and can save you a lot of time in designing good neural network architectures.
 
-
-
 #### [Exercise](http://neuralnetworksanddeeplearning.com/chap1.html#exercise_513527)
 
 - There is a way of determining the bitwise representation of a digit by adding an extra layer to the three-layer network above. The extra layer converts the output from the previous layer into a binary representation, as illustrated in the figure below. Find a set of weights and biases for the new output layer. Assume that the first 33 layers of neurons are such that the correct output in the third layer (i.e., the old output layer) has activation at least 0.990.99, and incorrect outputs have activation less than 0.010.01.
-
-
-
 
 
 ![img](http://neuralnetworksanddeeplearning.com/images/tikz13.png)
 
 
 
-
-
-
-
-
-
-
-
-### [Learning with gradient descent](http://neuralnetworksanddeeplearning.com/chap1.html#learning_with_gradient_descent)
-
-
-
-
+### 1.5 [Learning with gradient descent](http://neuralnetworksanddeeplearning.com/chap1.html#learning_with_gradient_descent)
 
 Now that we have a design for our neural network, how can it learn to recognize digits? The first thing we'll need is a data set to learn from - a so-called training data set. We'll use the [MNIST data set](http://yann.lecun.com/exdb/mnist/), which contains tens of thousands of scanned images of handwritten digits, together with their correct classifications. MNIST's name comes from the fact that it is a modified subset of two data sets collected by [NIST](http://en.wikipedia.org/wiki/National_Institute_of_Standards_and_Technology), the United States' National Institute of Standards and Technology. Here's a few images from MNIST:
 
-
-
 ![img](http://neuralnetworksanddeeplearning.com/images/digits_separate.png)
-
-
 
 As you can see, these digits are, in fact, the same as those shown at the [beginning of this chapter](http://neuralnetworksanddeeplearning.com/chap1.html#complete_zero) as a challenge to recognize. Of course, when testing our network we'll ask it to recognize images which aren't in the training set!
 
@@ -383,11 +270,7 @@ C(w,b)≡12n∑x∥y(x)−a∥2.(6)(6)C(w,b)≡12n∑x‖y(x)−a‖2.
 
 Here, ww denotes the collection of all weights in the network, bb all the biases, nn is the total number of training inputs, aa is the vector of outputs from the network when xx is input, and the sum is over all training inputs, xx. Of course, the output aa depends on xx, ww and bb, but to keep the notation simple I haven't explicitly indicated this dependence. The notation ∥v∥‖v‖ just denotes the usual length function for a vector vv. We'll call CC the *quadratic* cost function; it's also sometimes known as the *mean squared error* or just *MSE*. Inspecting the form of the quadratic cost function, we see that C(w,b)C(w,b) is non-negative, since every term in the sum is non-negative. Furthermore, the cost C(w,b)C(w,b) becomes small, i.e., C(w,b)≈0C(w,b)≈0, precisely when y(x)y(x) is approximately equal to the output, aa, for all training inputs, xx. So our training algorithm has done a good job if it can find weights and biases so that C(w,b)≈0C(w,b)≈0. By contrast, it's not doing so well when C(w,b)C(w,b) is large - that would mean that y(x)y(x) is not close to the output aa for a large number of inputs. So the aim of our training algorithm will be to minimize the cost C(w,b)C(w,b) as a function of the weights and biases. In other words, we want to find a set of weights and biases which make the cost as small as possible. We'll do that using an algorithm known as *gradient descent*.
 
-
-
 Why introduce the quadratic cost? After all, aren't we primarily interested in the number of images correctly classified by the network? Why not try to maximize that number directly, rather than minimizing a proxy measure like the quadratic cost? The problem with that is that the number of images correctly classified is not a smooth function of the weights and biases in the network. For the most part, making small changes to the weights and biases won't cause any change at all in the number of training images classified correctly. That makes it difficult to figure out how to change the weights and biases to get improved performance. If we instead use a smooth cost function like the quadratic cost it turns out to be easy to figure out how to make small changes in the weights and biases so as to get an improvement in the cost. That's why we focus first on minimizing the quadratic cost, and only after that will we examine the classification accuracy.
-
-
 
 Even given that we want to use a smooth cost function, you may still wonder why we choose the quadratic function used in Equation (6). Isn't this a rather *ad hoc* choice? Perhaps if we chose a different cost function we'd get a totally different set of minimizing weights and biases? This is a valid concern, and later we'll revisit the cost function, and make some modifications. However, the quadratic cost function of Equation (6) works perfectly well for understanding the basics of learning in neural networks, so we'll stick with it for now.
 
@@ -395,19 +278,13 @@ Recapping, our goal in training a neural network is to find weights and biases w
 
 Okay, let's suppose we're trying to minimize some function, C(v)C(v). This could be any real-valued function of many variables, v=v1,v2,…v=v1,v2,…. Note that I've replaced the ww and bb notation by vv to emphasize that this could be any function - we're not specifically thinking in the neural networks context any more. To minimize C(v)C(v) it helps to imagine CC as a function of just two variables, which we'll call v1v1 and v2v2:
 
-
-
 ![img](http://neuralnetworksanddeeplearning.com/images/valley.png)
-
-
 
 What we'd like is to find where CC achieves its global minimum. Now, of course, for the function plotted above, we can eyeball the graph and find the minimum. In that sense, I've perhaps shown slightly *too* simple a function! A general function, CC, may be a complicated function of many variables, and it won't usually be possible to just eyeball the graph to find the minimum.
 
 One way of attacking the problem is to use calculus to try to find the minimum analytically. We could compute derivatives and then try using them to find places where CC is an extremum. With some luck that might work when CC is a function of just one or a few variables. But it'll turn into a nightmare when we have many more variables. And for neural networks we'll often want *far* more variables - the biggest neural networks have cost functions which depend on billions of weights and biases in an extremely complicated way. Using calculus to minimize that just won't work!
 
 (After asserting that we'll gain insight by imagining CC as a function of just two variables, I've turned around twice in two paragraphs and said, "hey, but what if it's a function of many more than two variables?" Sorry about that. Please believe me when I say that it really does help to imagine CC as a function of two variables. It just happens that sometimes that picture breaks down, and the last two paragraphs were dealing with such breakdowns. Good thinking about mathematics often involves juggling multiple intuitive pictures, learning when it's appropriate to use each picture, and when it's not.)
-
-
 
 Okay, so calculus doesn't work. Fortunately, there is a beautiful analogy which suggests an algorithm which works pretty well. We start by thinking of our function as a kind of a valley. If you squint just a little at the plot above, that shouldn't be too hard. And we imagine a ball rolling down the slope of the valley. Our everyday experience tells us that the ball will eventually roll to the bottom of the valley. Perhaps we can use this idea as a way to find a minimum for the function? We'd randomly choose a starting point for an (imaginary) ball, and then simulate the motion of the ball as it rolled down to the bottom of the valley. We could do this simulation simply by computing derivatives (and perhaps some second derivatives) of CC - those derivatives would tell us everything we need to know about the local "shape" of the valley, and therefore how our ball should roll.
 
@@ -423,8 +300,6 @@ We're going to find a way of choosing Δv1Δv1 and Δv2Δv2 so as to make ΔCΔC
 
 In a moment we'll rewrite the change ΔCΔC in terms of ΔvΔv and the gradient, ∇C∇C. Before getting to that, though, I want to clarify something that sometimes gets people hung up on the gradient. When meeting the ∇C∇C notation for the first time, people sometimes wonder how they should think about the ∇∇ symbol. What, exactly, does ∇∇ mean? In fact, it's perfectly fine to think of ∇C∇C as a single mathematical object - the vector defined above - which happens to be written using two symbols. In this point of view, ∇∇ is just a piece of notational flag-waving, telling you "hey, ∇C∇C is a gradient vector". There are more advanced points of view where ∇∇ can be viewed as an independent mathematical entity in its own right (for example, as a differential operator), but we won't need such points of view.
 
-
-
 With these definitions, the expression (7) for ΔCΔC can be rewritten as
 
 ΔC≈∇C⋅Δv.(9)(9)ΔC≈∇C⋅Δv.
@@ -439,15 +314,9 @@ v→v′=v−η∇C.(11)(11)v→v′=v−η∇C.
 
 Then we'll use this update rule again, to make another move. If we keep doing this, over and over, we'll keep decreasing CC until - we hope - we reach a global minimum.
 
-
-
 Summing up, the way the gradient descent algorithm works is to repeatedly compute the gradient ∇C∇C, and then to move in the *opposite* direction, "falling down" the slope of the valley. We can visualize it like this:
 
-
-
 ![img](http://neuralnetworksanddeeplearning.com/images/valley_with_ball.png)
-
-
 
 Notice that with this rule gradient descent doesn't reproduce real physical motion. In real life a ball has momentum, and that momentum may allow it to roll across the slope, or even (momentarily) roll uphill. It's only after the effects of friction set in that the ball is guaranteed to roll down into the valley. By contrast, our rule for choosing ΔvΔv just says "go down, right now". That's still a pretty good rule for finding the minimum!
 
@@ -472,14 +341,7 @@ v→v′=v−η∇C.(15)(15)v→v′=v−η∇C.
 You can think of this update rule as *defining* the gradient descent algorithm. It gives us a way of repeatedly changing the position vv in order to find a minimum of the function CC. The rule doesn't always work - several things can go wrong and prevent gradient descent from finding the global minimum of CC, a point we'll return to explore in later chapters. But, in practice gradient descent often works extremely well, and in neural networks we'll find that it's a powerful way of minimizing the cost function, and so helping the net learn.
 
 
-
-
-
-
-
 Indeed, there's even a sense in which gradient descent is the optimal strategy for searching for a minimum. Let's suppose that we're trying to make a move ΔvΔv in position so as to decrease CC as much as possible. This is equivalent to minimizing ΔC≈∇C⋅ΔvΔC≈∇C⋅Δv. We'll constrain the size of the move so that ∥Δv∥=ϵ‖Δv‖=ϵ for some small fixed ϵ>0ϵ>0. In other words, we want a move that is a small step of a fixed size, and we're trying to find the movement direction which decreases CC as much as possible. It can be proved that the choice of ΔvΔv which minimizes ∇C⋅Δv∇C⋅Δv is Δv=−η∇CΔv=−η∇C, where η=ϵ/∥∇C∥η=ϵ/‖∇C‖ is determined by the size constraint ∥Δv∥=ϵ‖Δv‖=ϵ. So gradient descent can be viewed as a way of taking small steps in the direction which does the most to immediately decrease CC.
-
-
 
 #### [Exercises](http://neuralnetworksanddeeplearning.com/chap1.html#exercises_647181)
 
@@ -506,9 +368,6 @@ Indeed, there's even a sense in which gradient descent is the optimal strategy f
 - I explained gradient descent when CC is a function of two variables, and when it's a function of more than two variables. What happens when CC is a function of just one variable? Can you provide a geometric interpretation of what gradient descent is doing in the one-dimensional case?
 
 
-
-
-
 People have investigated many variations of gradient descent, including variations that more closely mimic a real physical ball. These ball-mimicking variations have some advantages, but also have a major disadvantage: it turns out to be necessary to compute second partial derivatives of CC, and this can be quite costly. To see why it's costly, suppose we want to compute all the second partial derivatives ∂2C/∂vj∂vk∂2C/∂vj∂vk. If there are a million such vjvj variables then we'd need to compute something like a trillion (i.e., a million squared) second partial derivatives**Actually, more like half a trillion, since ∂2C/∂vj∂vk=∂2C/∂vk∂vj∂2C/∂vj∂vk=∂2C/∂vk∂vj. Still, you get the point.! That's going to be computationally costly. With that said, there are tricks for avoiding this kind of problem, and finding alternatives to gradient descent is an active area of investigation. But in this book we'll use gradient descent (and variations) as our main approach to learning in neural networks.
 
 How can we apply gradient descent to learn in a neural network? The idea is to use gradient descent to find the weights wkwk and biases blbl which minimize the cost in Equation (6). To see how this works, let's restate the gradient descent update rule, with the weights and biases replacing the variables vjvj. In other words, our "position" now has components wkwk and blbl, and the gradient vector ∇C∇C has corresponding components ∂C/∂wk∂C/∂wk and ∂C/∂bl∂C/∂bl. Writing out the gradient descent update rule in terms of components, we have
@@ -516,8 +375,6 @@ How can we apply gradient descent to learn in a neural network? The idea is to u
 wkbl→→w′k=wk−η∂C∂wkb′l=bl−η∂C∂bl.(16)(17)(16)wk→wk′=wk−η∂C∂wk(17)bl→bl′=bl−η∂C∂bl.
 
 By repeatedly applying this update rule we can "roll down the hill", and hopefully find a minimum of the cost function. In other words, this is a rule which can be used to learn in a neural network.
-
-
 
 There are a number of challenges in applying the gradient descent rule. We'll look into those in depth in later chapters. But for now I just want to mention one problem. To understand what the problem is, let's look back at the quadratic cost in Equation (6). Notice that this cost function has the form C=1n∑xCxC=1n∑xCx, that is, it's an average over costs Cx≡∥y(x)−a∥22Cx≡‖y(x)−a‖22 for individual training examples. In practice, to compute the gradient ∇C∇C we need to compute the gradients ∇Cx∇Cx separately for each training input, xx, and then average them, ∇C=1n∑x∇Cx∇C=1n∑x∇Cx. Unfortunately, when the number of training inputs is very large this can take a long time, and learning thus occurs slowly.
 
@@ -533,15 +390,11 @@ where the second sum is over the entire set of training data. Swapping sides we 
 
 confirming that we can estimate the overall gradient by computing gradients just for the randomly chosen mini-batch.
 
-
-
 To connect this explicitly to learning in neural networks, suppose wkwk and blbl denote the weights and biases in our neural network. Then stochastic gradient descent works by picking out a randomly chosen mini-batch of training inputs, and training with those,
 
 wkbl→→w′k=wk−ηm∑j∂CXj∂wkb′l=bl−ηm∑j∂CXj∂bl,(20)(21)(20)wk→wk′=wk−ηm∑j∂CXj∂wk(21)bl→bl′=bl−ηm∑j∂CXj∂bl,
 
 where the sums are over all the training examples XjXj in the current mini-batch. Then we pick out another randomly chosen mini-batch and train with those. And so on, until we've exhausted the training inputs, which is said to complete an *epoch* of training. At that point we start over with a new training epoch.
-
-
 
 Incidentally, it's worth noting that conventions vary about scaling of the cost function and of mini-batch updates to the weights and biases. In Equation (6) we scaled the overall cost function by a factor 1n1n. People sometimes omit the 1n1n, summing over the costs of individual training examples instead of averaging. This is particularly useful when the total number of training examples isn't known in advance. This can occur if more training data is being generated in real time, for instance. And, in a similar way, the mini-batch update rules (20) and (21) sometimes omit the 1m1m term out the front of the sums. Conceptually this makes little difference, since it's equivalent to rescaling the learning rate ηη. But when doing detailed comparisons of different work it's worth watching out for.
 
@@ -550,8 +403,6 @@ We can think of stochastic gradient descent as being like political polling: it'
 #### [Exercise](http://neuralnetworksanddeeplearning.com/chap1.html#exercise_263792)
 
 - An extreme version of gradient descent is to use a mini-batch size of just 1. That is, given a training input, xx, we update our weights and biases according to the rules wk→w′k=wk−η∂Cx/∂wkwk→wk′=wk−η∂Cx/∂wk and bl→b′l=bl−η∂Cx/∂blbl→bl′=bl−η∂Cx/∂bl. Then we choose another training input, and update the weights and biases again. And so on, repeatedly. This procedure is known as *online*, *on-line*, or *incremental* learning. In online learning, a neural network learns from just one training input at a time (just as human beings do). Name one advantage and one disadvantage of online learning, compared to stochastic gradient descent with a mini-batch size of, say, 2020.
-
-
 
 Let me conclude this section by discussing a point that sometimes bugs people new to gradient descent. In neural networks the cost CC is, of course, a function of many variables - all the weights and biases - and so in some sense defines a surface in a very high-dimensional space. Some people get hung up thinking: "Hey, I have to be able to visualize all these extra dimensions". And they may start to worry: "I can't think in four dimensions, let alone five (or five million)". Is there some special ability they're missing, some ability that "real" supermathematicians have? Of course, the answer is no. Even most professional mathematicians can't visualize four dimensions especially well, if at all. The trick they use, instead, is to develop other ways of representing what's going on. That's exactly what we did above: we used an algebraic (rather than visual) representation of ΔCΔC to figure out how to move so as to decrease CC. People who are good at thinking in high dimensions have a mental library containing many different techniques along these lines; our algebraic trick is just one example. Those techniques may not have the simplicity we're accustomed to when visualizing three dimensions, but once you build up a library of such techniques, you can get pretty good at thinking in high dimensions. I won't go into more detail here, but if you're interested then you may enjoy reading [this discussion](http://mathoverflow.net/questions/25983/intuitive-crutches-for-higher-dimensional-thinking) of some of the techniques professional mathematicians use to think in high dimensions. While some of the techniques discussed are quite complex, much of the best content is intuitive and accessible, and could be mastered by anyone.
 
@@ -601,7 +452,6 @@ a' = \sigma(w \cdot a + b) \qquad \tag{22}
 $$
 
 There's quite a bit going on in this equation, so let's unpack it piece by piece. aa is the vector of activations of the second layer of neurons. To obtain a′a′ we multiply aa by the weight matrix ww, and add the vector bb of biases. We then apply the function σσ elementwise to every entry in the vector wa+bwa+b. (This is called *vectorizing* the function σσ.) It's easy to verify that Equation (22) gives the same result as our earlier rule, Equation (4), for computing the output of a sigmoid neuron.
-
 
 > [Exercise](http://neuralnetworksanddeeplearning.com/chap1.html#exercise_717502)
 >
@@ -903,7 +753,6 @@ Epoch 29: 2142 / 10000
 ```
 
 However, you can see that the performance of the network is getting slowly better over time. That suggests increasing the learning rate, say to $\eta=0.01$. If we do that, we get better results, which suggests increasing the learning rate again. (If making a change improves things, try doing more!) If we do that several times over, we'll end up with a learning rate of something like $\eta=1.0$ (and perhaps fine tune to 3.0), which is close to our earlier experiments. So even though we initially made a poor choice of hyper-parameters, we at least got enough information to help us improve our choice of hyper-parameters.
-
 
 In general, debugging a neural network can be challenging. This is especially true when the initial choice of hyper-parameters produces results no better than random noise. Suppose we try the successful 30 hidden neuron network architecture from earlier, but with the learning rate changed to $\eta=100.0$:
 
