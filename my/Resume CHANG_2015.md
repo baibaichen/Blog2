@@ -8,8 +8,8 @@
 
 | University            | Degree & Major | Duration      |
 | ------------------------- | -------------- | ----------------- |
-| FuDan University | Master's in Software Engineering | 2013/03 - 2017/1  |
-| China Jiliang University              | Bachelor's in Electricity and Magnetism Metrology | 1994/09 - 1998/06 |
+| FuDan University | Master's in Software Engineering | Mar. 2013 - Jan. 2017 |
+| China Jiliang University              | Bachelor's in Electricity and Magnetism Metrology | Sep. 1994 - Jun.1998 |
 
 ## SUMMARY/IT Skills
 -   [Apache Gluten（Incubating）](https://github.com/apache/incubator-gluten)Initial Committer. **Double Vanilla Spark's performance!**
@@ -24,20 +24,19 @@
 
 | Period          | Compary                                                                     | Position                             |
 |---------------------|---------------------------------------------------------------------------------|------------------------------------------|
-| 2019.10 - **Present** | [Kyligence Inc](https://kyligence.io/).                                         | Chief Researcher             |
-| 2017.09 – 2019.10 | [https://www.wifi.com/](https://www.wifi.com/) | Big Data Expert                 |
-| 2013.01 – 2017.09 | Yihaodian                                                               | Senior Architecture &  Director |
-| 2003.10 – 2012.12   | Corel Corporation(Sonic Solutions, Rovi Corporation) | Technical Manager & Senior Software Engineer |
-| 2000.10 – 2003.09   | Shanghai **UltraBlue** Software Co. Ltd             | Senior Software Engineer   |
-| 1998.09 – 2000.09   | Arcsoft Inc. (HangZhou)                                                         | Software Engineer       |
-
-<div style="page-break-after: always;"></div>
+| Oct. 2019 - **Present** | [Kyligence Inc](https://kyligence.io/).                                         | Chief Researcher             |
+| Sep. 2017 – Oct. 2019 | [https://www.wifi.com/](https://www.wifi.com/) | Big Data Expert                 |
+| Jan. 2013 – Sep. 2017 | Yihaodian                                                               | Senior Architecture &  Director |
+| Oct. 2003 – Dec. 2012   | Corel Corporation(Sonic Solutions, Rovi Corporation) | Technical Manager & Senior Software Engineer |
+| Oct. 2000 – Sep. 2003   | Shanghai **UltraBlue** Software Co. Ltd             | Senior Software Engineer   |
+| Sep. 1998 – Sep. 2000   | Arcsoft Inc. (HangZhou)                                                         | Software Engineer       |
 
 ## Projects
 <div style="display: flex; justify-content: space-between;">
-  <div style="font-size: 18px;"><strong>Apache Gluten（Incubating）（2021/10 ~ Present）</strong></div>
+  <div style="font-size: 18px;"><strong>Apache Gluten（Incubating）（Oct. 2021 ~ Present）</strong></div>
   <div>Leader & Chief Researcher</div>
 </div>
+
 **Description**: [Apache Gluten](https://github.com/apache/incubator-gluten) is an open-source project under the Apache Incubator that aims to enhance the performance of Apache Spark by integrating native vectorized execution engines. 
 **Skills** : Linux, C++, Spark
 **Responsibility** :
@@ -47,9 +46,10 @@
 1. Support Iceberg
 
 <div style="display: flex; justify-content: space-between;">
-  <div style="font-size: 18px;"><strong>Kyligence Enterprise（2019/10 ~ 2021/10）</strong></div>
+  <div style="font-size: 18px;"><strong>Kyligence Enterprise（Oct. 2019 ~ Oct. 2021）</strong></div>
   <div>Senior Architect & Senior Software engineer</div>
 </div>
+
 **Description**: Kyligence Enterprise, based on Apache Kylin, provides sub-second standard SQL query responses based on PB-scale datasets, simplifying multidimensional data analysis on data lakes for enterprises and enabling business users to quickly discover business value in massive amounts of data and drive better business decisions.
 **Skills** : Linux, Hadoop, Spark
 **Responsibility** : 
@@ -58,9 +58,10 @@
 2. Familiar with the Spark optimizer, implemented intelligent tiered storage, and applied for an invention patent titled ["Hybrid Query Method and System for Cloud-Based Analytical Scenarios, and Storage Medium"](https://patents.google.com/patent/CN113918561A/zh) which is currently under public announcement. Patent No.: 2021110620674.
 
 <div style="display: flex; justify-content: space-between;">
-  <div style="font-size: 18px;"><strong>LinkSure Recruiting data warehousing solution（2017/09 - 2019/10）</strong></div>
+  <div style="font-size: 18px;"><strong>LinkSure Recruiting data warehousing solution（Sep. 2017 - Oct. 2019）</strong></div>
   <div>Senior Architect</div>
 </div>
+
 **Description**: Hadoop based data warehouse solution
 **Skills** : Linux, Hadoop, Spark
 **Responsibility** : 
@@ -115,9 +116,10 @@
 1. Our new system went online on August 31, 2014, and successfully achieved all of its objectives. 
 
 <div style="display: flex; justify-content: space-between;">
-  <div style="font-size: 18px;"><strong>Yihaodian Distributed Cache Platform（Jan.2013 - Aug. 2013）</strong></div>
+  <div style="font-size: 18px;"><strong>Yihaodian Distributed Cache Platform（Jan. 2013 - Aug. 2013）</strong></div>
   <div>Senior Architect & Domain Leader</div>
 </div>
+
 **Description**: A Distributed KV stores builds on top of memcache and zookeeper. The feature includes: Automatically Failover, Dynamically increasing capacity, Manageable, Client-side Load Balance and Cache Invalidation.
 **Skills**: Linux, JAVA
 **Responsibility**: 
@@ -126,9 +128,10 @@
 2. As of October 2014, our client library was being used company-wide for accessing Memcached. This allowed us to dynamically increase cache capacity during the 11.11 promotion and subsequently remove the added cache once the promotion ended.
 
 <div style="display: flex; justify-content: space-between;">
-  <div style="font-size: 18px;"><strong>Other Projects（Before Entering the Internet Industry, Sep.1998 ~ Jan.2013）</strong></div>
+  <div style="font-size: 18px;"><strong>Other Projects（Before Entering the Internet Industry, Sep. 1998 ~ Jan.2013）</strong></div>
   <div>Senior Software Engineer & Software Engineer</div>
 </div>
+
 Primarily used C++ to develop desktop software for Windows.
 
 1. **PC Game Capture**: Software for recording gameplay videos.
