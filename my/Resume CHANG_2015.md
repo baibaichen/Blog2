@@ -8,8 +8,8 @@
 
 | University            | Degree & Major | Duration      |
 | ------------------------- | -------------- | ----------------- |
-| FuDan University | Master's in Software Engineering | Mar. 2013 - Jan. 2017 |
-| China Jiliang University              | Bachelor's in Electricity and Magnetism Metrology | Sep. 1994 - Jun.1998 |
+| FuDan University | Master in Software Engineering | Mar. 2013 - Jan. 2017 |
+| China Jiliang University              | Bachelor in Electricity and Magnetism Metrology | Sep. 1994 - Jun.1998 |
 
 ## SUMMARY/IT Skills
 -   [Apache Gluten（Incubating）](https://github.com/apache/incubator-gluten)Initial Committer. **Double Vanilla Spark's performance!**
@@ -25,7 +25,7 @@
 | Period          | Compary                                                                     | Position                             |
 |---------------------|---------------------------------------------------------------------------------|------------------------------------------|
 | Oct. 2019 - **Present** | [Kyligence Inc](https://kyligence.io/).                                         | Chief Researcher             |
-| Sep. 2017 – Oct. 2019 | [https://www.wifi.com/](https://www.wifi.com/) | Big Data Expert                 |
+| Sep. 2017 – Oct. 2019 | [Shanghai Lianshang Network Technology Co., Ltd.](https://www.wifi.com/) | Big Data Expert                 |
 | Jan. 2013 – Sep. 2017 | Yihaodian                                                               | Senior Architecture &  Director |
 | Oct. 2003 – Dec. 2012   | Corel Corporation(Sonic Solutions, Rovi Corporation) | Technical Manager & Senior Software Engineer |
 | Oct. 2000 – Sep. 2003   | Shanghai **UltraBlue** Software Co. Ltd             | Senior Software Engineer   |
@@ -36,20 +36,19 @@
   <div style="font-size: 18px;"><strong>Apache Gluten（Incubating）（Oct. 2021 ~ Present）</strong></div>
   <div>Leader & Chief Researcher</div>
 </div>
-
 **Description**: [Apache Gluten](https://github.com/apache/incubator-gluten) is an open-source project under the Apache Incubator that aims to enhance the performance of Apache Spark by integrating native vectorized execution engines. 
 **Skills** : Linux, C++, Spark
+**Achievements**:  **Double Vanilla Spark's performance!**
 **Responsibility** :
 
-1. Lead the team to start from an initial idea, complete POC verification, and finally integrate it into Kyligence Enterprise. Double Vanilla Spark's performance!
+1. Lead the team to start from an initial idea, complete POC verification, and finally integrate it into Kyligence Enterprise. 
 1. Support Parquet Page index
 1. Support Iceberg
 
 <div style="display: flex; justify-content: space-between;">
   <div style="font-size: 18px;"><strong>Kyligence Enterprise（Oct. 2019 ~ Oct. 2021）</strong></div>
-  <div>Senior Architect & Senior Software engineer</div>
+  <div>Senior Architect & Senior Software Engineer</div>
 </div>
-
 **Description**: Kyligence Enterprise, based on Apache Kylin, provides sub-second standard SQL query responses based on PB-scale datasets, simplifying multidimensional data analysis on data lakes for enterprises and enabling business users to quickly discover business value in massive amounts of data and drive better business decisions.
 **Skills** : Linux, Hadoop, Spark
 **Responsibility** : 
@@ -61,18 +60,19 @@
   <div style="font-size: 18px;"><strong>LinkSure Recruiting data warehousing solution（Sep. 2017 - Oct. 2019）</strong></div>
   <div>Senior Architect</div>
 </div>
-
 **Description**: Hadoop based data warehouse solution
 **Skills** : Linux, Hadoop, Spark
+**Achievements**:  Improving data extraction and transformation speeds by 55%, and supporting more efficient downstream processing. 
 **Responsibility** : 
 
 1.  Engineered a new data pipeline leveraging Apache Kafka, reducing data processing latency by 60%, and enabling real-time analytics for over 20 million daily user behavior.
-2. Directed the adoption of ETL processes using Hadoop and Spark, improving data extraction and transformation speeds by 55%, and supporting more efficient downstream processing. 
+2. Directed the adoption of ETL processes using Hadoop and Spark.
 
 <div style="display: flex; justify-content: space-between;">
   <div style="font-size: 18px;"><strong>Yihaodian Hadoop Big Data Platform（2015 - 2017）</strong></div>
-  <div>Senior Architect & Direct</div>
+  <div>Senior Architect & Director</div>
 </div>
+
 **Description**: Design, build and maintaining of Yihaodian's Big Data platform
 **Skills**: Linux, Hadoop
 **Responsibility** : 
@@ -80,17 +80,17 @@
 1. Optimized ETL processes on Hadoop clusters, improving core BI business operations by 3 hours.
 2. Integrated Yihaodian’s foundational data platform, built metadata databases, and established data processing pipelines.
 3. Developed and implemented big data application standards at Yihaodian.
-4. Led teams in executing Spark data mining projects: customer churn models and comment tagging.
+4. Lead the team in executing Spark data mining projects: customer churn models and comment tagging.
 5. Participated in optimizing the precision marketing architecture at Yihaodian.
-6. Led the team to contribute to the development of Apache Eagle, nurturing two Apache Committers.
+6. Lead the team to contribute the development of Apache Eagle, nurturing two Apache Committers.
 
 <div style="display: flex; justify-content: space-between;">
   <div style="font-size: 18px;"><strong>Deploy Yihaodian’s service in geographically distributed datacenter（Apr. 2014 - Jan. 2015）</strong></div>
   <div>Senior Architect & Domain Leader</div>
 </div>
-
 **Description**: This is one of our company’s strategic projects. As Yihaodian grows, we must ensure highly available services even in the event of failures such as fires. 
 **Skills** : Linux, C++, JAVA
+**Achievements**: As of November 11, 2014, we had successfully deployed our most critical services across two new data center. Approximately 30% of orders were being processed in these newly deployed data center. 
 **Responsibility**:
 
 1. Design the whole architecture for deploying company’s various service
@@ -98,8 +98,6 @@
    1. Cache invalidation mechanism in multiple data centers  
    2. Single Sign on in multiple data centers 
    3. Avoid connection storm
-
-3. As of November 11, 2014, we had successfully deployed our most critical services across two new data center. Approximately 30% of orders were being processed in these newly deployed data center.
 
 <div style="display: flex; justify-content: space-between;">
   <div style="font-size: 18px;"><strong>Sharding the Order Database and moving it to MySQL （Aug. 2013 - Aug. 2014）</strong></div>
