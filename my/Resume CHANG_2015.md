@@ -33,7 +33,7 @@
 
 <div style="page-break-after: always;"></div>
 
-## Porjects
+## Projects
 <div style="display: flex; justify-content: space-between;">
   <div style="font-size: 18px;"><strong>Apache Gluten（Incubating）（2021/10 ~ Present）</strong></div>
   <div>Leader & Chief Researcher</div>
