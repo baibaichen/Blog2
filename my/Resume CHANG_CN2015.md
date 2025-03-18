@@ -13,7 +13,7 @@
 
 ## 简介/IT 技能
 
--   [Apache Gluten（Incubating）Initial Committers](https://d.docs.live.net/276fecc6e566c88f/Blogs/resume/Resume%20CHANG.docx)，把 Vanilla Spark 的性能提升 2 倍！
+-   Apache Gluten（Incubating）Initial Committers，把 Vanilla Spark 的性能提升 2 倍！
 -   精通项目管理，善于带领团队把想法变为产品上线
 -   20多年软件开发经验，14年C++经验，目前以C++、JAVA和Scala作为为工作语言
 -   熟悉Hadoop平台上的各种组件，精通Spark
