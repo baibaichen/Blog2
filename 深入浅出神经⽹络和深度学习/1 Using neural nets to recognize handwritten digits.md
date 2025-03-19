@@ -239,23 +239,34 @@ Now, with all that said, this is all just a heuristic. Nothing says that the thr
 
 Now that we have a design for our neural network, how can it learn to recognize digits? The first thing we'll need is a data set to learn from - a so-called training data set. We'll use the [MNIST data set](http://yann.lecun.com/exdb/mnist/), which contains tens of thousands of scanned images of handwritten digits, together with their correct classifications. MNIST's name comes from the fact that it is a modified subset of two data sets collected by [NIST](http://en.wikipedia.org/wiki/National_Institute_of_Standards_and_Technology), the United States' National Institute of Standards and Technology. Here's a few images from MNIST:
 
+前面设计的神经网络如何学习识别数字呢？首先需要一个供学习使用的数据集——训练数据集，简称训练集。我们将使用 MNIST 数据集，它包含数以万计的手写数字扫描图像及其正确的分类信息。该数据集基于由NIST（美国国家标准与技术研究院）收集的两个数据集改进后的子集。图 1-25 所示的图像就取自 MNIST 数据集。
+
 ![img](http://neuralnetworksanddeeplearning.com/images/digits_separate.png)
 
 As you can see, these digits are, in fact, the same as those shown at the [beginning of this chapter](http://neuralnetworksanddeeplearning.com/chap1.html#complete_zero) as a challenge to recognize. Of course, when testing our network we'll ask it to recognize images which aren't in the training set!
 
+如图 1-25 所示，这些数字其实和本章开头提到的一样。当然，在测试神经网络时，我们将要求它识别训练集以外的图像。
+
 The MNIST data comes in two parts. The first part contains 60,000 images to be used as training data. These images are scanned handwriting samples from 250 people, half of whom were US Census Bureau employees, and half of whom were high school students. The images are greyscale and 28 by 28 pixels in size. The second part of the MNIST data set is 10,000 images to be used as test data. Again, these are 28 by 28 greyscale images. We'll use the test data to evaluate how well our neural network has learned to recognize digits. To make this a good test of performance, the test data was taken from a *different* set of 250 people than the original training data (albeit still a group split between Census Bureau employees and high school students). This helps give us confidence that our system can recognize digits from people whose writing it didn't see during training
 
-We'll use the notation $x$ to denote a training input. It'll be convenient to regard each training input $x$ as a $28 \times 28 = 784$-dimensional vector. Each entry in the vector represents the grey value for a single pixel in the image. We'll denote the corresponding desired output by $y = y(x)$, where y is a 10-dimensional vector. For example, if a particular training image, $x$, depicts a 6, then $y(x) = (0, 0, 0, 0, 0, 0, 1, 0, 0, 0)^T$ is the desired output from the network. Note that T here is the transpose operation, turning a row vector into an ordinary (column) vector.
+MNIST 数据分为两部分。第一部分包含 60 000 幅用作训练数据的图像，这些图像扫描自 250 人的手写样本，其中一半人是美国人口普查局的员工，另一半人是高中生。这些图像是 28×28 大小的灰度图。第二部分是10 000 幅用作测试数据的图像，也是 28×28 大小的灰度图。我们将用这些测试数据来评估神经网络识别数字的水平。为了保证测试结果，测试数据取自跟原始训练数据不同的另外 250 人（仍然是美国人口普查局员工和高中生）所写的数字，这样系统会尝试识别训练时未见过的手写数字。
 
-What we'd like is an algorithm which lets us find weights and biases so that the output from the network approximates $y(x)$ for all training inputs $x$. To quantify how well we're achieving this goal we define a *cost function*^*^
+We'll use the notation $x$ to denote a training input. It'll be convenient to regard each training input $x$ as a $28 \times 28 = 784$-dimensional vector. Each entry in the vector represents the grey value for a single pixel in the image. We'll denote the corresponding desired output by $y = y(x)$, where $y$ is a 10-dimensional vector. For example, if a particular training image, $x$, depicts a 6, then $y(x) = (0, 0, 0, 0, 0, 0, 1, 0, 0, 0)^T$ is the desired output from the network. Note that T here is the transpose operation, turning a row vector into an ordinary (column) vector.
 
+我们用符号 $x$ 表示训练输入。方便起见，把训练输入 $x$ 看作 28×28=784维的向量。向量中的每一项代表图像中单个像素的灰度值。我们用 $y = y(x)$ 表示对应的目标输出，其中 $y$ 是一个 10 维向量。例如对于一个写成 **6** 的训练图像 $x$，神经网络的目标输出就是 $y(x) = (0, 0, 0, 0, 0, 0, 1, 0, 0, 0)^T$。注意，T 是转置操作，它把行向量转换成列向量。
+
+What we'd like is an algorithm which lets us find weights and biases so that the output from the network approximates $y(x)$ for all training inputs $x$. To quantify how well we're achieving this goal we define a *cost function*
+
+我们希望有算法能找到合适的权重和偏置，使得神经网络的输出 $y(x)$ 能够拟合所有训练输入 $x$。为了量化实现过程，需要定义一个代价函数*
 $$
 \begin{eqnarray}  C(w,b) \equiv
   \frac{1}{2n} \sum_x \| y(x) - a\|^2.
 \tag{6}\end{eqnarray}
 $$
 
-> Sometimes referred to as a *loss* or *objective* function. We use the term cost function throughout this book, but you should note the other terminology, since it's often used in research papers and other discussions of neural networks.:
+> Sometimes referred to as a *loss* or *objective* function. We use the term cost function throughout this book, but you should note the other terminology, since it's often used in research papers and other discussions of neural networks.
+>
+> 有时称作“损失函数”或“目标函数”。本书使用“代价函数”这个称法，其他称法常见于研究论文和一些关于神经网络的讨论。
 
 **Here, $w$ denotes the collection of all weights in the network, $b$ all the biases, $n$ is the total number of training inputs, $a$ is the vector of outputs from the network when $x$ is input, and the sum is over all training inputs, $x$.** Of course, the output $a$ depends on $x$, $w$ and $b$, but to keep the notation simple I haven't explicitly indicated this dependence. The notation $\| v \|$ just denotes the usual length function for a vector $v$. We'll call $C$ the *quadratic* cost function; it's also sometimes known as the *mean squared error* or just *MSE*. Inspecting the form of the quadratic cost function, we see that $C(w,b)$ is non-negative, since every term in the sum is non-negative. Furthermore, the cost $C(w,b)$ becomes small, i.e., $C(w,b) \approx 0$, precisely when $y(x)$ is approximately equal to the output, $a$, for all training inputs, $x$. So our training algorithm has done a good job if it can find weights and biases so that $C(w,b) \approx 0$. By contrast, it's not doing so well when $C(w,b)$ is large - that would mean that $y(x)$ is not close to the output $a$ for a large number of inputs. So the aim of our training algorithm will be to minimize the cost $C(w,b)$ as a function of the weights and biases. In other words, we want to find a set of weights and biases which make the cost as small as possible. We'll do that using an algorithm known as *gradient descent*.
 
