@@ -59,7 +59,7 @@ where the sum is over all neurons $k$ in the $(l-1)^{\rm th}$ layer. To rewrite 
 
 The last ingredient we need to rewrite (23) in a matrix form is the idea of vectorizing a function such as $\sigma$. We met vectorization briefly in the last chapter, but to recap, the idea is that we want to apply a function such as $\sigma$ to every element in a vector $v$. We use the obvious notation $\sigma(v)$ to denote this kind of elementwise application of a function. That is, the components of $\sigma(v)$ are just $\sigma(v)_j = \sigma(v_j)$. As an example, if we have the function $f(x) = x^2$ then the vectorized form of $f$ has the effect
 
-最后需要引入向量化函数（比如 $\sigma$）来按照矩阵形式重写方程(23)。第 1章提到过向量化，其含义就是对向量 $v$ 中的每个元素应用函数（比如 $\sigma$）。我们使用 $\sigma(v)$ 来表示按元素应用函数。所以，$\sigma(v)$ 的每个元素满足 $\sigma(v)_j = \sigma(v_j)$。如果函数是 $f(x) = x^2$，那么向量化的 $f$ 作用如下：
+最后需要引入向量化函数（比如 $\sigma$）来按照矩阵形式重写方程(23)。第 1 章提到过向量化，其含义就是对向量 $v$ 中的每个元素应用函数（比如 $\sigma$）。我们使用 $\sigma(v)$ 来表示按元素应用函数。所以，$\sigma(v)$ 的每个元素满足 $\sigma(v)_j = \sigma(v_j)$。如果函数是 $f(x) = x^2$，那么向量化的 $f$ 作用如下：
 $$
 \begin{eqnarray}
   f\left(\left[ \begin{array}{c} 2 \\ 3 \end{array} \right] \right)
@@ -140,8 +140,9 @@ and thus is a function of the output activations. Of course, this cost function 
 
 ### 2.3 [The Hadamard product, $s \odot t$](http://neuralnetworksanddeeplearning.com/chap2.html#the_hadamard_product_$s_\odot_t$)
 
-The backpropagation algorithm is based on common linear algebraic operations - things like vector addition, multiplying a vector by a matrix, and so on. But one of the operations is a little less commonly used. In particular, suppose $s$ and $t$ are two vectors of the same dimension. Then we use $s \odot t$ to denote the *elementwise* product of the two vectors. Thus the components of $s \odot t$ are just $(s \odot t)_j = s_j t_j$. As an example,
+The backpropagation algorithm is based on common linear algebraic operations - things like vector addition, multiplying a vector by a matrix, and so on. But one of the operations is a little less commonly used. In particular, suppose $s$ and $t$ are two vectors of the same dimension. Then we use $s \odot t$ to denote the *element wise* product of the two vectors. Thus the components of $s \odot t$ are just $(s \odot t)_j = s_j t_j$. As an example,
 
+反向传播算法基于常规的线性代数运算，比如向量加法、向量矩阵乘法等，但是有一个运算不太常用。假设 $s$ 和 $t$是两个维度相同的向量，那么 $s \odot t$ 表示按元素的乘积。所以 $s \odot t$ 的元素就是 $(s \odot t)_j = s_j t_j$，举例如下：
 $$
 \begin{eqnarray}
 \left[\begin{array}{c} 1 \\ 2 \end{array}\right] 
@@ -151,7 +152,9 @@ $$
 \tag{28}\end{eqnarray}
 $$
 
-This kind of elementwise multiplication is sometimes called the *Hadamard product* or *Schur product*. We'll refer to it as the Hadamard product. Good matrix libraries usually provide fast implementations of the Hadamard product, and that comes in handy when implementing backpropagation.
+This kind of element wise multiplication is sometimes called the *Hadamard product* or *Schur product*. We'll refer to it as the Hadamard product. Good matrix libraries usually provide fast implementations of the Hadamard product, and that comes in handy when implementing backpropagation.
+
+这种按元素相乘有时称作**阿达马积**或**舒尔积**，本书采用前者。优秀的矩阵库通常会提供阿达马积的快速实现，在实现反向传播时易于使用。
 
 ### 2.4 [The four fundamental equations behind backpropagation](http://neuralnetworksanddeeplearning.com/chap2.html#the_four_fundamental_equations_behind_backpropagation)
 
@@ -159,33 +162,57 @@ Backpropagation is about understanding how changing the weights and biases in a 
 
 To understand how the error is defined, imagine there is a demon in our neural network:
 
+其实反向传播考量的是如何更改权重和偏置以控制代价函数，其终极含义就是计算偏导数 $\partial C / \partial w^l_{jk}$ 和 $\partial C / \partial b^l_j$。为了计算这些值，首先需要引入中间量 $\delta^l_j$，它是的误差。**反向传播将给出计算误差 $\delta^l_j$ 的流程，然后将其与 $\partial C / \partial w^l_{jk}$ 和 $\partial C / \partial b^l_j$ 联系起来**。
+
+为了说明误差是如何定义的，设想神经网络中有个捣乱的家伙，如下图所示：
+
 ![img](http://neuralnetworksanddeeplearning.com/images/tikz19.png)
 
 The demon sits at the $j^{\rm th}$ neuron in layer ll. As the input to the neuron comes in, the demon messes with the neuron's operation. It adds a little change $\Delta z^l_j$ to the neuron's weighted input, so that instead of outputting $\sigma(z^l_j)$, the neuron instead outputs $\sigma(z^l_j+\Delta z^l_j)$. This change propagates through later layers in the network, finally causing the overall cost to change by an amount $\frac{\partial C}{\partial z^l_j} \Delta z^l_j$.
 
+这个家伙在第 $l^{\rm th}$ 层的第 $j^{\rm th}$ 个神经元上。当输入进来时，它会扰乱神经元的操作。它会在神经元的带权输入上增加很小的变化 $\Delta z^l_j$，使得神经元输出由 $\sigma(z^l_j)$ 变成 $\sigma(z^l_j+\Delta z^l_j)$。这个变化会向后面的层传播，最终导致整个代价发生 $\frac{\partial C}{\partial z^l_j} \Delta z^l_j$ 的改变。
+
 Now, this demon is a good demon, and is trying to help you improve the cost, i.e., they're trying to find a $\Delta z^l_j$ which makes the cost smaller. Suppose $\frac{\partial C}{\partial z^l_j}$ has a large value (either positive or negative). Then the demon can lower the cost quite a bit by choosing $\Delta z^l_j$ to have the opposite sign to $\frac{\partial C}{\partial z^l_j}$. By contrast, if $\frac{\partial C}{\partial z^l_j}$ is close to zero, then the demon can't improve the cost much at all by perturbing the weighted input $z^l_j$. So far as the demon can tell, the neuron is already pretty near optimal*. And so there's a heuristic sense in which $\frac{\partial C}{\partial z^l_j}$ is a measure of the error in the neuron.
 
-> *This is only the case for small changes $\Delta z^l_j$, of course. We'll assume that the demon is constrained to make such small changes.
+Motivated by this story, we define the error $\delta^l_j$ of neuron $j$ in layer $l$ by:
 
-Motivated by this story, we define the error $\delta^l_j$ of neuron $j$ in layer $l$ by
+现在，这个家伙变好了，想帮忙优化代价函数，它试着寻找能让代价更小的 $\Delta z^l_j$。假设 $\frac{\partial C}{\partial z^l_j}$ 有一个很大的值（或正或负）。这个家伙可以通过选择跟 $\frac{\partial C}{\partial z^l_j}$ 符号相反的 $\Delta z^l_j$ 来缩小代价。如果 $\frac{\partial C}{\partial z^l_j}$ 接近 0，那么它并不能通过扰动带权输入 $z^l_j$ 来缩小太多代价。对它而言，这时神经元已经很接近最优了*。这里可以得出具有启发性的认识——$\frac{\partial C}{\partial z^l_j}$ 是对神经元误差的度量。
+
+按照前面的描述，把第 $l^{\rm th}$ 层第 $j^{\rm th}$ 个神经元上的误差  $\delta^l_j$ 定义为：
 
 $$
 \begin{eqnarray} 
   \delta^l_j \equiv \frac{\partial C}{\partial z^l_j}.
 \tag{29}\end{eqnarray}
 $$
-As per our usual conventions, we use $\delta^l$ to denote the vector of errors associated with layer ll. Backpropagation will give us a way of computing $\delta^l$ for every layer, and then relating those errors to the quantities of real interest, $\partial C / \partial w^l_{jk}$ and $\partial C / \partial b^l_j$.
+
+> *This is only the case for small changes $\Delta z^l_j$, of course. We'll assume that the demon is constrained to make such small changes.
+>
+> 这里需要注意的是，只有在 $\Delta z^l_j$ 很小时才满足，需要假设这个家伙只能进行微调。
+
+As per our usual conventions, we use $\delta^l$ to denote the vector of errors associated with layer $l$. Backpropagation will give us a way of computing $\delta^l$ for every layer, and then relating those errors to the quantities of real interest, $\partial C / \partial w^l_{jk}$ and $\partial C / \partial b^l_j$.
+
+按照惯例，用 $\delta^l$ 表示与第 $l$ 层相关的误差向量。可以利用反向传播计算每一层的 $\delta^l$，然后将这些误差与实际需要的量 $\partial C / \partial w^l_{jk}$ 和 $\partial C / \partial b^l_j$ 关联起来。
 
 You might wonder why the demon is changing the weighted input $z^l_j$. Surely it'd be more natural to imagine the demon changing the output activation $a^l_j$, with the result that we'd be using $\frac{\partial   C}{\partial a^l_j}$ as our measure of error. In fact, if you do this things work out quite similarly to the discussion below. But it turns out to make the presentation of backpropagation a little more algebraically complicated. So we'll stick with $\delta^l_j = \frac{\partial C}{\partial z^l_j}$ as our measure of error*.
 
+你可能想知道这个家伙为何改变带权输入 $z^l_j$。把它想象成改变输出激活值 $a^l_j$ 肯定更自然，这样就可以使用 $\frac{\partial   C}{\partial a^l_j}$ 度量误差了。这样做的话，其实和下面要讨论的差不多，但前面的方法会让反向传播在代数运算上变得比较复杂，所以这里使用 $\delta^l_j = \frac{\partial C}{\partial z^l_j}$ 作为对误差的度量
+
 > *In classification problems like MNIST the term "error" is sometimes used to mean the classification failure rate. E.g., if the neural net correctly classifies 96.0 percent of the digits, then the error is 4.0 percent. Obviously, this has quite a different meaning from our $\delta$ vectors. In practice, you shouldn't have trouble telling which meaning is intended in any given usage.
+>
+> 在分类问题中，误差有时会用作分类的错误率。如果神经网络分类的正确率为 96.0%，那么其误差就是 4.0%。显然，这和前面提到的误差相差较大。在实际应用中，这两种含义易于区分。
 
 **Plan of attack:** Backpropagation is based around four fundamental equations. Together, those equations give us a way of computing both the error $\delta^l$ and the gradient of the cost function. I state the four equations below. Be warned, though: you shouldn't expect to instantaneously assimilate the equations. Such an expectation will lead to disappointment. In fact, the backpropagation equations are so rich that understanding them well requires considerable time and patience as you gradually delve deeper into the equations. The good news is that such patience is repaid many times over. And so the discussion in this section is merely a beginning, helping you on the way to a thorough understanding of the equations.
 
+**解决方案**：反向传播基于 4 个基本方程，利用它们可以计算误差 $\delta^l$ 和代价函数的梯度。下面列出这 4 个方程，但请注意，你不需要立刻理解这些方程。实际上，反向传播方程的内容很多，完全理解相当需要时间和耐心。当然，这样的付出有着巨大的回报。因此，对这些内容的讨论仅仅是正确掌握这些方程的开始。
+
 Here's a preview of the ways we'll delve more deeply into the equations later in the chapter: I'll [give a short proof of the equations](http://neuralnetworksanddeeplearning.com/chap2.html#proof_of_the_four_fundamental_equations_(optional)), which helps explain why they are true; we'll [restate the equations](http://neuralnetworksanddeeplearning.com/chap2.html#the_backpropagation_algorithm) in algorithmic form as pseudocode, and [see how](http://neuralnetworksanddeeplearning.com/chap2.html#the_code_for_backpropagation) the pseudocode can be implemented as real, running Python code; and, in [the final section of the chapter](http://neuralnetworksanddeeplearning.com/chap2.html#backpropagation_the_big_picture), we'll develop an intuitive picture of what the backpropagation equations mean, and how someone might discover them from scratch. Along the way we'll return repeatedly to the four fundamental equations, and as you deepen your understanding those equations will come to seem comfortable and, perhaps, even beautiful and natural.
+
+探讨这些方程的流程如下：首先[给出这些方程的简短证明](http://neuralnetworksanddeeplearning.com/chap2.html#proof_of_the_four_fundamental_equations_(optional))，然后以伪代码的方式给出[这些方程的算法表示](http://neuralnetworksanddeeplearning.com/chap2.html#the_backpropagation_algorithm)，并展示如何将这些伪代码[转化成可执行的 Python 代码](http://neuralnetworksanddeeplearning.com/chap2.html#the_code_for_backpropagation)。本章[最后](http://neuralnetworksanddeeplearning.com/chap2.html#backpropagation_the_big_picture)将直观展现反向传播方程的含义，以及如何从零开始认识这个规律。根据该方法，我们会经常提及这 4 个基本方程。随着理解的加深，这些方程看起来会更合理、更美妙、更自然。
 
 **An equation for the error in the output layer, $\delta^L$:** The components of $\delta^L$ are given by
 
+**关于输出层误差的方程**，$\delta^L$ 分量表示为：
 $$
 \begin{eqnarray} 
   \delta^L_j = \frac{\partial C}{\partial a^L_j} \sigma'(z^L_j).
@@ -194,10 +221,15 @@ $$
 
 This is a very natural expression. The first term on the right, $\partial C / \partial a^L_j$, just measures how fast the cost is changing as a function of the $j^{\rm th}$ output activation. If, for example, $C$ doesn't depend much on a particular output neuron, $j$, then $\delta^L_j$ will be small, which is what we'd expect. The second term on the right, $\sigma'(z^L_j)$, measures how fast the activation function $\sigma$ is changing at $z^L_j$.
 
+这个表达式非常自然。右边第一项 $\partial C / \partial a^L_j$ 表示代价随第 $j^{\rm th}$  个输出激活值的变化而变化的速度。假如 $C$ 不太依赖特定的输出神经元 $j$，那么 $\delta^L_j$ 就会很小，这也是我们想要的效果。右边第二项 $\sigma'(z^L_j)$, 描述了激活函数 $\sigma$ 在 $z^L_j$ 处的变化速度。
+
 Notice that everything in (BP1) is easily computed. In particular, we compute $z^L_j$ while computing the behaviour of the network, and it's only a small additional overhead to compute $\sigma'(z^L_j)$. The exact form of $\partial C / \partial a^L_j$ will, of course, depend on the form of the cost function. However, provided the cost function is known there should be little trouble computing $\partial C / \partial a^L_j$. For example, if we're using the quadratic cost function then $C = \frac{1}{2} \sum_j (y_j-a^L_j)^2$, and so $\partial C / \partial a^L_j = (a_j^L-y_j)$, which obviously is easily computable.
+
+值得注意的是，方程(BP1)中的每个部分都很好计算。具体地说，在计算神经网络行为时计算 $z^L_j$，仅需一点点额外工作就可以计算 $\sigma'(z^L_j)$.。当然，$\partial C / \partial a^L_j$ 取决于代价函数的形式。然而，给定代价函数，计算 $\partial C / \partial a^L_j$ 就没有什么大问题了。如果使用二次代价函数，那么 $C = \frac{1}{2} \sum_j (y_j-a^L_j)^2$，所以 $\partial C / \partial a^L_j = (a_j^L-y_j)$，显然很容易计算。
 
 Equation (BP1) is a componentwise expression for $\delta^L$. It's a perfectly good expression, but not the matrix-based form we want for backpropagation. However, it's easy to rewrite the equation in a matrix-based form, as
 
+对 [插图] 来说，方程(BP1)是个分量形式的表达式。这个表达式非常好，但不是理想形式（我们希望用矩阵表示）。以矩阵形式重写方程其实很简单：
 $$
 \begin{eqnarray} 
   \delta^L = \nabla_a C \odot \sigma'(z^L).
@@ -206,6 +238,7 @@ $$
 
 Here, $\nabla_a C$ is defined to be a vector whose components are the partial derivatives $\partial C / \partial a^L_j$. You can think of $\nabla_a C$ as expressing the rate of change of $C$ with respect to the output activations. It's easy to see that Equations (BP1a) and (BP1) are equivalent, and for that reason from now on we'll use (BP1) interchangeably to refer to both equations. As an example, in the case of the quadratic cost we have $\nabla_a C = (a^L-y)$, and so the fully matrix-based form of (BP1) becomes
 
+其中的 [插图] 定义为一个向量，其分量是偏导数 [插图]。可以把 [插图] 看作 [插图] 关于输出激活值的变化速度。显然，方程(BP1)和方程(BP1a)等价，所以下面用方程(BP1)表示这两个方程。例如对于二次代价函数，有[插图]，所以方程(BP1)的整个矩阵形式如下：
 $$
 \begin{eqnarray} 
   \delta^L = (a^L-y) \odot \sigma'(z^L).
@@ -214,7 +247,11 @@ $$
 
 As you can see, everything in this expression has a nice vector form, and is easily computed using a library such as Numpy.
 
+如上所示，该方程中的每一项都有很好的向量形式，因此便于使用 NumPy 或其他矩阵库进行计算。
+
 **An equation for the error $\delta^l$ in terms of the error in the next layer, $\delta^{l+1}$:** In particular
+
+使用下一层的误差 [插图] 来表示当前层的误差 [插图]，有：
 $$
 \begin{eqnarray} 
   \delta^l = ((w^{l+1})^T \delta^{l+1}) \odot \sigma'(z^l),
@@ -223,9 +260,15 @@ $$
 
 where $(w^{l+1})^T$ is the transpose of the weight matrix $w^{l+1}$ for the $(l+1)^{\rm th}$ layer. This equation appears complicated, but each element has a nice interpretation. Suppose we know the error $\delta^{l+1}$ at the $l+1^{\rm th}$ layer. When we apply the transpose weight matrix, $(w^{l+1})^T$, we can think intuitively of this as moving the error *backward* through the network, giving us some sort of measure of the error at the output of the $l^{\rm th}$ layer. We then take the Hadamard product $\odot \sigma'(z^l)$. This moves the error backward through the activation function in layer $l$, giving us the error $\delta^l$ in the weighted input to layer $l$.
 
+其中 [插图] 是第[插图]层权重矩阵 [插图] 的转置。该方程看上去有些复杂，但每个组成元素都解释得通。假设我们知道第[插图]层的误差 [插图]，当应用转置的权重矩阵[插图] 时，可以凭直觉把它看作在沿着神经网络反向移动误差，以此度量第l层输出的误差；然后计算阿达马积[插图]，这会让误差通过第 [插图] 层的激活函数反向传播回来并给出第 [插图] 层的带权输入的误差 [插图]。
+
 By combining (BP2) with (BP1) we can compute the error $\delta^l$ for any layer in the network. We start by using (BP1) to compute $\delta^L$, then apply Equation (BP2) to compute $\delta^{L-1}$, then Equation (BP2) again to compute $\delta^{L-2}$, and so on, all the way back through the network.
 
+通过组合(BP1)和(BP2)，可以计算任何层的误差 [插图]。首先使用方程(BP1)计算 [插图]，然后使用方程(BP2)计算 [插图]，接着再次用方程(BP2)计算 [插图]，如此一步一步地在神经网络中反向传播。
+
 **An equation for the rate of change of the cost with respect to any bias in the network:** In particular:
+
+对于神经网络中的任意偏置，代价函数的变化率如下：
 $$
 \begin{eqnarray}  \frac{\partial C}{\partial b^l_j} =
   \delta^l_j.
@@ -234,6 +277,7 @@ $$
 
 That is, the error $\delta^l_j$ is *exactly equal* to the rate of change $\partial C / \partial b^l_j$. This is great news, since (BP1) and (BP2) have already told us how to compute $\delta^l_j$. We can rewrite (BP3) in shorthand as
 
+也就是说，误差 [插图] 和变化率 [插图] 完全一致。该性质很棒，由于(BP1)和(BP2)给出了计算 [插图] 的方式，因此可以将(BP3)简写为：
 $$
 \begin{eqnarray}
   \frac{\partial C}{\partial b} = \delta,
@@ -242,7 +286,11 @@ $$
 
 where it is understood that $\delta$ is being evaluated at the same neuron as the bias $b$.
 
+其中 [插图] 和偏置 [插图] 都是针对同一个神经元的。
+
 **An equation for the rate of change of the cost with respect to any weight in the network:** In particular:
+
+**对于神经网络中的任意权重，代价函数的变化率如下**：
 $$
 \begin{eqnarray}
   \frac{\partial C}{\partial w^l_{jk}} = a^{l-1}_k \delta^l_j.
@@ -251,6 +299,7 @@ $$
 
 This tells us how to compute the partial derivatives $\partial C / \partial w^l_{jk}$ in terms of the quantities $\delta^l$ and $a^{l-1}$, which we already know how to compute. The equation can be rewritten in a less index-heavy notation as
 
+由此可以计算偏导数 [插图]，其中 [插图] 和 [插图] 这些量的计算方式已经给出，因此可以用更少的下标重写方程，如下所示：
 $$
 \begin{eqnarray}  \frac{\partial
     C}{\partial w} = a_{\rm in} \delta_{\rm out},
@@ -259,41 +308,67 @@ $$
 
 where it's understood that $a_{\rm in}$ is the activation of the neuron input to the weight $w$, and $\delta_{\rm out}$ is the error of the neuron output from the weight $w$. Zooming in to look at just the weight $w$, and the two neurons connected by that weight, we can depict this as:
 
+其中 [插图] 是输入到权重 [插图] 的神经元的激活值，[插图] 是权重 [插图] 输出的神经元的误差。仔细看看权重 [插图]，还有与之相连的两个神经元，如图 2-5 所示。
+
 ![img](http://neuralnetworksanddeeplearning.com/images/tikz20.png)
 
 A nice consequence of Equation (32) is that when the activation $a_{\rm in}$ is small, $a_{\rm in} \approx 0$, the gradient term $\partial C / \partial w$ will also tend to be small. In this case, we'll say the weight *learns slowly*, meaning that it's not changing much during gradient descent. In other words, one consequence of (BP4) is that weights output from low-activation neurons learn slowly.
 
+方程(32)的一个优点是，如果激活值 [插图] 很小，即 [插图]，那么梯度 [插图] 的值也会很小。这意味着权重学习缓慢，受梯度下降的影响不大。换言之，方程(BP4)的一个结果就是小激活值神经元的权重学习会非常缓慢。
+
 There are other insights along these lines which can be obtained from (BP1)-(BP4). Let's start by looking at the output layer. Consider the term $\sigma'(z^L_j)$ in (BP1). Recall from the [graph of the sigmoid function in the last chapter](http://neuralnetworksanddeeplearning.com/chap1.html#sigmoid_graph) that the $\sigma$ function becomes very flat when $\sigma(z^L_j)$ is approximately 0 or 1. When this occurs we will have $\sigma'(z^L_j) \approx 0$. And so the lesson is that a weight in the final layer will learn slowly if the output neuron is either low activation ($\approx 0$) or high activation ($\approx 1$). In this case it's common to say the output neuron has *saturated* and, as a result, the weight has stopped learning (or is learning slowly). Similar remarks hold also for the biases of output neuron.
+
+以上 4 个基本方程还有其他地方值得研究。下面从输出层开始，先看看(BP1)中的项 [插图]。回顾一下sigmoid 函数的图像（详见第 1 章），当 [插图] 近似为0或1时，sigmoid 函数变得非常平缓，这时 [插图]。因此，如果输出神经元处于小激活值（约为 0）或者大激活值（约为 1）时，最终层的权重学习会非常缓慢。这时可以说输出神经元已经饱和了，并且，权重学习也会终止（或者学习非常缓慢），输出神经元的偏置也与之类似。
 
 We can obtain similar insights for earlier layers. In particular, note the $\sigma'(z^l)$ term in (BP2). This means that $\delta^l_j$ is likely to get small if the neuron is near saturation. And this, in turn, means that any weights input to a saturated neuron will learn slowly*.
 
+前面的层也有类似的特点，尤其注意(BP2)中的项 [插图]，这表示如果神经元已经接近饱和，那么 [插图] 很可能变小。这就导致输入到已饱和神经元的任何权重都学习缓慢*。
+
 > *This reasoning won't hold if ${w^{l+1}}^T   \delta^{l+1}$ has large enough entries to compensate for the smallness of $\sigma'(z^l_j)$. But I'm speaking of the general tendency.
+>
+> 如果 [插图] 足够大，能够弥补 [插图] 的话，这里的推导就不成立了，但上面是常见的情形。
 
 Summing up, we've learnt that a weight will learn slowly if either the input neuron is low-activation, or if the output neuron has saturated, i.e., is either high- or low-activation.
 
+总结一下，前面讲到，如果输入神经元激活值很小，或者输出神经元已经饱和，权重学习会很缓慢。
+
 None of these observations is too greatly surprising. Still, they help improve our mental model of what's going on as a neural network learns. Furthermore, we can turn this type of reasoning around. The four fundamental equations turn out to hold for any activation function, not just the standard sigmoid function (that's because, as we'll see in a moment, the proofs don't use any special properties of $\sigma$). And so we can use these equations to *design* activation functions which have particular desired learning properties. As an example to give you the idea, suppose we were to choose a (non-sigmoid) activation function $\sigma$ so that $\sigma'$ is always positive, and never gets close to zero. That would prevent the slow-down of learning that occurs when ordinary sigmoid neurons saturate. Later in the book we'll see examples where this kind of modification is made to the activation function. Keeping the four equations (BP1)-(BP4) in mind can help explain why such modifications are tried, and what impact they can have.
+
+这些观测并不出乎意料，它们有助于完善神经网络学习背后的思维模型，而且，这种推断方式可以挪用他处。4 个基本方程其实对任何激活函数都是成立的（稍后将证明，推断本身与任何具体的代价函数无关），因此可以使用这些方程来设计有特定学习属性的激活函数。例如我们准备找一个非 sigmoid 激活函数 [插图]，使得[插图] 总为正，而且不会趋近 0。这可以避免原始的sigmoid 神经元饱和时学习速度下降的问题。后文会探讨对激活函数的这类修改。牢记这 4 个基本方程（见图2-6）有助于了解为何进行某些尝试，以及这些尝试的影响。
 
 ![img](http://neuralnetworksanddeeplearning.com/images/tikz21.png)
 
 [Problem](http://neuralnetworksanddeeplearning.com/chap2.html#problem_543309)
 
-Alternate presentation of the equations of backpropagation:  I've stated the equations of backpropagation (notably  (BP1) and (BP2) ) using the Hadamard product. This presentation may be disconcerting if you're unused to the Hadamard product. There's an alternative approach, based on conventional matrix multiplication, which some readers may find enlightening. (1) Show that (BP1) may be rewritten as
+Alternate presentation of the equations of backpropagation:  I've stated the equations of backpropagation (notably  (BP1) and (BP2) ) using the Hadamard product. This presentation may be disconcerting if you're unused to the Hadamard product. There's an alternative approach, based on conventional matrix multiplication, which some readers may find enlightening. 
+
+(1) Show that (BP1) may be rewritten as
+
+**反向传播方程的另一种表示方式**：前面给出了使用阿达马积的反向传播方程，尤其是(BP1)和(BP2)。如果你对这种特殊的乘积不熟悉，可能会有一些困惑。还有一种表示方式——基于传统的矩阵乘法，某些读者可以从中获得启发。
+
+(1) 证明(BP1)可以写成：
 $$
 \begin{eqnarray}
     \delta^L = \Sigma'(z^L) \nabla_a C,
   \tag{33}\end{eqnarray}
 $$
 
-where  $\Sigma'(z^L)$  is a square matrix whose diagonal entries are the values  $\sigma'(z^L_j)$, and whose off-diagonal entries are zero. Note that this matrix acts on $\nabla_a C$ by conventional matrix multiplication. (2) Show that (BP2) may be rewritten as
+where  $\Sigma'(z^L)$  is a square matrix whose diagonal entries are the values  $\sigma'(z^L_j)$, and whose off-diagonal entries are zero. Note that this matrix acts on $\nabla_a C$ by conventional matrix multiplication.
 
+其中 [插图] 是一个方阵，其对角线的元素是[插图]，其他的元素均为 0。注意，该矩阵通过一般的矩阵乘法作用于 [插图]。
+
+ (2) Show that (BP2) may be rewritten as
+
+ (2) 证明(BP2)可以写成：
 $$
-  \begin{eqnarray}
+\begin{eqnarray}
     \delta^l = \Sigma'(z^l) (w^{l+1})^T \delta^{l+1}.
   \tag{34}\end{eqnarray}
 $$
 
 (3) By combining observations (1) and (2) show that  
 
+(3) 结合(1)和(2)证明：
 $$
 \begin{eqnarray}
     \delta^l = \Sigma'(z^l) (w^{l+1})^T \ldots \Sigma'(z^{L-1}) (w^L)^T 
@@ -302,6 +377,8 @@ $$
 $$
 
 For readers comfortable with matrix multiplication this equation may be easier to understand than (BP1) and (BP2)  The reason I've focused on (BP1)  and (BP2)  is because that approach turns out to be faster to implement numerically.
+
+如果习惯于这种形式的矩阵乘法，会发现(BP1)和(BP2)更容易理解。本书坚持使用阿达马积的原因是其实现起来更快。
 
 ### 2.5 [Proof of the four fundamental equations (optional)](http://neuralnetworksanddeeplearning.com/chap2.html#proof_of_the_four_fundamental_equations_(optional))
 
@@ -613,3 +690,56 @@ Now, I'm not going to work through all this here. It's messy and requires consid
 What about the other mystery - how backpropagation could have been discovered in the first place? In fact, if you follow the approach I just sketched you will discover a proof of backpropagation. Unfortunately, the proof is quite a bit longer and more complicated than the one I described earlier in this chapter. So how was that short (but more mysterious) proof discovered? What you find when you write out all the details of the long proof is that, after the fact, there are several obvious simplifications staring you in the face. You make those simplifications, get a shorter proof, and write that out. And then several more obvious simplifications jump out at you. So you repeat again. The result after a few iterations is the proof we saw earlier*- short, but somewhat obscure, because all the signposts to its construction have been removed! I am, of course, asking you to trust me on this, but there really is no great mystery to the origin of the earlier proof. It's just a lot of hard work simplifying the proof I've sketched in this section.
 
 > *There is one clever step required. In Equation (53) the intermediate variables are activations like $a^{l+1}_q$. The clever idea is to switch to using weighted inputs, like $z^{l+1}_q$, as the intermediate variables. If you don't have this idea, and instead continue using the activations $a^{l+1}_q$, the proof you obtain turns out to be slightly more complex than the proof given earlier in the chapter. 
+
+## 数学
+
+### 如果，$C = \frac{1}{2} \sum_j (y_j-a^L_j)^2$， 那么 $\partial C / \partial a^L_j$ 等于什么？
+
+当损失函数为均方误差 $C = \frac{1}{2} \sum_j (y_j - a_j^L)^2$ 时，对输出层激活值 $a_j^L$ 的偏导数计算如下：
+
+$$
+\frac{\partial C}{\partial a_j^L} = a_j^L - y_j
+$$
+
+---
+
+**推导过程**：  
+1. 损失函数展开为：  
+   $$
+   C = \frac{1}{2} \sum_k (y_k - a_k^L)^2
+   $$  
+   其中 $k$ 遍历所有输出层神经元。  
+
+2. 对特定神经元 $a_j^L$ 求偏导时，只有 $k = j$ 的项对导数有贡献：  
+   $$
+   \frac{\partial C}{\partial a_j^L} = \frac{\partial}{\partial a_j^L} \left[ \frac{1}{2} (y_j - a_j^L)^2 \right]
+   $$  
+
+3. 应用链式法则计算：  
+   $$
+   \frac{\partial C}{\partial a_j^L} = \frac{1}{2} \cdot 2 \cdot (y_j - a_j^L) \cdot (-1) = -(y_j - a_j^L) = a_j^L - y_j
+   $$  
+
+---
+
+**关键点**：  
+- **符号一致性**：结果 $a_j^L - y_j$ 的符号是正向传播误差（预测值减真实值），这与梯度下降中参数更新的方向一致。  
+- **仅依赖当前神经元**：导数仅与第 $j$ 个神经元的激活值和真实值相关，与其他神经元无关。  
+
+---
+
+**示例**：  
+若 $a_j^L = 0.8$，真实值 $y_j = 1.0$，则：  
+$$
+\frac{\partial C}{\partial a_j^L} = 0.8 - 1.0 = -0.2
+$$  
+这表示增大 $a_j^L$ 会减少损失 $C$，符合直觉。  
+
+---
+
+**结论**：  
+在均方误差下，输出层误差项的完整表达式为：  
+$$
+\delta_j^L = (a_j^L - y_j) \cdot \sigma'(z_j^L)
+$$  
+这是反向传播中输出层误差计算的核心公式。
