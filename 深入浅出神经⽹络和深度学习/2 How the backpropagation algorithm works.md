@@ -229,7 +229,7 @@ Notice that everything in (BP1) is easily computed. In particular, we compute $z
 
 Equation (BP1) is a componentwise expression for $\delta^L$. It's a perfectly good expression, but not the matrix-based form we want for backpropagation. However, it's easy to rewrite the equation in a matrix-based form, as
 
-对 [插图] 来说，方程(BP1)是个分量形式的表达式。这个表达式非常好，但不是理想形式（我们希望用矩阵表示）。以矩阵形式重写方程其实很简单：
+对 $\delta^L$ 来说，方程(BP1)是个分量形式的表达式。这个表达式非常好，但不是理想形式（我们希望用矩阵表示）。以矩阵形式重写方程其实很简单：
 $$
 \begin{eqnarray} 
   \delta^L = \nabla_a C \odot \sigma'(z^L).
@@ -238,7 +238,7 @@ $$
 
 Here, $\nabla_a C$ is defined to be a vector whose components are the partial derivatives $\partial C / \partial a^L_j$. You can think of $\nabla_a C$ as expressing the rate of change of $C$ with respect to the output activations. It's easy to see that Equations (BP1a) and (BP1) are equivalent, and for that reason from now on we'll use (BP1) interchangeably to refer to both equations. As an example, in the case of the quadratic cost we have $\nabla_a C = (a^L-y)$, and so the fully matrix-based form of (BP1) becomes
 
-其中的 [插图] 定义为一个向量，其分量是偏导数 [插图]。可以把 [插图] 看作 [插图] 关于输出激活值的变化速度。显然，方程(BP1)和方程(BP1a)等价，所以下面用方程(BP1)表示这两个方程。例如对于二次代价函数，有[插图]，所以方程(BP1)的整个矩阵形式如下：
+其中的 $\nabla_a C$ 定义为一个向量，其分量是偏导数 $\partial C / \partial a^L_j$。可以把 $\nabla_a C$ 看作 $C$ 关于输出激活值的变化速度。显然，方程(BP1)和方程(BP1a)等价，所以下面用方程(BP1)表示这两个方程。例如对于二次代价函数，有 $\nabla_a C = (a^L-y)$，所以方程(BP1)的整个矩阵形式如下：
 $$
 \begin{eqnarray} 
   \delta^L = (a^L-y) \odot \sigma'(z^L).
@@ -251,20 +251,20 @@ As you can see, everything in this expression has a nice vector form, and is eas
 
 **An equation for the error $\delta^l$ in terms of the error in the next layer, $\delta^{l+1}$:** In particular
 
-使用下一层的误差 [插图] 来表示当前层的误差 [插图]，有：
+使用下一层的误差 $\delta^{l+1}$ 来表示当前层的误差 $\delta^l$，有：
 $$
 \begin{eqnarray} 
   \delta^l = ((w^{l+1})^T \delta^{l+1}) \odot \sigma'(z^l),
 \tag{BP2}\end{eqnarray}
 $$
 
-where $(w^{l+1})^T$ is the transpose of the weight matrix $w^{l+1}$ for the $(l+1)^{\rm th}$ layer. This equation appears complicated, but each element has a nice interpretation. Suppose we know the error $\delta^{l+1}$ at the $l+1^{\rm th}$ layer. When we apply the transpose weight matrix, $(w^{l+1})^T$, we can think intuitively of this as moving the error *backward* through the network, giving us some sort of measure of the error at the output of the $l^{\rm th}$ layer. We then take the Hadamard product $\odot \sigma'(z^l)$. This moves the error backward through the activation function in layer $l$, giving us the error $\delta^l$ in the weighted input to layer $l$.
+where $(w^{l+1})^T$ is the transpose of the weight matrix $w^{l+1}$ for the $(l+1)^{\rm th}$ layer. This equation appears complicated, but each element has a nice interpretation. Suppose we know the error $\delta^{l+1}$ at the $(l+1)^{\rm th}$ layer. When we apply the transpose weight matrix, $(w^{l+1})^T$, we can think intuitively of this as moving the error *backward* through the network, giving us some sort of measure of the error at the output of the $l^{\rm th}$ layer. We then take the Hadamard product $\odot \sigma'(z^l)$. This moves the error backward through the activation function in layer $l$, giving us the error $\delta^l$ in the weighted input to layer $l$.
 
-其中 [插图] 是第[插图]层权重矩阵 [插图] 的转置。该方程看上去有些复杂，但每个组成元素都解释得通。假设我们知道第[插图]层的误差 [插图]，当应用转置的权重矩阵[插图] 时，可以凭直觉把它看作在沿着神经网络反向移动误差，以此度量第l层输出的误差；然后计算阿达马积[插图]，这会让误差通过第 [插图] 层的激活函数反向传播回来并给出第 [插图] 层的带权输入的误差 [插图]。
+其中 $(w^{l+1})^T$ 是第 $(l+1)^{\rm th}$ 层权重矩阵 $w^{l+1}$  的转置。该方程看上去有些复杂，但每个组成元素都解释得通。假设我们知道第 $(l+1)^{\rm th}$ 层的误差 $\delta^{l+1}$，当应用转置的权重矩阵 $(w^{l+1})^T$ 时，可以凭直觉把它看作在沿着神经网络反向移动误差，以此度量第 $l^{th}$ 层输出的误差；然后计算阿达马积 $\odot \sigma'(z^l)$，这会让误差通过第 $l$ 层的激活函数反向传播回来并给出第 $l$ 层的带权输入的误差 $\delta^l$。
 
 By combining (BP2) with (BP1) we can compute the error $\delta^l$ for any layer in the network. We start by using (BP1) to compute $\delta^L$, then apply Equation (BP2) to compute $\delta^{L-1}$, then Equation (BP2) again to compute $\delta^{L-2}$, and so on, all the way back through the network.
 
-通过组合(BP1)和(BP2)，可以计算任何层的误差 [插图]。首先使用方程(BP1)计算 [插图]，然后使用方程(BP2)计算 [插图]，接着再次用方程(BP2)计算 [插图]，如此一步一步地在神经网络中反向传播。
+通过组合(BP1)和(BP2)，可以计算任何层的误差 $\delta^l$。首先使用方程(BP1)计算 $\delta^L$，然后使用方程(BP2)计算 $\delta^{L-1}$，接着再次用方程(BP2)计算 $\delta^{L-2}$，如此一步一步地在神经网络中反向传播。
 
 **An equation for the rate of change of the cost with respect to any bias in the network:** In particular:
 
@@ -707,18 +707,18 @@ $$
 1. 损失函数展开为：  
    $$
    C = \frac{1}{2} \sum_k (y_k - a_k^L)^2
-   $$  
+   $$
    其中 $k$ 遍历所有输出层神经元。  
 
 2. 对特定神经元 $a_j^L$ 求偏导时，只有 $k = j$ 的项对导数有贡献：  
    $$
    \frac{\partial C}{\partial a_j^L} = \frac{\partial}{\partial a_j^L} \left[ \frac{1}{2} (y_j - a_j^L)^2 \right]
-   $$  
+   $$
 
 3. 应用链式法则计算：  
    $$
    \frac{\partial C}{\partial a_j^L} = \frac{1}{2} \cdot 2 \cdot (y_j - a_j^L) \cdot (-1) = -(y_j - a_j^L) = a_j^L - y_j
-   $$  
+   $$
 
 ---
 
@@ -732,7 +732,7 @@ $$
 若 $a_j^L = 0.8$，真实值 $y_j = 1.0$，则：  
 $$
 \frac{\partial C}{\partial a_j^L} = 0.8 - 1.0 = -0.2
-$$  
+$$
 这表示增大 $a_j^L$ 会减少损失 $C$，符合直觉。  
 
 ---
@@ -741,5 +741,5 @@ $$
 在均方误差下，输出层误差项的完整表达式为：  
 $$
 \delta_j^L = (a_j^L - y_j) \cdot \sigma'(z_j^L)
-$$  
+$$
 这是反向传播中输出层误差计算的核心公式。
