@@ -268,7 +268,7 @@ By combining (BP2) with (BP1) we can compute the error $\delta^l$ for any layer 
 
 **An equation for the rate of change of the cost with respect to any bias in the network:** In particular:
 
-对于神经网络中的任意偏置，代价函数的变化率如下：
+**对于神经网络中的任意偏置，代价函数的变化率如下**：
 $$
 \begin{eqnarray}  \frac{\partial C}{\partial b^l_j} =
   \delta^l_j.
@@ -277,7 +277,7 @@ $$
 
 That is, the error $\delta^l_j$ is *exactly equal* to the rate of change $\partial C / \partial b^l_j$. This is great news, since (BP1) and (BP2) have already told us how to compute $\delta^l_j$. We can rewrite (BP3) in shorthand as
 
-也就是说，误差 [插图] 和变化率 [插图] 完全一致。该性质很棒，由于(BP1)和(BP2)给出了计算 [插图] 的方式，因此可以将(BP3)简写为：
+也就是说，误差 $\delta^l_j$ 和变化率 $\partial C / \partial b^l_j$ 完全一致。该性质很棒，由于(BP1)和(BP2)给出了计算 $\delta^l_j$ 的方式，因此可以将(BP3)简写为：
 $$
 \begin{eqnarray}
   \frac{\partial C}{\partial b} = \delta,
@@ -286,7 +286,7 @@ $$
 
 where it is understood that $\delta$ is being evaluated at the same neuron as the bias $b$.
 
-其中 [插图] 和偏置 [插图] 都是针对同一个神经元的。
+其中 $\delta$ 和偏置 $b$ 都是针对同一个神经元的。
 
 **An equation for the rate of change of the cost with respect to any weight in the network:** In particular:
 
@@ -299,7 +299,7 @@ $$
 
 This tells us how to compute the partial derivatives $\partial C / \partial w^l_{jk}$ in terms of the quantities $\delta^l$ and $a^{l-1}$, which we already know how to compute. The equation can be rewritten in a less index-heavy notation as
 
-由此可以计算偏导数 [插图]，其中 [插图] 和 [插图] 这些量的计算方式已经给出，因此可以用更少的下标重写方程，如下所示：
+由此可以计算偏导数 $\partial C / \partial w^l_{jk}$，其中 $\delta^l$ 和 $a^{l-1}$ 这些量的计算方式已经给出，因此可以用更少的下标重写方程，如下所示：
 $$
 \begin{eqnarray}  \frac{\partial
     C}{\partial w} = a_{\rm in} \delta_{\rm out},
@@ -308,25 +308,25 @@ $$
 
 where it's understood that $a_{\rm in}$ is the activation of the neuron input to the weight $w$, and $\delta_{\rm out}$ is the error of the neuron output from the weight $w$. Zooming in to look at just the weight $w$, and the two neurons connected by that weight, we can depict this as:
 
-其中 [插图] 是输入到权重 [插图] 的神经元的激活值，[插图] 是权重 [插图] 输出的神经元的误差。仔细看看权重 [插图]，还有与之相连的两个神经元，如图 2-5 所示。
+其中 $a_{\rm in}$ 是输入到权重 $w$ 的神经元的激活值，$\delta_{\rm out}$ 是权重 $w$ 输出的神经元的误差。仔细看看权重 $w$，还有与之相连的两个神经元，如图 2-5 所示。
 
 ![img](http://neuralnetworksanddeeplearning.com/images/tikz20.png)
 
 A nice consequence of Equation (32) is that when the activation $a_{\rm in}$ is small, $a_{\rm in} \approx 0$, the gradient term $\partial C / \partial w$ will also tend to be small. In this case, we'll say the weight *learns slowly*, meaning that it's not changing much during gradient descent. In other words, one consequence of (BP4) is that weights output from low-activation neurons learn slowly.
 
-方程(32)的一个优点是，如果激活值 [插图] 很小，即 [插图]，那么梯度 [插图] 的值也会很小。这意味着权重学习缓慢，受梯度下降的影响不大。换言之，方程(BP4)的一个结果就是小激活值神经元的权重学习会非常缓慢。
+方程(32)的一个优点是，如果激活值 $a_{\rm in}$ 很小，即 $a_{\rm in} \approx 0$，那么梯度 $\partial C / \partial w$ 的值也会很小。这意味着权重学习缓慢，受梯度下降的影响不大。换言之，方程(BP4)的一个结果就是小激活值神经元的权重学习会非常缓慢。
 
 There are other insights along these lines which can be obtained from (BP1)-(BP4). Let's start by looking at the output layer. Consider the term $\sigma'(z^L_j)$ in (BP1). Recall from the [graph of the sigmoid function in the last chapter](http://neuralnetworksanddeeplearning.com/chap1.html#sigmoid_graph) that the $\sigma$ function becomes very flat when $\sigma(z^L_j)$ is approximately 0 or 1. When this occurs we will have $\sigma'(z^L_j) \approx 0$. And so the lesson is that a weight in the final layer will learn slowly if the output neuron is either low activation ($\approx 0$) or high activation ($\approx 1$). In this case it's common to say the output neuron has *saturated* and, as a result, the weight has stopped learning (or is learning slowly). Similar remarks hold also for the biases of output neuron.
 
-以上 4 个基本方程还有其他地方值得研究。下面从输出层开始，先看看(BP1)中的项 [插图]。回顾一下sigmoid 函数的图像（详见第 1 章），当 [插图] 近似为0或1时，sigmoid 函数变得非常平缓，这时 [插图]。因此，如果输出神经元处于小激活值（约为 0）或者大激活值（约为 1）时，最终层的权重学习会非常缓慢。这时可以说输出神经元已经饱和了，并且，权重学习也会终止（或者学习非常缓慢），输出神经元的偏置也与之类似。
+以上 4 个基本方程还有其他地方值得研究。下面从输出层开始，先看看(BP1)中的项 $\sigma'(z^L_j)$。回顾一下[sigmoid 函数的图像（详见第 1 章）](http://neuralnetworksanddeeplearning.com/chap1.html#sigmoid_graph)，当 $\sigma(z^L_j)$ 近似为0或1时，sigmoid 函数变得非常平缓，这时 $\sigma'(z^L_j) \approx 0$。因此，如果输出神经元处于小激活值（约为 0）或者大激活值（约为 1）时，最终层的权重学习会非常缓慢。这时可以说输出神经元已经**饱和了**，并且，权重学习也会终止（或者学习非常缓慢），输出神经元的偏置也与之类似。
 
 We can obtain similar insights for earlier layers. In particular, note the $\sigma'(z^l)$ term in (BP2). This means that $\delta^l_j$ is likely to get small if the neuron is near saturation. And this, in turn, means that any weights input to a saturated neuron will learn slowly*.
 
-前面的层也有类似的特点，尤其注意(BP2)中的项 [插图]，这表示如果神经元已经接近饱和，那么 [插图] 很可能变小。这就导致输入到已饱和神经元的任何权重都学习缓慢*。
+前面的层也有类似的特点，尤其注意(BP2)中的项 $\sigma'(z^l)$ ，这表示如果神经元已经接近饱和，那么 $\delta^l_j$ 很可能变小。这就导致输入到已饱和神经元的任何权重都学习缓慢*。
 
 > *This reasoning won't hold if ${w^{l+1}}^T   \delta^{l+1}$ has large enough entries to compensate for the smallness of $\sigma'(z^l_j)$. But I'm speaking of the general tendency.
 >
-> 如果 [插图] 足够大，能够弥补 [插图] 的话，这里的推导就不成立了，但上面是常见的情形。
+> 如果 ${w^{l+1}}^T   \delta^{l+1}$  足够大，能够弥补 $\sigma'(z^l_j)$的话，这里的推导就不成立了，但上面是常见的情形。
 
 Summing up, we've learnt that a weight will learn slowly if either the input neuron is low-activation, or if the output neuron has saturated, i.e., is either high- or low-activation.
 
@@ -334,7 +334,7 @@ Summing up, we've learnt that a weight will learn slowly if either the input neu
 
 None of these observations is too greatly surprising. Still, they help improve our mental model of what's going on as a neural network learns. Furthermore, we can turn this type of reasoning around. The four fundamental equations turn out to hold for any activation function, not just the standard sigmoid function (that's because, as we'll see in a moment, the proofs don't use any special properties of $\sigma$). And so we can use these equations to *design* activation functions which have particular desired learning properties. As an example to give you the idea, suppose we were to choose a (non-sigmoid) activation function $\sigma$ so that $\sigma'$ is always positive, and never gets close to zero. That would prevent the slow-down of learning that occurs when ordinary sigmoid neurons saturate. Later in the book we'll see examples where this kind of modification is made to the activation function. Keeping the four equations (BP1)-(BP4) in mind can help explain why such modifications are tried, and what impact they can have.
 
-这些观测并不出乎意料，它们有助于完善神经网络学习背后的思维模型，而且，这种推断方式可以挪用他处。4 个基本方程其实对任何激活函数都是成立的（稍后将证明，推断本身与任何具体的代价函数无关），因此可以使用这些方程来设计有特定学习属性的激活函数。例如我们准备找一个非 sigmoid 激活函数 [插图]，使得[插图] 总为正，而且不会趋近 0。这可以避免原始的sigmoid 神经元饱和时学习速度下降的问题。后文会探讨对激活函数的这类修改。牢记这 4 个基本方程（见图2-6）有助于了解为何进行某些尝试，以及这些尝试的影响。
+这些观测并不出乎意料，它们有助于完善神经网络学习背后的思维模型，而且，这种推断方式可以挪用他处。4 个基本方程其实对任何激活函数都是成立的（稍后将证明，推断本身与任何具体的代价函数无关），因此可以使用这些方程来设计有特定学习属性的激活函数。例如我们准备找一个非 sigmoid 激活函数 $\sigma$，使得 $\sigma'$ 总为正，而且不会趋近 0。这可以避免原始的sigmoid 神经元饱和时学习速度下降的问题。后文会探讨对激活函数的这类修改。牢记这 4 个基本方程（见图2-6）有助于了解为何进行某些尝试，以及这些尝试的影响。
 
 ![img](http://neuralnetworksanddeeplearning.com/images/tikz21.png)
 
@@ -355,7 +355,7 @@ $$
 
 where  $\Sigma'(z^L)$  is a square matrix whose diagonal entries are the values  $\sigma'(z^L_j)$, and whose off-diagonal entries are zero. Note that this matrix acts on $\nabla_a C$ by conventional matrix multiplication.
 
-其中 [插图] 是一个方阵，其对角线的元素是[插图]，其他的元素均为 0。注意，该矩阵通过一般的矩阵乘法作用于 [插图]。
+其中 $\Sigma'(z^L)$ 是一个方阵，其对角线的元素是 $\sigma'(z^L_j)$，其他的元素均为 0。注意，该矩阵通过一般的矩阵乘法作用于 $\nabla_a C$。
 
  (2) Show that (BP2) may be rewritten as
 
@@ -746,14 +746,14 @@ $$
 
 ### BP1a $\delta^L = \nabla_a C \odot \sigma'(z^L)$ 的解释
 
-该公式是反向传播中计算输出层误差项的核心公式，具体解释如下：
+该公式是反向传播中计算**输出层误差项**的核心公式，具体解释如下：
 
 $$
 \begin{eqnarray}   \delta^L = \nabla_a C \odot \sigma'(z^L).\tag{BP1a}\end{eqnarray}
 $$
 
 1. **符号定义**：
-   - **$\delta^L$**：输出层的误差向量，表示每个神经元对总损失的“责任”。  
+   - **$\delta^L$**：输出层的误差向量，表示每个神经元对总损失的**责任**。  
    - **$\nabla_a C$**：损失函数对输出层激活值 $a^L$ 的梯度向量，即 $\frac{\partial C}{\partial a^L}$。  
    - **$\sigma'(z^L)$**：激活函数在输出层加权输入 $z^L$ 处的导数向量。  
    - **$\odot$**：逐元素相乘（哈达玛积）。
@@ -793,9 +793,7 @@ $$
 
 该公式是反向传播中计算隐藏层误差项的关键公式，其含义如下：
 
----
-
-### **公式解析**
+#### 公式解析
 1. **符号定义**：
    - **$\delta^l$**：第 $l$ 层的误差向量，表示该层神经元对总损失的贡献。
    - **$w^{l+1}$**：连接第 $l$ 层到第 $l+1$ 层的权重矩阵。
@@ -807,9 +805,7 @@ $$
    - **$(w^{l+1})^T \delta^{l+1}$**：将下一层的误差 $\delta^{l+1}$ 通过权重矩阵的转置反向投影到当前层。这一步对应前向传播中权重的“逆向操作”，将误差分配给当前层的每个神经元。
    - **$\odot \sigma'(z^l)$**：将反向投影的误差与激活函数的导数逐元素相乘。这一步引入了激活函数的非线性影响：若某神经元的激活函数导数小（如 Sigmoid 饱和区），其误差会被抑制；反之，导数大则误差被放大。
 
----
-
-### **公式的推导逻辑**
+#### 公式的推导逻辑
 假设损失函数为 $C$，根据链式法则，第 $l$ 层的误差 $\delta^l$ 是损失对 $l$ 层加权输入 $z^l$ 的梯度：
 $$
 \delta^l = \frac{\partial C}{\partial z^l}.
@@ -827,31 +823,389 @@ $$
 \delta^l = \left( (w^{l+1})^T \delta^{l+1} \right) \odot \sigma'(z^l).
 $$
 
----
-
-### **直观理解**
+#### 直观理解
 - **误差的反向流动**：  
   误差从 $l+1$ 层传回 $l$ 层时，权重矩阵的转置 $(w^{l+1})^T$ 表示每个权重对误差的“责任分配”。例如，若权重 $w_{jk}^{l+1}$ 较大，则第 $j$ 个神经元（$l+1$ 层）的误差对第 $k$ 个神经元（$l$ 层）的贡献更大。
 
 - **激活函数的调节作用**：  
   若某个神经元处于激活函数的敏感区（如 Sigmoid 的线性区），$\sigma'(z^l)$ 较大，误差会被保留并传递；若处于饱和区（如 Sigmoid 两端），$\sigma'(z^l)$ 趋近零，误差会被抑制。
 
----
+#### 示例
 
-### **示例**
-假设第 $l+1$ 层有 3 个神经元，第 $l$ 层有 2 个神经元，权重矩阵 $w^{l+1}$ 维度为 $3 \times 2$，误差向量 $\delta^{l+1} = [0.1, -0.2, 0.3]^T$，激活函数为 ReLU，且 $z^l = [2, -1]^T$。则：
-1. **转置权重矩阵**：  
-   $(w^{l+1})^T$ 维度为 $2 \times 3$。
-2. **反向投影误差**：  
-   $(w^{l+1})^T \delta^{l+1}$ 结果为 $2 \times 1$ 的向量。
-3. **激活函数导数**：  
-   ReLU 的导数为 $\sigma'(z^l) = [1, 0]^T$（当 $z_j^l > 0$ 时为 1，否则为 0）。
-4. **逐元素相乘**：  
-   最终误差 $\delta^l = \text{反向投影结果} \odot [1, 0]^T$，第二个神经元的误差被完全抑制。
+##### 网络结构
+- **输入层**：$ x = [0.6, 0.4] $  
+- **隐藏层**：3个神经元（Sigmoid激活）  
+- **输出层**：2个神经元（Sigmoid激活）  
+- **真实输出**：$ y = [0.8, 0.2] $  
 
----
+```mermaid
+graph LR
+    subgraph Input_Layer["输入层 (2 个神经元)"]
+        I1((I1 = 0.6))
+        I2((I2 = 0.4))        
+    end
 
-### **总结**
+    subgraph Hidden_Layer["隐藏层 (3 个神经元)"]
+        H1((H1))
+        H2((H2))
+        H3((H3))
+    end
+
+    subgraph Output_Layer["输出层 (2 个神经元)"]
+        O1((O1))
+        O2((O2))
+    end
+
+    I1 -->|w1| H1
+    I1 -->|w2| H2
+    I1 -->|w3| H3
+    I2 -->|w4| H1
+    I2 -->|w5| H2
+    I2 -->|w6| H3
+
+    H1 -->|w10| O1
+    H1 -->|w11| O2
+    H2 -->|w13| O1
+    H2 -->|w14| O2
+    H3 -->|w16| O1
+    H3 -->|w17| O2
+    
+    %% 标注样式
+    classDef input fill:#9f9,stroke:#333;
+    classDef output fill:#99f,stroke:#333;
+    class Input_Layer input;
+    class Output_Layer output;
+```
+
+**初始化参数**：  
+
+- 输入层到隐藏层的权重矩阵：  
+  $$
+  w^1 = \begin{bmatrix} 
+  0.1 & 0.2 \\ 
+  0.3 & 0.4 \\ 
+  0.5 & 0.6 
+  \end{bmatrix}, \quad 
+  b^1 = \begin{bmatrix} 
+  0.7 \\ 
+  0.8 \\ 
+  0.9 
+  \end{bmatrix}
+  $$
+- 隐藏层到输出层的权重矩阵：  
+  $$
+  w^2 = \begin{bmatrix} 
+  0.2 & 0.3 & 0.4 \\ 
+  0.5 & 0.6 & 0.7 
+  \end{bmatrix}, \quad 
+  b^2 = \begin{bmatrix} 
+  1.0 \\ 
+  1.1 
+  \end{bmatrix}
+  $$
+
+##### 前向传播计算
+1. **隐藏层加权输入 $ z^1 $**： 
+$$
+\begin{aligned}
+z^1 &= w^1 \cdot x + b^1 \\
+&= \begin{bmatrix} 
+   0.1 \times 0.6 + 0.2 \times 0.4 + 0.7 \\ 
+   0.3 \times 0.6 + 0.4 \times 0.4 + 0.8 \\ 
+   0.5 \times 0.6 + 0.6 \times 0.4 + 0.9 
+   \end{bmatrix} \\
+&= \begin{bmatrix} 
+   0.6 \times 0.1 + 0.4 \times 0.2 + 0.7 \\ 
+   0.6 \times 0.3 + 0.4 \times 0.4 + 0.8 \\ 
+   0.6 \times 0.5 + 0.4 \times 0.6 + 0.9 
+   \end{bmatrix} \\
+&= \begin{bmatrix} 
+   0.06 + 0.08 + 0.7 \\ 
+   0.18 + 0.16 + 0.8 \\ 
+   0.3 + 0.24 + 0.9 
+   \end{bmatrix} \\
+&= \begin{bmatrix} 
+   0.84 \\ 
+   1.14 \\ 
+   1.44 
+   \end{bmatrix}
+\end{aligned}
+$$
+
+2. **隐藏层激活值 $ a^1 $**（Sigmoid函数）：  
+   $$
+   a^1 = \sigma(z^1) = 
+   \begin{bmatrix} 
+   \frac{1}{1 + e^{-0.84}} \\ 
+   \frac{1}{1 + e^{-1.14}} \\ 
+   \frac{1}{1 + e^{-1.44}} 
+   \end{bmatrix} \approx 
+   \begin{bmatrix} 
+   0.698 \\ 
+   0.758 \\ 
+   0.808 
+   \end{bmatrix}
+   $$
+
+3. **输出层加权输入 $ z^2 $**：  
+$$
+\begin{aligned}
+z^2 &= w^2 \cdot a^1 + b^2 \\
+&= \begin{bmatrix} 
+0.2 \times 0.698 + 0.3 \times 0.758 + 0.4 \times 0.808 + 1.0 \\ 
+0.5 \times 0.698 + 0.6 \times 0.758 + 0.7 \times 0.808 + 1.1 
+\end{bmatrix} \\
+&= \begin{bmatrix} 
+0.1396 + 0.2274 + 0.3232 + 1.0 \\ 
+0.349 + 0.4548 + 0.5656 + 1.1 
+\end{bmatrix} \\
+&\approx \begin{bmatrix} 
+1.690 \\ 
+2.469 
+\end{bmatrix}
+\end{aligned}
+$$
+
+4. **输出层激活值 $ a^2 $**（Sigmoid函数）：  
+   $$
+   a^2 = \sigma(z^2) = 
+   \begin{bmatrix} 
+   \frac{1}{1 + e^{-1.690}} \\ 
+   \frac{1}{1 + e^{-2.469}} 
+   \end{bmatrix} \approx 
+   \begin{bmatrix} 
+   0.845 \\ 
+   0.922 
+   \end{bmatrix}
+   $$
+
+5. **损失计算（均方误差）**：  
+   $$
+   C = \frac{1}{2} \sum_{j=1}^2 (y_j - a_j^2)^2 = 
+   \frac{1}{2} \left[(0.8 - 0.845)^2 + (0.2 - 0.922)^2\right] \approx 
+   \frac{1}{2} \left[0.0020 + 0.5213\right] \approx 0.2617
+   $$
+
+##### 反向传播计算
+1. **输出层误差项 $ \delta^2 $**：  
+   $$
+   \begin{aligned}
+   \delta^2 &= (a^2 - y) \odot \sigma'(z^2) \\ 
+   &= \begin{bmatrix} 
+   0.845 - 0.8 \\ 
+   0.922 - 0.2 
+   \end{bmatrix} \odot 
+   \begin{bmatrix} 
+   0.845 \times (1 - 0.845) \\ 
+   0.922 \times (1 - 0.922) 
+   \end{bmatrix}\\
+   &\approx 
+   \begin{bmatrix} 
+   0.045 \\ 
+   0.722 
+   \end{bmatrix} \odot 
+   \begin{bmatrix} 
+   0.131 \\ 
+   0.072 
+   \end{bmatrix}\\
+   &= 
+   \begin{bmatrix} 
+   0.045 \times 0.131 \\ 
+   0.722 \times 0.072 
+   \end{bmatrix}\\
+    &\approx 
+   \begin{bmatrix} 
+   0.0059 \\ 
+   0.0520 
+   \end{bmatrix}
+   \end{aligned}
+   $$
+   
+2. **隐藏层误差项 $ \delta^1 $**：  
+   - 权重矩阵转置：  
+     $$
+     (w^2)^T = \begin{bmatrix} 
+     0.2 & 0.5 \\ 
+     0.3 & 0.6 \\ 
+     0.4 & 0.7 
+     \end{bmatrix}
+     $$
+   - 反向投影误差：  
+     $$
+     (w^2)^T \delta^2 = 
+     \begin{bmatrix} 
+     0.2 \times 0.0059 + 0.5 \times 0.0520 \\ 
+     0.3 \times 0.0059 + 0.6 \times 0.0520 \\ 
+     0.4 \times 0.0059 + 0.7 \times 0.0520 
+     \end{bmatrix} \approx 
+     \begin{bmatrix} 
+     0.0012 + 0.0260 \\ 
+     0.0018 + 0.0312 \\ 
+     0.0024 + 0.0364 
+     \end{bmatrix} = 
+     \begin{bmatrix} 
+     0.0272 \\ 
+     0.0330 \\ 
+     0.0388 
+     \end{bmatrix}
+     $$
+   - 激活函数导数：  
+     $$
+     \sigma'(z^1) = a^1 \odot (1 - a^1) \approx 
+     \begin{bmatrix} 
+     0.698 \times 0.302 \\ 
+     0.758 \times 0.242 \\ 
+     0.808 \times 0.192 
+     \end{bmatrix} \approx 
+     \begin{bmatrix} 
+     0.211 \\ 
+     0.183 \\ 
+     0.155 
+     \end{bmatrix}
+     $$
+   - 最终误差项：  
+     $$
+     \delta^1 = 
+     \begin{bmatrix} 
+     0.0272 \\ 
+     0.0330 \\ 
+     0.0388 
+     \end{bmatrix} \odot 
+     \begin{bmatrix} 
+     0.211 \\ 
+     0.183 \\ 
+     0.155 
+     \end{bmatrix} \approx 
+     \begin{bmatrix} 
+     0.0057 \\ 
+     0.0060 \\ 
+     0.0060 
+     \end{bmatrix}
+     $$
+
+##### 参数梯度计算
+1. **输出层权重梯度**：  
+   $$
+   \begin{aligned}
+   \frac{\partial C}{\partial w^2} &= \delta^2 \cdot (a^1)^T \\
+   &= 
+   \begin{bmatrix} 
+   0.0059 \\ 
+   0.0520 
+   \end{bmatrix} 
+   \cdot 
+   \begin{bmatrix} 
+   0.698 & 0.758 & 0.808 
+   \end{bmatrix}\\
+   &\approx 
+   \begin{bmatrix} 
+   0.0059 \times 0.698 & 0.0059 \times 0.758 & 0.0059 \times 0.808 \\ 
+   0.0520 \times 0.698 & 0.0520 \times 0.758 & 0.0520 \times 0.808 
+   \end{bmatrix}\\
+   &\approx 
+   \begin{bmatrix} 
+   0.0041 & 0.0045 & 0.0048 \\ 
+   0.0363 & 0.0394 & 0.0420 
+   \end{bmatrix}
+   \end{aligned}
+   $$
+   
+2. **隐藏层权重梯度**：  
+   $$
+   \frac{\partial C}{\partial w^1} = \delta^1 \cdot x^T = 
+   \begin{bmatrix} 
+   0.0057 \times 0.6 & 0.0057 \times 0.4 \\ 
+   0.0060 \times 0.6 & 0.0060 \times 0.4 \\ 
+   0.0060 \times 0.6 & 0.0060 \times 0.4 
+   \end{bmatrix} \approx 
+   \begin{bmatrix} 
+   0.0034 & 0.0023 \\ 
+   0.0036 & 0.0024 \\ 
+   0.0036 & 0.0024 
+   \end{bmatrix}
+   $$
+
+3. **偏置梯度**：  
+   $$
+   \frac{\partial C}{\partial b^2} = \delta^2 \approx 
+   \begin{bmatrix} 
+   0.0059 \\ 
+   0.0520 
+   \end{bmatrix}, \quad 
+   \frac{\partial C}{\partial b^1} = \delta^1 \approx 
+   \begin{bmatrix} 
+   0.0057 \\ 
+   0.0060 \\ 
+   0.0060 
+   \end{bmatrix}
+   $$
+
+##### 参数更新（学习率 $\eta = 0.1$）
+1. **更新输出层权重**：  
+   $$
+   \begin{aligned}
+   w^2_{\text{new}} &= w^2 - \eta \cdot \frac{\partial C}{\partial w^2} \\
+   &\approx 
+   \begin{bmatrix} 
+   0.2 - 0.1 \times 0.0041 & 0.3 - 0.1 \times 0.0045 & 0.4 - 0.1 \times 0.0048 \\ 
+   0.5 - 0.1 \times 0.0363 & 0.6 - 0.1 \times 0.0394 & 0.7 - 0.1 \times 0.0420 
+   \end{bmatrix}\\
+   &\approx 
+   \begin{bmatrix} 
+   0.1996 & 0.2996 & 0.3995 \\ 
+   0.4964 & 0.5961 & 0.6958 
+   \end{bmatrix}
+   \end{aligned}
+   $$
+   
+2. **更新隐藏层权重**：  
+   $$
+   w^1_{\text{new}} = w^1 - \eta \cdot \frac{\partial C}{\partial w^1} \approx 
+   \begin{bmatrix} 
+   0.1 - 0.1 \times 0.0034 & 0.2 - 0.1 \times 0.0023 \\ 
+   0.3 - 0.1 \times 0.0036 & 0.4 - 0.1 \times 0.0024 \\ 
+   0.5 - 0.1 \times 0.0036 & 0.6 - 0.1 \times 0.0024 
+   \end{bmatrix} \approx 
+   \begin{bmatrix} 
+   0.0997 & 0.1998 \\ 
+   0.2996 & 0.3998 \\ 
+   0.4996 & 0.5998 
+   \end{bmatrix}
+   $$
+
+3. **更新偏置**：  
+   $$
+   \begin{aligned}
+   &b^2_{\text{new}} = b^2 - \eta \cdot \frac{\partial C}{\partial b^2} \approx 
+   \begin{bmatrix} 
+   1.0 - 0.1 \times 0.0059 \\ 
+   1.1 - 0.1 \times 0.0520 
+   \end{bmatrix} \approx 
+   \begin{bmatrix} 
+   0.9994 \\ 
+   1.0948 
+   \end{bmatrix}\\
+   &\quad 
+   b^1_{\text{new}} = 
+   \begin{bmatrix} 
+   0.7 - 0.1 \times 0.0057 \\ 
+   0.8 - 0.1 \times 0.0060 \\ 
+   0.9 - 0.1 \times 0.0060 
+   \end{bmatrix} \approx 
+   \begin{bmatrix} 
+   0.6994 \\ 
+   0.7994 \\ 
+   0.8994 
+   \end{bmatrix}
+   \end{aligned}
+   $$
+
+##### 关键小结
+1. **误差反向传播**：通过链式法则逐层分配误差，结合激活函数导数调整误差强度。  
+2. **Sigmoid的导数**：$\sigma'(z) = \sigma(z)(1 - \sigma(z))$，在激活值接近0或1时导数趋近于0，可能导致梯度消失。  
+3. **通用性**：输出层多个神经元可处理多任务（如多分类或回归），权重矩阵的维度需严格匹配。 
+
+#### 总结
 公式 BP2 是反向传播的核心步骤之一，它实现了以下功能：  
 1. **误差分配**：通过权重矩阵的转置将误差从高层分配到低层。  
 2. **非线性调节**：通过激活函数导数调整误差的传播强度。  
