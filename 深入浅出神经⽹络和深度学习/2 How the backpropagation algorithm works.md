@@ -481,13 +481,23 @@ The final two equations we want to prove are (BP3) and (BP4). These also follow 
 
 The backpropagation equations provide us with a way of computing the gradient of the cost function. Let's explicitly write this out in the form of an algorithm:
 
-1. **Input** $x$: Set the corresponding activation a1a1 for the input layer.
+1. **Input** $x$: Set the corresponding activation $a^1$ for the input layer.
 2. **Feedforward**: For each $l = 2, 3, \ldots, L$ compute $z^{l} = w^l a^{l-1}+b^l$ and $a^l = \sigma(z^l)$.
 3. **Output error** $\delta^L$: Compute the vector $\delta^{L}   = \nabla_a C \odot \sigma'(z^L)$.
 4. **Backpropagate the error**: For each $l = L-1, L-2,   \ldots, 2$ compute $\delta^{l} = ((w^{l+1})^T \delta^{l+1}) \odot   \sigma'(z^{l})$.
 5. **Output**: The gradient of the cost function is given by $\frac{\partial C}{\partial w^l_{jk}} = a^{l-1}_k \delta^l_j$ and $\frac{\partial C}{\partial w^l_{jk}} = a^{l-1}_k \delta^l_j$.
 
 Examining the algorithm you can see why it's called *back*propagation. We compute the error vectors $\delta^l$ backward, starting from the final layer. It may seem peculiar that we're going through the network backward. But if you think about the proof of backpropagation, the backward movement is a consequence of the fact that the cost is a function of outputs from the network. To understand how the cost varies with earlier weights and biases we need to repeatedly apply the chain rule, working backward through the layers to obtain usable expressions.
+
+利用反向传播方程可以计算代价函数的梯度，用算法显式表达如下。
+
+1. **输入** $x$：为输入层设置对应的激活值 $a^1$。
+2. **前向传播**：对每个 $l = 2, 3, \ldots, L$ 计算相应的 $z^{l} = w^l a^{l-1}+b^l$ 和 $a^l = \sigma(z^l)$.
+3. **输出层误差** $\delta^L$：计算向量 $\delta^{L}   = \nabla_a C \odot \sigma'(z^L)$.
+4. **反向误差传播**：对每个 $l = L-1, L-2,   \ldots, 2$ 计算 $\delta^{l} = ((w^{l+1})^T \delta^{l+1}) \odot   \sigma'(z^{l})$.
+5. **输出**：代价函数的梯度由 $\frac{\partial C}{\partial w^l_{jk}} = a^{l-1}_k \delta^l_j$  和 $\frac{\partial C}{\partial w^l_{jk}} = a^{l-1}_k \delta^l_j$.
+
+计算误差向量 $\delta^l$。这看似有点奇怪，为何要从后面开始？仔细思考反向传播方程的证明，就能明白这种反向移动其实是由于代价函数是神经网络输出的函数。为了理解代价随前面层的权重和偏置变化的规律，需要重复运用链式法则，反向获取需要的表达式。
 
 [Exercises](http://neuralnetworksanddeeplearning.com/chap2.html#exercises_675621)
 
@@ -497,13 +507,31 @@ Examining the algorithm you can see why it's called *back*propagation. We comput
 As I've described it above, the backpropagation algorithm computes the gradient of the cost function for a single training example, $C = C_x$. In practice, it's common to combine backpropagation with a learning algorithm such as stochastic gradient descent, in which we compute the gradient for many training examples. In particular, given a mini-batch of $m$ training examples, the following algorithm applies a gradient descent learning step based on that mini-batch:
 
 1. **Input a set of training examples**
-2. **For each training example** $x$: Set the corresponding input activation ax,1ax,1, and perform the following steps:
+2. **For each training example** $x$: Set the corresponding input activation $a^{x, 1}$, and perform the following steps:
    - **Feedforward**: For each $l = 2, 3, \ldots, L$ compute $z^{x,l} = w^l a^{x,l-1}+b^l$ and $a^{x,l} = \sigma(z^{x,l})$.
    - **Output error** $\delta^{x,L}$: Compute the vector $\delta^{x,L} = \nabla_a C_x \odot \sigma'(z^{x,L})$.
    - **Backpropagate the error:** For each $l = L-1, L-2,   \ldots, 2$ compute $\delta^{x,l} = ((w^{l+1})^T \delta^{x,l+1})  \odot \sigma'(z^{x,l})$.
 3. Gradient descent: For each $l = L-1, L-2,   \ldots, 2$ update the weights according to the rule $w^l \rightarrow   w^l-\frac{\eta}{m} \sum_x \delta^{x,l} (a^{x,l-1})^T$, and the biases according to the rule $b^l \rightarrow b^l-\frac{\eta}{m}   \sum_x \delta^{x,l}$.
 
 Of course, to implement stochastic gradient descent in practice you also need an outer loop generating mini-batches of training examples, and an outer loop stepping through multiple epochs of training. I've omitted those for simplicity.
+
+---
+
+练习
+
+- 修改后的单个神经元的反向传播：假设改变一个前馈神经网络中的单个神经元，令其输出为$f(\sum_j w_j x_j + b)$，其中 $f$ 是跟 sigmoid 函数不同的某个函数，如何修改反向传播算法呢？
+- 线性神经元上的反向传播：假设将非线性神经元的 $\sigma$ 函数替换为 $\sigma(z) = z$，请重写反向传播算法。
+
+如前所述，反向传播算法对单独的训练样本计算代价函数的梯度，$C = C_x$。实践中通常将反向传播算法和学习算法（例如随机梯度下降算法）组合起来使用，会对许多训练样本计算对应的梯度。例如给定大小为 $m$ 的小批量样本，如下算法对该样本应用梯度下降学习。
+
+1. 输入训练样本的集合。
+2. 对每个训练样本 $x$，设置对应的输入激活值 $a^{x, 1}$，并执行以下步骤。
+   - **前向传播**: 对每个 $l = 2, 3, \ldots, L$ 计算 $z^{x,l} = w^l a^{x,l-1}+b^l$ 和 $a^{x,l} = \sigma(z^{x,l})$。
+   - **Output error** $\delta^{x,L}$: Compute the vector $\delta^{x,L} = \nabla_a C_x \odot \sigma'(z^{x,L})$.
+   - **Backpropagate the error:** For each $l = L-1, L-2,   \ldots, 2$ compute $\delta^{x,l} = ((w^{l+1})^T \delta^{x,l+1})  \odot \sigma'(z^{x,l})$.
+3. Gradient descent: For each $l = L-1, L-2,   \ldots, 2$ update the weights according to the rule $w^l \rightarrow   w^l-\frac{\eta}{m} \sum_x \delta^{x,l} (a^{x,l-1})^T$, and the biases according to the rule $b^l \rightarrow b^l-\frac{\eta}{m}   \sum_x \delta^{x,l}$.
+
+当然，在实践中实现随机梯度下降，还需要一个循环来生成小批量训练样本，以及多轮外循环。简单起见，这里暂不讨论。
 
 ### 2.7 [The code for backpropagation](http://neuralnetworksanddeeplearning.com/chap2.html#the_code_for_backpropagation)
 
