@@ -384,8 +384,11 @@ For readers comfortable with matrix multiplication this equation may be easier t
 
 We'll now prove the four fundamental equations (BP1)-(BP4). All four are consequences of the chain rule from multivariable calculus. If you're comfortable with the chain rule, then I strongly encourage you to attempt the derivation yourself before reading on.
 
+下面证明 4 个基本方程。它们是多元微积分链式法则的推论。如果你熟悉链式法则，建议自己先尝试推导。
+
 Let's begin with Equation (BP1), which gives an expression for the output error, $\delta^L$. To prove this equation, recall that by definition
 
+从方程(BP1)开始证明，它是输出误差 $\delta^L$ 的表达式。为了证明该方程，首先回顾定义：
 $$
 \begin{eqnarray}
   \delta^L_j = \frac{\partial C}{\partial z^L_j}.
@@ -394,6 +397,7 @@ $$
 
 Applying the chain rule, we can re-express the partial derivative above in terms of partial derivatives with respect to the output activations,
 
+应用链式法则，可以用输出激活值的偏导数的形式重写以上偏导数：
 $$
 \begin{eqnarray}
   \delta^L_j = \sum_k \frac{\partial C}{\partial a^L_k} \frac{\partial a^L_k}{\partial z^L_j},
@@ -402,6 +406,7 @@ $$
 
 where the sum is over all neurons $k$ in the output layer. Of course, the output activation $a^L_k$ of the $k^{\rm th}$ neuron depends only on the weighted input $z^L_j$ for the $j^{\rm th}$ neuron when $k = j$. And so $\partial a^L_k / \partial z^L_j$ vanishes when $k \neq j$. As a result we can simplify the previous equation to
 
+其中求和是对输出层的所有神经元 $k$ 进行的。当然，第 $k^{th}$ 个神经元的输出激活值 $a^L_k$ 只取决于 $k = j$ 时第 $j^{\rm th}$ 个神经元的输入权重 $z^L_j$，所以当 $k \neq j$ 时 $\partial a^L_k / \partial z^L_j$ 不存在。因此可以把上一个方程简化为：
 $$
 \begin{eqnarray}
   \delta^L_j = \frac{\partial C}{\partial a^L_j} \frac{\partial a^L_j}{\partial z^L_j}.
@@ -410,6 +415,7 @@ $$
 
 Recalling that $a^L_j = \sigma(z^L_j)$ the second term on the right can be written as $\sigma'(z^L_j)$, and the equation becomes
 
+基于 $a^L_j = \sigma(z^L_j)$，右边第 2 项可以写成 $\sigma'(z^L_j)$，方程变为：
 $$
 \begin{eqnarray}
   \delta^L_j = \frac{\partial C}{\partial a^L_j} \sigma'(z^L_j),
@@ -417,8 +423,11 @@ $$
 $$
 which is just (BP1), in component form.
 
+这正是(BP1)的分量形式。
+
 Next, we'll prove (BP2), which gives an equation for the error $\delta^l$ in terms of the error in the next layer, $\delta^{l+1}$. To do this, we want to rewrite $\delta^l_j = \partial C / \partial z^l_j$ in terms of $\delta^{l+1}_k = \partial C / \partial z^{l+1}_k$. We can do this using the chain rule,
 
+接着证明(BP2)，它以下一层误差 $\delta^{l+1}$ 的形式表示误差 $\delta^l$。为此，用 $\delta^{l+1}_k = \partial C / \partial z^{l+1}_k$. 重写 $\delta^l_j = \partial C / \partial z^l_j$。可以用链式法则实现。
 $$
 \begin{eqnarray}
   \delta^l_j & = & \frac{\partial C}{\partial z^l_j} \tag{40}\\
@@ -428,6 +437,7 @@ $$
 $$
 where in the last line we have interchanged the two terms on the right-hand side, and substituted the definition of $\delta^{l+1}_k$. To evaluate the first term on the last line, note that
 
+最后一行交换了右边的两项，并代入了 $\delta^{l+1}_k$ 的定义。为了对最后一行的第一项求值，注意：
 $$
 \begin{eqnarray}
   z^{l+1}_k = \sum_j w^{l+1}_{kj} a^l_j +b^{l+1}_k = \sum_j w^{l+1}_{kj} \sigma(z^l_j) +b^{l+1}_k.
@@ -435,6 +445,7 @@ $$
 $$
 Differentiating, we obtain
 
+对其求微分可得：
 $$
 \begin{eqnarray}
   \frac{\partial z^{l+1}_k}{\partial z^l_j} = w^{l+1}_{kj} \sigma'(z^l_j).
@@ -442,6 +453,7 @@ $$
 $$
 Substituting back into (42) we obtain
 
+将其代入(42)可得：
 $$
 \begin{eqnarray}
   \delta^l_j = \sum_k w^{l+1}_{kj}  \delta^{l+1}_k \sigma'(z^l_j).
@@ -449,13 +461,21 @@ $$
 $$
 This is just (BP2) written in component form.
 
+这正是(BP2)的分量形式。
+
 The final two equations we want to prove are (BP3) and (BP4). These also follow from the chain rule, in a manner similar to the proofs of the two equations above. I leave them to you as an exercise.
+
+最后需要证明方程(BP3)和方程(BP4)。它们同样遵循链式法则，因此和前两个方程的证明方法相似，这里把它们留作练习。
 
 [Exercise](http://neuralnetworksanddeeplearning.com/chap2.html#exercise_522523)
 
 - Prove Equations (BP3) and (BP4).
 
   That completes the proof of the four fundamental equations of backpropagation. The proof may seem complicated. But it's really just the outcome of carefully applying the chain rule. A little less succinctly, we can think of backpropagation as a way of computing the gradient of the cost function by systematically applying the chain rule from multi-variable calculus. That's all there really is to backpropagation - the rest is details.
+  
+- 证明方程(BP3)和方程(BP4)。
+
+  反向传播基本方程的证明看起来复杂，实际上恰当应用链式法则即可实现。可以将反向传播看作系统性地应用多元微积分中的链式法则来计算代价函数梯度的一种方式。介绍完了反向传播的理论，下面讨论实现细节。
 
 ### 2.6 [The backpropagation algorithm](http://neuralnetworksanddeeplearning.com/chap2.html#the_backpropagation_algorithm)
 
