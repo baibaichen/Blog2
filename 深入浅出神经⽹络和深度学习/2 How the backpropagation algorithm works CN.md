@@ -109,7 +109,7 @@ $$
 
 ### 2.4 [反向传播的 4 个基本方程](http://neuralnetworksanddeeplearning.com/chap2.html#the_four_fundamental_equations_behind_backpropagation)
 
-其实反向传播考量的是如何更改权重和偏置以控制代价函数，其终极含义就是计算偏导数 $\partial C / \partial w^l_{jk}$ 和 $\partial C / \partial b^l_j$。为了计算这些值，首先需要引入中间量 $\delta^l_j$，它是的误差。**反向传播将给出计算误差 $\delta^l_j$ 的流程，然后将其与 $\partial C / \partial w^l_{jk}$ 和 $\partial C / \partial b^l_j$ 联系起来**。
+其实反向传播考量的是如何更改权重和偏置以控制代价函数，其终极含义就是计算偏导数 $ \frac{\partial C} {\partial w^l_{jk}}$ 和 $\frac{\partial C}  {\partial b^l_j}$。为了计算这些值，首先需要引入中间量 $\delta^l_j$，它是第 $l^{\rm th}$ 层第 $j^{\rm th}$ 个神经元上的**误差**。**反向传播将给出计算误差 $\delta^l_j$ 的流程，然后将其与 $ \frac{\partial C} {\partial w^l_{jk}}$ 和 $\frac{\partial C}  {\partial b^l_j}$ 联系起来**。
 
 为了说明误差是如何定义的，设想神经网络中有个捣乱的家伙，如下图所示：
 
@@ -356,7 +356,7 @@ $$
 2. **前向传播**：对每个 $l = 2, 3, \ldots, L$ 计算相应的 $z^{l} = w^l a^{l-1}+b^l$ 和 $a^l = \sigma(z^l)$.
 3. **输出层误差** $\delta^L$：计算向量 $\delta^{L}   = \nabla_a C \odot \sigma'(z^L)$.
 4. **反向误差传播**：对每个 $l = L-1, L-2,   \ldots, 2$ 计算 $\delta^{l} = ((w^{l+1})^T \delta^{l+1}) \odot   \sigma'(z^{l})$.
-5. **输出**：代价函数的梯度由 $\frac{\partial C}{\partial w^l_{jk}} = a^{l-1}_k \delta^l_j$  和 $\frac{\partial C}{\partial w^l_{jk}} = a^{l-1}_k \delta^l_j$.
+5. **输出**：代价函数的梯度由 $\frac{\partial C}{\partial w^l_{jk}} = a^{l-1}_k \delta^l_j$  和 $\frac{\partial C}{\partial b^l_j} = \delta^l_j$.
 
 计算误差向量 $\delta^l$。这看似有点奇怪，为何要从后面开始？仔细思考反向传播方程的证明，就能明白这种反向移动其实是由于代价函数是神经网络输出的函数。为了理解代价随前面层的权重和偏置变化的规律，需要重复运用链式法则，反向获取需要的表达式。
 
@@ -586,6 +586,20 @@ $$
 > *需要一个巧妙的步骤。方程(53)中的中间变量是类似于 $a^{l+1}_q$ 的激活值。巧妙之处是改用加权的输入，例如用 $z^{l+1}_q$ 作为中间变量。如果没想到这一点，而是继续使用激活值 $a^{l+1}_q$，得到的证明会比本章给出的证明稍复杂些。
 
 ## 数学
+### $\frac{\partial C}{\partial z^l_j} \Delta z^l_j$ 
+
+这个公式表示成本函数 $ C $ 对第 $ l $ 层第 $ j $ 个神经元的加权输入 $ z_j^l $ 的变化敏感度，并通过线性近似量化其影响。具体解释如下：
+
+1. **偏导数项 $ \frac{\partial C}{\partial z_j^l} $**：  
+   表示成本函数 $ C $ 对 $ z_j^l $ 的梯度，即当 $ z_j^l $ 发生微小变化时，$ C $ 的变化率。在反向传播中，该梯度对应误差项 $ \delta_j^l $，用于衡量该神经元对整体误差的贡献。
+
+2. **变化量 $ \Delta z_j^l $**：  
+   表示 $ z_j^l $ 的实际调整量。例如，在梯度下降中，调整量可能由学习率和梯度决定：$ \Delta z_j^l = -\eta \cdot \frac{\partial C}{\partial z_j^l} $。
+
+3. **乘积的意义**：  
+   公式 $ \frac{\partial C}{\partial z_j^l} \Delta z_j^l $ 是成本函数变化的**一阶泰勒近似**。即当 $ z_j^l $ 改变 $ \Delta z_j^l $ 时，$ C $ 的变化量近似为两者的乘积。若调整方向与梯度相反（如梯度下降），该乘积为负值，表示成本降低的估计量。
+
+**总结**：该公式量化了通过调整 $ z_j^l $ 对成本函数的直接影响，是优化过程中参数更新的理论基础。在反向传播中，这种局部梯度与变化量的结合，使得误差得以逐层传递并指导权重调整。
 
 ### 如果，$C = \frac{1}{2} \sum_j (y_j-a^L_j)^2$， 那么 $\partial C / \partial a^L_j$ 等于什么？
 

@@ -162,7 +162,7 @@ Backpropagation is about understanding how changing the weights and biases in a 
 
 To understand how the error is defined, imagine there is a demon in our neural network:
 
-其实反向传播考量的是如何更改权重和偏置以控制代价函数，其终极含义就是计算偏导数 $\partial C / \partial w^l_{jk}$ 和 $\partial C / \partial b^l_j$。为了计算这些值，首先需要引入中间量 $\delta^l_j$，它是的误差。**反向传播将给出计算误差 $\delta^l_j$ 的流程，然后将其与 $\partial C / \partial w^l_{jk}$ 和 $\partial C / \partial b^l_j$ 联系起来**。
+其实反向传播考量的是如何更改权重和偏置以控制代价函数，其终极含义就是计算偏导数 $\partial C / \partial w^l_{jk}$ 和 $\partial C / \partial b^l_j$。为了计算这些值，首先需要引入中间量 $\delta^l_j$，它是第 $l^{\rm th}$ 层第 $j^{\rm th}$ 个神经元上的**误差**。**反向传播将给出计算误差 $\delta^l_j$ 的流程，然后将其与 $\partial C / \partial w^l_{jk}$ 和 $\partial C / \partial b^l_j$ 联系起来**。
 
 为了说明误差是如何定义的，设想神经网络中有个捣乱的家伙，如下图所示：
 
