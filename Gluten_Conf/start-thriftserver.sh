@@ -24,6 +24,9 @@ cd "${SPARK_HOME}" || {
 --master local[*] \
 --name MergeTreeTest \
 --files ${SPARK_HOME}/conf/log4j2.properties \
+--deploy-mode client \
+--driver-memory 32g \
+--conf spark.driver.memoryOverhead=4G \
 --conf spark.driver.extraClassPath=${GLUTEN_JARS} \
 --conf spark.executor.extraClassPath=${GLUTEN_JARS} \
 --conf spark.eventLog.enabled=true \
@@ -32,9 +35,6 @@ cd "${SPARK_HOME}" || {
 --conf spark.eventLog.compression.codec=zstd \
 --conf spark.gluten.sql.columnar.libpath=${LIBCH} \
 --conf spark.executorEnv.LD_PRELOAD=${LIBCH} \
---deploy-mode client \
---driver-memory 32g \
---conf spark.driver.memoryOverhead=4G \
 --conf spark.serializer=org.apache.spark.serializer.JavaSerializer \
 --conf spark.default.parallelism=16 \
 --conf spark.sql.shuffle.partitions=16 \
