@@ -4,7 +4,22 @@
 # source gluten.env
 
 export SPARK_LOCAL_DIRS=${LOCAL_DIR}/spark
-cd ${SPARK_HOME}
+
+if [ -z "${SPARK_HOME}" ]; then
+  echo "Error: SPARK_HOME environment variable is not set"
+  exit 1
+fi
+
+if [ ! -d "${SPARK_HOME}" ]; then
+  echo "Error: SPARK_HOME directory does not exist: ${SPARK_HOME}"
+  exit 1
+fi
+
+cd "${SPARK_HOME}" || {
+  echo "Error: Failed to change directory to ${SPARK_HOME}"
+  exit 1
+}
+
 ./sbin/start-thriftserver.sh \
 --master local[*] \
 --name MergeTreeTest \
