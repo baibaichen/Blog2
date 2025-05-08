@@ -39,8 +39,7 @@ cd "${SPARK_HOME}" || {
 --conf spark.default.parallelism=16 \
 --conf spark.sql.shuffle.partitions=16 \
 --conf spark.sql.files.minPartitionNum=1 \
---conf spark.sql.files.maxPartitionBytes=128MB \
---conf spark.sql.files.openCostInBytes=4194304 \
+--conf spark.sql.files.maxPartitionBytes=1G \
 --conf spark.sql.adaptive.coalescePartitions.enabled=true \
 --conf spark.sql.adaptive.advisoryPartitionSizeInBytes=64MB \
 --conf spark.locality.wait=0 \
@@ -101,4 +100,5 @@ cd "${SPARK_HOME}" || {
 --conf spark.gluten.sql.columnar.backend.ch.runtime_config.path=${LOCAL_DIR}/gluten \
 --conf spark.gluten.sql.columnar.backend.ch.runtime_config.tmp_path=${LOCAL_DIR}/tmp_path \
 --conf spark.gluten.sql.columnar.backend.ch.runtime_settings.enabled_driver_filter_mergetree_index=false \
---conf spark.sql.readSideCharPadding=false
+--conf spark.sql.readSideCharPadding=false \
+--conf spark.gluten.sql.columnar.backend.ch.runtime_settings.input_format_parquet_use_native_reader_with_filter_push_down=true
