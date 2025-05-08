@@ -88,9 +88,12 @@ cd "${SPARK_HOME}" || {
 --conf spark.gluten.sql.columnar.backend.ch.shuffle.hash.algorithm=sparkMurmurHash3_32 \
 --conf spark.sql.decimalOperations.allowPrecisionLoss=false \
 --conf spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension \
+--conf spark.hadoop.fs.s3a.access.key=minioadmin \
+--conf spark.hadoop.fs.s3a.secret.key=minioadmin \
 --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem \
---conf spark.hadoop.fs.s3a.endpoint=https://s3.us-west-2.amazonaws.com \
---conf spark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.InstanceProfileCredentialsProvider \
+--conf spark.hadoop.fs.s3a.endpoint=http://127.0.0.1:9000/ \
+--conf spark.hadoop.fs.s3a.path.style.access=true \
+--conf spark.hadoop.fs.s3a.connection.ssl.enabled=false \
 --conf spark.broadcast.autoClean.enabled=true \
 --conf spark.gluten.sql.columnar.backend.ch.runtime_settings.min_insert_block_size_bytes=524288000 \
 --conf spark.gluten.sql.columnar.backend.ch.runtime_settings.min_insert_block_size_rows=100000000 \
