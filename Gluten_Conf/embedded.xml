@@ -1,0 +1,66 @@
+<!-- Config that is used when server is run without config file. -->
+<clickhouse>
+    <logger>
+        <level>error</level>
+        <console>true</console>
+    </logger>
+
+    <http_port>8100</http_port>
+    <tcp_port>9100</tcp_port>
+    <mysql_port>9004</mysql_port>
+
+    <path>/home/chang/test/clickhouse_test</path>
+
+    <mlock_executable>true</mlock_executable>
+
+    <users>
+        <default>
+            <password></password>
+
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+
+            <profile>default</profile>
+            <quota>default</quota>
+
+            <access_management>1</access_management>
+            <named_collection_control>1</named_collection_control>
+        </default>
+    </users>
+
+    <profiles>
+        <default/>
+    </profiles>
+
+    <quotas>
+        <default />
+    </quotas>
+    <storage_configuration>
+        <disks>
+            <minio>
+                <type>s3</type>
+                <endpoint>http://localhost:9000/clickhouse/</endpoint>
+                <access_key_id>minioadmin</access_key_id>
+                <secret_access_key>minioadmin</secret_access_key>
+                <region></region>
+                <metadata_path>/home/chang/test/clickhouse_test/minio/</metadata_path>
+            </minio>
+            <minio_cache>
+                <type>cache</type>
+                <disk>minio</disk>
+                <path>/home/chang/test/clickhouse_test/cache/minio_cache/</path>
+                <max_size>10Gi</max_size>
+            </minio_cache>
+        </disks>
+        <policies>
+            <minio>
+                <volumes>
+                    <main>
+                        <disk>minio</disk>
+                    </main>
+                </volumes>
+            </minio>
+        </policies>
+    </storage_configuration>    
+</clickhouse>
