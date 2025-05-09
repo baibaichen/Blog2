@@ -104,4 +104,15 @@ cd "${SPARK_HOME}" || {
 --conf spark.gluten.sql.columnar.backend.ch.runtime_config.tmp_path=${LOCAL_DIR}/tmp_path \
 --conf spark.gluten.sql.columnar.backend.ch.runtime_settings.enabled_driver_filter_mergetree_index=false \
 --conf spark.sql.readSideCharPadding=false \
---conf spark.gluten.sql.columnar.backend.ch.runtime_settings.input_format_parquet_use_native_reader_with_filter_push_down=true
+--conf spark.gluten.sql.columnar.backend.ch.runtime_settings.input_format_parquet_use_native_reader_with_filter_push_down=true \
+--conf spark.gluten.sql.columnar.backend.ch.runtime_config.storage_configuration.disks.s3.endpoint=http://127.0.0.1:9000/perf-mergetree/ \
+--conf spark.gluten.sql.columnar.backend.ch.runtime_config.storage_configuration.disks.s3.type=s3_gluten \
+--conf spark.gluten.sql.columnar.backend.ch.runtime_config.storage_configuration.disks.s3.metadata_path=${LOCAL_DIR}/gluten/metadata \
+--conf spark.gluten.sql.columnar.backend.ch.runtime_config.storage_configuration.disks.s3.access_key_id=minioadmin \
+--conf spark.gluten.sql.columnar.backend.ch.runtime_config.storage_configuration.disks.s3.secret_access_key=minioadmin \
+--conf spark.gluten.sql.columnar.backend.ch.runtime_config.storage_configuration.disks.s3_cache.type=cache \
+--conf spark.gluten.sql.columnar.backend.ch.runtime_config.storage_configuration.disks.s3_cache.disk=s3 \
+--conf spark.gluten.sql.columnar.backend.ch.runtime_config.storage_configuration.disks.s3_cache.path=${LOCAL_DIR}/gluten/cache \
+--conf spark.gluten.sql.columnar.backend.ch.runtime_config.storage_configuration.disks.s3_cache.max_size=50Gi \
+--conf spark.gluten.sql.columnar.backend.ch.runtime_config.storage_configuration.policies.__s3_main.volumes=main \
+--conf spark.gluten.sql.columnar.backend.ch.runtime_config.storage_configuration.policies.__s3_main.volumes.main.disk=s3
