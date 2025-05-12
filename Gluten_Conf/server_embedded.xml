@@ -1,7 +1,7 @@
 <!-- Config that is used when server is run without config file. -->
 <clickhouse>
     <logger>
-        <level>error</level>
+        <level>trace</level>
         <console>true</console>
     </logger>
 
@@ -10,14 +10,13 @@
     <mysql_port>9004</mysql_port>
 
     <path>/home/chang/test/clickhouse_test</path>
-    <background_schedule_pool_size>1</background_schedule_pool_size>
-    <tables_loader_foreground_pool_size>1</tables_loader_foreground_pool_size>
-    <tables_loader_background_pool_size>1</tables_loader_background_pool_size>
-    <background_pool_size>1</background_pool_size>
-    <background_move_pool_size>1</background_move_pool_size>
-    <background_fetches_pool_size>1</background_fetches_pool_size>
-    <background_common_pool_size>1</background_common_pool_size>
-    <!--max_thread_pool_size>20</max_thread_pool_size-->
+<!--    <background_schedule_pool_size>1</background_schedule_pool_size>-->
+<!--    <tables_loader_foreground_pool_size>1</tables_loader_foreground_pool_size>-->
+<!--    <tables_loader_background_pool_size>1</tables_loader_background_pool_size>-->
+<!--    <background_pool_size>1</background_pool_size>-->
+<!--    <background_move_pool_size>1</background_move_pool_size>-->
+<!--    <background_fetches_pool_size>1</background_fetches_pool_size>-->
+<!--    <background_common_pool_size>1</background_common_pool_size>-->
     <mlock_executable>true</mlock_executable>
 
     <users>
