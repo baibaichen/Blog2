@@ -75,7 +75,8 @@ cd "${SPARK_HOME}" || {
 --conf spark.gluten.sql.columnar.backend.ch.worker.id=1 \
 --conf spark.gluten.sql.columnar.coalesce.batches=false \
 --conf spark.gluten.sql.columnar.sort=true \
---conf spark.gluten.sql.columnar.backend.ch.runtime_config.logger.level=error \
+--conf spark.gluten.sql.columnar.backend.ch.runtime_config.logger.level=information \
+--conf spark.gluten.sql.columnar.backend.ch.runtime_config.dump_pipeline=true \
 --conf spark.shuffle.manager=org.apache.spark.shuffle.sort.ColumnarShuffleManager \
 --conf spark.io.compression.codec=LZ4 \
 --conf spark.gluten.sql.columnar.shuffle.customizedCompression.codec=LZ4 \
@@ -95,8 +96,8 @@ cd "${SPARK_HOME}" || {
 --conf spark.hadoop.fs.s3a.path.style.access=true \
 --conf spark.hadoop.fs.s3a.connection.ssl.enabled=false \
 --conf spark.broadcast.autoClean.enabled=true \
---conf spark.gluten.sql.columnar.backend.ch.runtime_settings.min_insert_block_size_bytes=524288000 \
---conf spark.gluten.sql.columnar.backend.ch.runtime_settings.min_insert_block_size_rows=100000000 \
+--conf spark.gluten.sql.columnar.backend.ch.runtime_settings.min_insert_block_size_bytes=524288000000 \
+--conf spark.gluten.sql.columnar.backend.ch.runtime_settings.min_insert_block_size_rows=100000000000 \
 --conf spark.sql.optimizer.runtime.bloomFilter.enabled=true \
 --conf spark.sql.optimizer.runtime.bloomFilter.creationSideThreshold=100MB \
 --conf spark.sql.optimizer.runtime.bloomFilter.applicationSideScanSizeThreshold=1KB \

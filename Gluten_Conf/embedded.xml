@@ -5,7 +5,7 @@
         <console>true</console>
     </logger>
 
-    <!--send_logs_level>information</send_logs_level-->
+    <send_logs_level>information</send_logs_level>
     <http_port>8100</http_port>
     <tcp_port>9100</tcp_port>
     <mysql_port>9004</mysql_port>
