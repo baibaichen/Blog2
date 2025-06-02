@@ -127,19 +127,17 @@ Figure [3](#_bookmark9) shows the algorithm to select 3 4-bit values from 8 4-bi
 
 > 图 3 展示了从 8 个 4 位值中选择 3 个 4 位值的算法。图中，我们切换背景颜色以区分对应于不同值的相邻元素。如图所示，该算法分两步运行。第一步，它将输入选择位图 **1**1**0**0**0**1**0**0 转换为扩展位图 **1111**1111**0000**0000**0000**1111**0000**0000。在第二步中，由于所选值的所有对应位都已在扩展位图中设置，我们现在可以应用此扩展位图并使用 PEXT 将所有选定位复制到输出，本质上只将选定值 v7、v6 和 v2 移动到输出。
 
-> - [ ] Fig. 3. Bit-parallel selection on 8 4-bit values
+![image-20250602094131945](./image/03.png)Fig. 3. Bit-parallel selection on 8 4-bit values
 
 With BMI, we design an elegant way to convert a select bitmap to the extended bitmap using only three instructions (two PDEP and one subtraction), regardless of the bit width of values. Figure [3](#_bookmark9) shows this computation on the example values in step 1. **The first PDEP instruction** moves each bit in the select bitmap to the rightmost position in the corresponding *𝑘*-bit field in the extended bitmap, according to the mask 0^𝑘−1^1...0^𝑘−1^1 (we use exponentiation to denote the bit repetition, e.g., 1^4^0^2^ = 111100). **The second PDEP instruction** uses a modified mask (*𝑚𝑎𝑠𝑘*  1), where the rightmost 1 is removed from *𝑚𝑎𝑠𝑘*. As a result, each bit in the select bitmap is now moved to the rightmost position in the *next 𝑘*-bit field in the extended bitmap. Thus, in the result mask *ℎ𝑖𝑔ℎ*, each moved bit is actually outside its corresponding *𝑘*-bit field, and can be thought of as a “borrowed” bit from the next field. With the two result masks *𝑙𝑜𝑤* and *ℎ𝑖𝑔ℎ*, we now perform a subtraction between the two masks (*ℎ𝑖𝑔ℎ 𝑙𝑜𝑤* ) to produce an extended bitmap. This last step relies on the propagating of the carries to set all bits between a pair of 1s to 1s, as illustrated below:
 
 > 利用 BMI，我们设计了一种优雅的方法，只需三条指令（两条 PDEP 指令和一条减法指令）即可将选择位图转换为扩展位图，而无需考虑值的位宽。图 3 展示了步骤 1 中示例值的计算过程。第一条 PDEP 指令根据掩码 0^k−1^1...0^k−1^1（我们使用幂来表示位重复，例如 1^4^0^2^= 111100），将选择位图中的每个位移动到扩展位图中相应 k 位字段的最右侧位置。第二条 PDEP 指令使用修改后的掩码（掩码 − 1），其中最右侧的 1 被从掩码中移除。<u>因此，选择位图中的每个位现在都移动到扩展位图中下一个 k 位字段的最右侧位置</u>。因此，在结果掩码高位中，每个移动的位实际上都位于其对应的 k 位字段之外，可以将其视为从下一个字段“借用”的位。有了两个结果掩码的低位和高位，我们现在对这两个掩码（高位 - 低位）进行减法运算，以生成一个扩展位图。最后一步依赖于进位的传播，将一对 1 之间的所有位设置为 1，如下所示：
 
-![](http://darwin-controller-pro.oss-cn-hangzhou.aliyuncs.com/docs/1378848234281619456/%E3%80%90%E5%8E%9F%E6%96%87%E3%80%91Selection%20Pushdown%20in%20Column%20Stores%20using%20Bit%20Manipulation_3.jpg?Expires=1748871504&OSSAccessKeyId=LTAI5tBVMtznbk7xyCa56gof&Signature=xeJJOdZm0Wgs%2FITEt3fFBIrb%2Bt8%3D)
+![image-20250602094408413](./image/k.png)
 
-> - [ ] Fig x
+Notice that the 1-bit in high prevents carries from propagating to the next 𝑘-bit field. As a result, the calculations are safely performed inside each *𝑘*-bit field and never interfere with each other. Thus, the subtraction acts as if it processes all *𝑘*-bit fields in parallel.
 
-Notice that the 1-bit in *ℎ𝑖𝑔ℎ* prevents carries from propagating to the next *𝑘*-bit field. As a result, the calculations are safely performed inside each *𝑘*-bit field and never interfere with each other. Thus, the subtraction acts as if it processes all *𝑘*-bit fields in parallel.
-
-The abovementioned algorithm is summarized in Algorithm [1](#_bookmark10) and Algorithm [2](#_bookmark11) (we show the extend operator as a separate operator, as it will be reused in Section [5.4.1](#_bookmark31)). In addition to the input values and bitmap, it takes a mask as input. For *𝑘*-bit values where *𝑘* is a power of 2, we set *𝑚𝑎𝑠𝑘*  = 0^𝑘−1^1 0^𝑘−1^1. If the input contains a large number of values packed into multiple processor words, we run Algorithm [1](#_bookmark10) on each word and concatenate the output through bit shifting.
+The abovementioned algorithm is summarized in Algorithm [1](#_bookmark10) and Algorithm [2](#_bookmark11) (we show the extend operator as a separate operator, as it will be reused in Section [5.4.1](#_bookmark31)). In addition to the input values and bitmap, it takes a mask as input. For *𝑘*-bit values where 𝑘 is a power of 2, we set *𝑚𝑎𝑠𝑘*  = 0^𝑘−1^1 0^𝑘−1^1. If the input contains a large number of values packed into multiple processor words, we run Algorithm [1](#_bookmark10) on each word and concatenate the output through bit shifting.
 
 > - [ ] **Algorithm 1** select (*𝑣𝑎𝑙𝑢𝑒𝑠*, *𝑏𝑖𝑡𝑚𝑎𝑝*, *𝑚𝑎𝑠𝑘*)
 > - [ ] **Algorithm 2** extend (*𝑏𝑖𝑡𝑚𝑎𝑝*, *𝑚𝑎𝑠𝑘*)
@@ -152,21 +150,39 @@ We next extend the simplified algorithm to support an arbitrary bit width *𝑘*
 
 > 接下来，我们扩展简化算法以支持任意位宽 k。图 4 展示了一个示例，该示例从 32 个 3 位值中选择 8 个值，这些值被打包成 3 个 32 位字。由于位宽 k=3 不是 2 的幂，因此存在跨字边界的值（v10 和 v21）。通用算法的关键挑战在于以最小的开销处理这些部分值。
 
-> - [ ] Fig. 4. Bit-parallel selection on 32 3-bit values (v10 and v21 span over multiple words)
+<a id="_bookmark12"></a>
+![image-20250602084000038](./image/04.png)
 
-Interestingly, we find that Algorithm [1](#_bookmark10) remains valid even for words containing partial values, as long as the masks meet the two requirements shown as follows. First, the mask needs to be shifted to be aligned with the layout of the word. In Figure [4,](#_bookmark12) the mask in word 2 is left shifted by 2 bits, as there are 2 remaining bits in the partial value v21 in word 2. Similarly, the mask in word 1 is left shifted by 1 bit to accommodate the 1 remaining bit of v10 in word 1. Second, the least significant bit in a *𝑚𝑎𝑠𝑘* must be 1, even though it corresponds to a bit in the middle of a value. For a word with a partial value on the right end, this extra 1 at the rightmost position ensures that the subtraction instruction is able to generate a sequence of 1s for the partial value in the extended bitmap. For example, in Figure [4,](#_bookmark12) the rightmost bit of *𝑚𝑎𝑠𝑘* in word 1 is set to 1 though it corresponds to the third bit of v10. This extra 1-bit guides the first PDEP instruction to move the rightmost bit from the select bitmap to the rightmost position in *𝑙𝑜𝑤* , which then results in the expected 1-bit on the right end of the extended bitmap.
+Fig. 4. Bit-parallel selection on 32 3-bit values (v10 and v21 span over multiple words)
 
-In general, Algorithm [3](#_bookmark14) shows the steps to generate masks for an arbitrary word size *𝑤* and bit width *𝑘*. For a given *𝑤* and *𝑘*, we put *𝑤* values in one group that span over *𝑘* processor words. It is clear that the words at the same position in these groups can use the same mask as they share the same layout of values. As a result, we only need to generate *𝑘* masks, one for each word in a group. These masks are always pre-created and reused repeatedly.
+> 有趣的是，我们发现即使处理器字中包含**部分值（partial values）**，只要掩码满足以下两个要求，算法 [1](#_bookmark10) 仍然有效。首先，掩码**需按字的布局进行移位对齐**。在图 [4](#_bookmark12) 中，字 2 中的掩码需**左移 2 位**，因为字 2 中的部分值 v21 占用了剩余的 2 位。类似地，字 1 中的掩码左移 1 位，以容纳字 1 中 v10 的剩余 1 位。其次，**mask** 中的最低有效位必须为 1，即使它对应于值中间的一位。对于最右端具有部分值的字，最右边位置的这个额外的 1 确保减法指令能够为扩展位图中的部分值生成一个 1 序列。例如，在图 [4,](#_bookmark12) 中，字 1 中 **mask** 的最右位被设置为 1，尽管它对应的是 v10 的第三位。这个额外的 1 位引导**第一条 PDEP 指令**：将选择位图的最右比特位移至 **low** 掩码的最末位，从而在扩展位图最右端生成所需的 1 。
 
-> - [ ] **Algorithm 3** generate_masks (*𝑤* , *𝑘*)
+Interestingly, we find that Algorithm [1](#_bookmark10) remains valid even for words containing partial values, as long as the masks meet the two requirements shown as follows. First, the mask needs to be shifted to be aligned with the layout of the word. In Figure [4,](#_bookmark12) the mask in word 2 is left shifted by 2 bits, as there are 2 remaining bits in the partial value v21 in word 2. Similarly, the mask in word 1 is left shifted by 1 bit to accommodate the 1 remaining bit of v10 in word 1. Second, the least significant bit in a *𝑚𝑎𝑠𝑘* must be 1, even though it corresponds to a bit in the middle of a value. For a word with a partial value on the right end, this extra 1 at the rightmost position ensures that the subtraction instruction is able to generate a sequence of 1s for the partial value in the extended bitmap. For example, in Figure [4,](#_bookmark12) the rightmost bit of *𝑚𝑎𝑠𝑘* in word 1 is set to 1 though it corresponds to the third bit of v10. This extra 1-bit guides the first PDEP instruction to move the rightmost bit from the select bitmap to the rightmost position in **low** , which then results in the expected 1-bit on the right end of the extended bitmap.
+
+In general, Algorithm [3](#_bookmark14) shows the steps to generate masks for an arbitrary word size 𝑤 and bit width 𝑘. For a given 𝑤 and 𝑘, we put 𝑤 values in one group that span over 𝑘 processor words. It is clear that the words at the same position in these groups can use the same mask as they share the same layout of values. As a result, we only need to generate 𝑘 masks, one for each word in a group. These masks are always pre-created and reused repeatedly.
+
+> 总体而言，算法 [3](#_bookmark14) 展示了为任意字长 𝑤 和位宽 𝑘 生成掩码的步骤。对于给定的 𝑤 和 𝑘，我们将  k 个 𝑤 字长的值分为一组，它们跨越 k 个处理器字。显然，**同组内相同位置的处理器字可使用相同掩码**，因为它们值的布局一致。所以我们只需生成  k 个掩码（每组内每个字对应一个）。这些掩码是预先创建，并可重复使用。
+
+<a id="_bookmark14"></a>**算法3 generate_masks(w, k)**  
+1: $masks \leftarrow \emptyset $  
+2: **for** \( i := 0 \) **to** \( k \) **do**  
+3:   $offset \leftarrow k - (i \times w) \% k$  
+4:    $masks.\text{add}\left( (0^{k-1}1 \ldots 0^{k-1}1 \ll offset) \lor 1 \right)$  
+5: **return** masks 
 
 With this approach, the general algorithm needs to run the same four instructions described in Algorithm [1](#_bookmark10) and [2](#_bookmark11) on each word, and surprisingly, it does not introduce any additional overhead compared to the simplified algorithm. It is also worth noting that the simplified algorithm is a specialization of the general algorithm. When the bit width *𝑘* is a power of 2, the general algorithm will generate the same *𝑚𝑎𝑠𝑘* for all words in a group and the mask generated by Algorithm [3](#_bookmark14) is identical to the one described in Section [3.2](#_bookmark8).
 
 According to Definition [1,](#_bookmark7) the proposed algorithm is clearly a bit-parallel algorithm since it runs a constant number of instructions on each processor word, regardless of the bit width of values or the selectivity of the select bitmap.
 
+> 采用这种方法，通用算法需要在每个字上运行算法 [1](#_bookmark10) 和 [2](#_bookmark11) 中描述的四条指令，令人惊讶的是，与简化算法相比，它并没有引入任何额外的开销。另外值得注意的是，简化算法是通用算法的特例。当位宽 $𝑘$ 是 2 的幂时，通用算法将为同一组中的所有字生成相同的 **𝑚𝑎𝑠𝑘**，并且算法 [3](#_bookmark14) 生成的掩码与 [3.2](#_bookmark8) 节中描述的掩码相同。
+>
+> 根据定义 [1](#_bookmark7)，所提出的算法显然是一种位并行算法，因为它在每个处理器字上运行恒定数量的指令，而与值的位宽或所选位图的选择性无关。
+
 ## 4 SELECTION PUSHDOWN
 
 Given the fast select operator described in Section [3,](#_bookmark6) we next present how to take *full* advantage of it in evaluating an arbitrary scan query. In this section, we will also introduce the second use case of BMI, which is critical in enabling selection pushdown in the framework.
+
+> 基于第 [3](#_bookmark6) 节中描述的快速选择运算符，我们接下来将介绍如何在执行任意扫描查询时**充分**利用它。在本节中，我们还将介绍 BMI 的第二个用例，它对于在框架中实现选择下推至关重要。
 
 ### 4.1 Framework
 
@@ -176,13 +192,23 @@ The framework is built upon a simple yet crucial observation: when performing a 
 
 In this framework, each filter operation produces a select bitmap as the output, which uses one bit per record to indicate if the corresponding record matches all filters that have been evaluated so far. The select bitmap can be fed into the next filter operation or the remaining project operations to accelerate the subsequent operations.
 
+> 我们的框架旨在通过充分利用 select 运算符来加速任意扫描查询。扫描查询会从与一系列过滤列（即 WHERE 子句中的 filter）匹配的记录中返回投影列（即 SELECT 子句中的列）的值。为简单起见，我们首先假设 WHERE 子句是筛选器的**合取**（即通过 AND 连接），这是最常见的情况。我们将在 [4.5](#_bookmark22) 节中放宽此假设，将框架扩展到支持合取、析取、否定或其任意布尔组合的过滤条件。
+>
+> 该框架基于一个简单但关键的观察：在执行 `filter`（过滤）或 `project`（投影）操作时，**不满足先前谓词**的记录可以直接跳过。虽然这一观察显而易见，但之前的方法并未有效地利用它。事实上，在过滤操作中，先前的研究倾向于对所有值执行谓词求值 [[29](#_bookmark74), [34](#_bookmark80)]，而有意忽略了某些值可能已被先前的过滤器过滤掉的事实。这主要是因为**选择运算符的额外开销**通常超过了谓词计算可能节省的成本。然而，借助基于编码值的高效选择运算符（第 [3](#_bookmark6) 节），**提前过滤值**变得更具优势，即使对于过滤操作也是如此。因此，我们的框架旨在**充分利用基于 BMI（位图索引）的选择运算符**，同时支持投影和过滤操作。有趣的是，这种设计也带来了新的技术挑战，但可通过 BMI 来解决（第 [4.3](#_bookmark18) 节）。
+>
+> 在该框架中，每个过滤操作会生成一个**选择位图**作为输出，其中每条记录用 **1 比特位**表示其是否满足当前所有已评估的过滤条件。该选择位图可传递至下一个过滤操作或剩余的投影操作，从而加速后续流程。
+
 **Running example.** To illustrate our methods, we use a running example throughout this section. The query is shown below:
+
+> **贯穿本节的示例**。为了说明我们的方法，我们在本节中**使用如下示例**。查询如下：
 
 ```sql
 SELECT c FROM R WHERE a < 10 AND b < 4
 ```
 
-Figure [5](#_bookmark16) shows the input and output of each operation to evaluate the example query. The query is converted as a filter operation on column *𝑎*, followed by another filter operation on column *𝑏*, and ended with a project operation on column *𝑐*. The first filter must read all column values and, thus, has no input select bitmap. The produced bitmap, bitmap~𝑎~, is then passed to the second filter operation that now can skip the values in records that fail to satisfy the first predicate. The second filter operation refines the select bitmap according to the predicate on column *𝑏*, resulting in an updated bitmap, bitmap*𝑏* , with 4 bits set to 1. Finally, we pass bitmap*𝑏* to the project operation as an input to select values in column *𝑐* from matching records.
+Figure [5](#_bookmark16) shows the input and output of each operation to evaluate the example query. The query is converted as a filter operation on column *𝑎*, followed by another filter operation on column *𝑏*, and ended with a project operation on column *𝑐*. The first filter must read all column values and, thus, has no input select bitmap. The produced bitmap, bitmap~𝑎~, is then passed to the second filter operation that now can skip the values in records that fail to satisfy the first predicate. The second filter operation refines the select bitmap according to the predicate on column *𝑏*, resulting in an updated bitmap, bitmap~𝑏~ , with 4 bits set to 1. Finally, we pass bitmap~𝑏~ to the project operation as an input to select values in column *𝑐* from matching records.
+
+> 图 [5](#_bookmark16) 展示了用于评估示例查询时每个操作的输入和输出。该查询被转换为：首先对列 **𝑎** 执行过滤操作，接着对列 **𝑏** 执行第二个过滤操作，最后对列 **𝑐** 执行投影操作。第一个过滤操作**没有输入选择位图**，因此必须读取所有列值。生成位图 bitmap~𝑎~ 传递给第二个过滤器，此时该操作可跳过**不满足第一个谓词**的记录中的值。第二个过滤操作根据列 **𝑏** 上的谓词更新选择位图，生成更新后的位图 bitmap~𝑏~ ，其中 4 位设置为 1。最后，我们将 bitmap~𝑏~ 作为输入传递给投影操作，以从匹配的记录中选择列 **𝑐** 中的值。
 
 <a id="_bookmark16"></a>
 |     ![Figure 1](./image/05.png)     |
