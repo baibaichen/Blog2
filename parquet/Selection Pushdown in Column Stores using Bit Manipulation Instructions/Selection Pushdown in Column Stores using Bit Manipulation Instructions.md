@@ -107,7 +107,7 @@ Figure [3](#_bookmark9) shows the algorithm to select 3 4-bit values from 8 4-bi
 
 With BMI, we design an elegant way to convert a select bitmap to the extended bitmap using only three instructions (two PDEP and one subtraction), regardless of the bit width of values. Figure [3](#_bookmark9) shows this computation on the example values in step 1. **The first PDEP instruction** moves each bit in the select bitmap to the rightmost position in the corresponding *𝑘*-bit field in the extended bitmap, according to the mask 0^𝑘−1^1...0^𝑘−1^1 (we use exponentiation to denote the bit repetition, e.g., 1^4^0^2^ = 111100). **The second PDEP instruction** uses a modified mask (*𝑚𝑎𝑠𝑘*  1), where the rightmost 1 is removed from *𝑚𝑎𝑠𝑘*. As a result, each bit in the select bitmap is now moved to the rightmost position in the *next 𝑘*-bit field in the extended bitmap. Thus, in the result mask *ℎ𝑖𝑔ℎ*, each moved bit is actually outside its corresponding *𝑘*-bit field, and can be thought of as a “borrowed” bit from the next field. With the two result masks *𝑙𝑜𝑤* and *ℎ𝑖𝑔ℎ*, we now perform a subtraction between the two masks (*ℎ𝑖𝑔ℎ 𝑙𝑜𝑤* ) to produce an extended bitmap. This last step relies on the propagating of the carries to set all bits between a pair of 1s to 1s, as illustrated below:
 
-> - [ ] Fig xxx
+> - [ ] Fig 3
 
 Notice that the 1-bit in *ℎ𝑖𝑔ℎ* prevents carries from propagating to the next *𝑘*-bit field. As a result, the calculations are safely performed inside each *𝑘*-bit field and never interfere with each other. Thus, the subtraction acts as if it processes all *𝑘*-bit fields in parallel.
 
@@ -115,14 +115,14 @@ The abovementioned algorithm is summarized in Algorithm [1](#_bookmark10) and Al
 
 > - [ ] **Algorithm 1** select (*𝑣𝑎𝑙𝑢𝑒𝑠*, *𝑏𝑖𝑡𝑚𝑎𝑝*, *𝑚𝑎𝑠𝑘*)
 > - [ ] **Algorithm 2** extend (*𝑏𝑖𝑡𝑚𝑎𝑝*, *𝑚𝑎𝑠𝑘*)
-> - [ ] Fig. 4. Bit-parallel selection on 32 3-bit values (v10 and v21 span over multiple words)
->
 
 The length of the output for each word can be calculated by performing the `POPCNT` instruction (counting 1s in a processor word) on the input select bitmap.
 
 ### 3.3 General Algorithm
 
 We next extend the simplified algorithm to support an arbitrary bit width *𝑘*. Figure [4](#_bookmark12) shows an example of selecting 8 values from 32 3-bit values that are packed into 3 32-bit words. Since the bit width *𝑘* = 3 is not a power of 2, there are values (v10 and v21) placed across word boundaries. The key challenge of the general algorithm lies in dealing with these partial values with minimal overhead.
+
+> - [ ] Fig. 4. Bit-parallel selection on 32 3-bit values (v10 and v21 span over multiple words)
 
 Interestingly, we find that Algorithm [1](#_bookmark10) remains valid even for words containing partial values, as long as the masks meet the two requirements shown as follows. First, the mask needs to be shifted to be aligned with the layout of the word. In Figure [4,](#_bookmark12) the mask in word 2 is left shifted by 2 bits, as there are 2 remaining bits in the partial value v21 in word 2. Similarly, the mask in word 1 is left shifted by 1 bit to accommodate the 1 remaining bit of v10 in word 1. Second, the least significant bit in a *𝑚𝑎𝑠𝑘* must be 1, even though it corresponds to a bit in the middle of a value. For a word with a partial value on the right end, this extra 1 at the rightmost position ensures that the subtraction instruction is able to generate a sequence of 1s for the partial value in the extended bitmap. For example, in Figure [4,](#_bookmark12) the rightmost bit of *𝑚𝑎𝑠𝑘* in word 1 is set to 1 though it corresponds to the third bit of v10. This extra 1-bit guides the first PDEP instruction to move the rightmost bit from the select bitmap to the rightmost position in *𝑙𝑜𝑤* , which then results in the expected 1-bit on the right end of the extended bitmap.
 
