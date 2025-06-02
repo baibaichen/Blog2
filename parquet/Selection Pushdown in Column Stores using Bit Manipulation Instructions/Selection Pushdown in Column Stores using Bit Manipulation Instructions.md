@@ -36,9 +36,15 @@ Finally, we note that although we present our techniques in the context of Parqu
 
 The Bit Manipulation Instruction set (BMI) is an extension to the X86 architecture for Intel and AMD processors. As the name suggests, the goal of BMI is to accelerate common bitwise operations by using dedicated hardware instructions. Unlike SIMD instruction sets (e.g., AVX2 or AVX512), BMI instructions operate on 64-bit general-purpose registers. BMI contains a total of 14 instructions. 
 
-Most bitwise operations supported by BMI have a sufficiently fast software implementation. For example, the BLSI instruction extracts the rightmost 1 from a 64-bit operand *𝑥* , which can be implemented by using two arithmetic instructions: *𝑥* & *-𝑥* [[27](#_bookmark72)]. Consequently, even before the advent of BMI, these bitwise operations were used in various scenarios including database applications (e.g., [[28](#_bookmark75), [29](#_bookmark74)]). With the advent of BMI, these software-implemented operations in existing software can be easily replaced by their BMI counterparts through compiler techniques or manual optimizations, without rethinking the algorithm design.
+Most bitwise operations supported by BMI have a sufficiently fast software implementation. For example, the BLSI instruction extracts the rightmost 1 from a 64-bit operand *𝑥* , which can be implemented by using two arithmetic instructions: `𝑥 & -𝑥` [[27](#_bookmark72)]. Consequently, even before the advent of BMI, these bitwise operations were used in various scenarios including database applications (e.g., [[28](#_bookmark75), [29](#_bookmark74)]). With the advent of BMI, these software-implemented operations in existing software can be easily replaced by their BMI counterparts through compiler techniques or manual optimizations, without rethinking the algorithm design.
+
+> 位操作指令集 (BMI) 是 Intel 和 AMD 处理器 X86 架构的扩展。顾名思义，BMI 的目标是通过使用专用硬件指令来加速常见的位操作。与 SIMD 指令集（例如 AVX2 或 AVX512）不同，BMI 指令操作于 64 位通用寄存器。BMI 总共包含 14 条指令。
+>
+> BMI 支持的大多数位操作都拥有足够快的软件实现。例如，BLSI 指令从 64 位操作数 x 中提取最右边的 1，这可以通过两条算术指令来实现：`x& − x`[27]。因此，即使在 BMI 出现之前，这些位操作就已经应用于包括数据库应用程序在内的各种场景（例如 [28, 29]）。随着 BMI 的出现，现有软件中这些软件实现的操作可以通过编译器技术或手动优化轻松地被 BMI 对应操作取代，而无需重新考虑算法设计。
 
 2.1.1.  **PEXT and PDEP**. Two BMI instructions, namely PEXT and PDEP, do not fall into the above mentioned category. The PEXT (parallel bit extract) instruction extracts the bits selected by a select mask operand from a source operand and copies them to the contiguous low-order bits in the destination, with the high-order bits set to 0s. The PDEP (parallel bit deposit) instruction does the opposite of PEXT: the contiguous low-order bits from the source operand are copied to the selected bits of destination, indicated by the select mask operand, while other bits in the destination are set to 0s. Figure [2](#_bookmark3) shows examples of PEXT and PDEP on 16-bit operands. Notice that we use the little-endian view throughout this paper, which means the first bit, value, or word is the rightmost one in all figures and the last one is the leftmost one.
+
+![](http://darwin-controller-pro.oss-cn-hangzhou.aliyuncs.com/docs/1378848234281619456/%E3%80%90%E5%8E%9F%E6%96%87%E3%80%91Selection%20Pushdown%20in%20Column%20Stores%20using%20Bit%20Manipulation_2.jpg?Expires=1748871504&OSSAccessKeyId=LTAI5tBVMtznbk7xyCa56gof&Signature=RaAyu2anFgjmTSQLSg%2BmRpAtaP8%3D)
 
 > - [ ] Fig. 2. Examples of PEXT and PDEP
 
@@ -93,6 +99,16 @@ Hence, our goal is to design a *bit-parallel* select operator. Intuitively, this
 
 **Definition 1.** For a given word size **𝑤** , an algorithm is a *bit-parallel algorithm* if it processes *𝑛𝑘*-bit values in $𝑂(\frac{nk}{w})$ instructions.
 
+**选择运算符**将一个由 n 个 k 位值和一个 n 位选择位图组成的字节数组作为输入。它会提取所有在选择位图中对应位为 1 的选定值，并将它们复制到输出字节数组的连续位中，就像所有未选定值的位都已从输入中删除一样。
+
+图 3 显示了从 8 个示例 4 位值中选择 3 个时的输入和预期输出（暂时忽略计算步骤）。由于位图中从右侧数第 3、7 和 8 位为 1，因此输出应包含 v2、v6 和 v7。类似地，图 4 显示了包含 3 位值的示例。请注意，在此示例中，由于字长 (32) 不是位宽 (3) 的倍数，因此某些值（例如 v10 和 v21）会超出字边界，这使得此问题更具挑战性。
+
+解决这个问题的一个显而易见的方法是扫描所有位打包值，一次提取并收集一个选定的位打包值，这需要 O(n) 条指令。然而，考虑到每个值通常只有几位长，远小于处理器字长（例如 64 位），这种简单的实现并没有充分利用处理器字宽，从而浪费了处理器可用的并行能力。
+
+因此，我们的目标是设计一个位并行选择算子。直观地说，这意味着该算法能够同时处理打包到处理器字中的所有值，并将所有选定的值并行移动到适当的位置。位并行算法的正式定义如定义 1 所示。
+
+**定义 1**. 对于给定的字长 $w$，如果一个算法在 $O(\frac{ nk} w)$ 条指令中处理 n 个 k 位值，则该算法是**位并行算法**。
+
 ### 3.2 Simplified Algorithm
 
 We first describe a simplified bit-parallel algorithm for the cases where the bit width *𝑘* of values is a power of 2 such that no value is placed across word boundaries. We will extend this algorithm to support arbitrary bit widths in Section [3.3](#_bookmark13).
@@ -101,13 +117,25 @@ We initially use a special case of the problem to illustrate the basic idea behi
 
 This observation can be generalized to handle wider values. For *𝑘*-bit values, instead of using the select bitmap as the mask operand of PEXT directly, we need an *extended bitmap* that uses *𝑘* bits to represent each bit in the original bitmap, enabling us to extract all *𝑘* bits for every selected value. Conceptually, this extended bitmap can be generated by duplicating each bit in the select bitmap *𝑘* times.
 
+> 我们首先描述一种简化的位并行算法，该算法适用于值的位宽 k 为 2 的幂，且所有值都不会跨越字边界的情况。我们将在 3.3 节中扩展此算法以支持任意位宽。
+>
+> 我们首先使用问题的一个特例来说明该算法背后的基本思想。假设每个值只有 1 位（k= 1）。在这个特例中，我们希望从值中提取位图中所有与 1 对应的位。有趣的是，这正是 PEXT 所做的，它将值放入源操作数中，并使用位图作为掩码操作数（见 2.1.1 节）。
+>
+> 这一观察结果可以推广到处理更宽的值。对于 k 位值，我们不需要直接使用选择位图作为 PEXT 的掩码操作数，而是需要一个**扩展位图**，它使用 k 位来表示原始位图中的每个位，从而使我们能够提取每个选定值的所有 k 位。从概念上讲，这个扩展位图可以通过将选择位图中的每个位复制 k 次来生成。
+
 Figure [3](#_bookmark9) shows the algorithm to select 3 4-bit values from 8 4-bit values. In the figure, we switch the background color to distinguish adjacent elements corresponding to different values. As seen in the figure, the algorithm runs in two steps. In the first step, it converts the input select bitmap **1**1**0**0**0**1**0**0 to an extended bitmap **1111**1111**0000**0000**0000**1111**0000**0000. In step 2, since all corresponding bits of the selected value have been set in the extended bitmap, we now can apply this extended bitmap and use PEXT to copy all selected bits to the output, essentially moving only the selected values v7, v6, and v2 to the output.
+
+> 图 3 展示了从 8 个 4 位值中选择 3 个 4 位值的算法。图中，我们切换背景颜色以区分对应于不同值的相邻元素。如图所示，该算法分两步运行。第一步，它将输入选择位图 **1**1**0**0**0**1**0**0 转换为扩展位图 **1111**1111**0000**0000**0000**1111**0000**0000。在第二步中，由于所选值的所有对应位都已在扩展位图中设置，我们现在可以应用此扩展位图并使用 PEXT 将所有选定位复制到输出，本质上只将选定值 v7、v6 和 v2 移动到输出。
 
 > - [ ] Fig. 3. Bit-parallel selection on 8 4-bit values
 
 With BMI, we design an elegant way to convert a select bitmap to the extended bitmap using only three instructions (two PDEP and one subtraction), regardless of the bit width of values. Figure [3](#_bookmark9) shows this computation on the example values in step 1. **The first PDEP instruction** moves each bit in the select bitmap to the rightmost position in the corresponding *𝑘*-bit field in the extended bitmap, according to the mask 0^𝑘−1^1...0^𝑘−1^1 (we use exponentiation to denote the bit repetition, e.g., 1^4^0^2^ = 111100). **The second PDEP instruction** uses a modified mask (*𝑚𝑎𝑠𝑘*  1), where the rightmost 1 is removed from *𝑚𝑎𝑠𝑘*. As a result, each bit in the select bitmap is now moved to the rightmost position in the *next 𝑘*-bit field in the extended bitmap. Thus, in the result mask *ℎ𝑖𝑔ℎ*, each moved bit is actually outside its corresponding *𝑘*-bit field, and can be thought of as a “borrowed” bit from the next field. With the two result masks *𝑙𝑜𝑤* and *ℎ𝑖𝑔ℎ*, we now perform a subtraction between the two masks (*ℎ𝑖𝑔ℎ 𝑙𝑜𝑤* ) to produce an extended bitmap. This last step relies on the propagating of the carries to set all bits between a pair of 1s to 1s, as illustrated below:
 
-> - [ ] Fig 3
+> 利用 BMI，我们设计了一种优雅的方法，只需三条指令（两条 PDEP 指令和一条减法指令）即可将选择位图转换为扩展位图，而无需考虑值的位宽。图 3 展示了步骤 1 中示例值的计算过程。第一条 PDEP 指令根据掩码 0^k−1^1...0^k−1^1（我们使用幂来表示位重复，例如 1^4^0^2^= 111100），将选择位图中的每个位移动到扩展位图中相应 k 位字段的最右侧位置。第二条 PDEP 指令使用修改后的掩码（掩码 − 1），其中最右侧的 1 被从掩码中移除。<u>因此，选择位图中的每个位现在都移动到扩展位图中下一个 k 位字段的最右侧位置</u>。因此，在结果掩码高位中，每个移动的位实际上都位于其对应的 k 位字段之外，可以将其视为从下一个字段“借用”的位。有了两个结果掩码的低位和高位，我们现在对这两个掩码（高位 - 低位）进行减法运算，以生成一个扩展位图。最后一步依赖于进位的传播，将一对 1 之间的所有位设置为 1，如下所示：
+
+![](http://darwin-controller-pro.oss-cn-hangzhou.aliyuncs.com/docs/1378848234281619456/%E3%80%90%E5%8E%9F%E6%96%87%E3%80%91Selection%20Pushdown%20in%20Column%20Stores%20using%20Bit%20Manipulation_3.jpg?Expires=1748871504&OSSAccessKeyId=LTAI5tBVMtznbk7xyCa56gof&Signature=xeJJOdZm0Wgs%2FITEt3fFBIrb%2Bt8%3D)
+
+> - [ ] Fig x
 
 Notice that the 1-bit in *ℎ𝑖𝑔ℎ* prevents carries from propagating to the next *𝑘*-bit field. As a result, the calculations are safely performed inside each *𝑘*-bit field and never interfere with each other. Thus, the subtraction acts as if it processes all *𝑘*-bit fields in parallel.
 
@@ -121,6 +149,8 @@ The length of the output for each word can be calculated by performing the `POPC
 ### 3.3 General Algorithm
 
 We next extend the simplified algorithm to support an arbitrary bit width *𝑘*. Figure [4](#_bookmark12) shows an example of selecting 8 values from 32 3-bit values that are packed into 3 32-bit words. Since the bit width *𝑘* = 3 is not a power of 2, there are values (v10 and v21) placed across word boundaries. The key challenge of the general algorithm lies in dealing with these partial values with minimal overhead.
+
+> 接下来，我们扩展简化算法以支持任意位宽 k。图 4 展示了一个示例，该示例从 32 个 3 位值中选择 8 个值，这些值被打包成 3 个 32 位字。由于位宽 k=3 不是 2 的幂，因此存在跨字边界的值（v10 和 v21）。通用算法的关键挑战在于以最小的开销处理这些部分值。
 
 > - [ ] Fig. 4. Bit-parallel selection on 32 3-bit values (v10 and v21 span over multiple words)
 
