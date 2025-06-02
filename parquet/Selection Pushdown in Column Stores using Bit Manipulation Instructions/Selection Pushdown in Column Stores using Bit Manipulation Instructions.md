@@ -50,6 +50,8 @@ Most bitwise operations supported by BMI have a sufficiently fast software imple
 
 Unlike other BMI instructions such as BLSI, it remains an open question on how to efficiently implement PEXT and PDEP without using dedicated hardware instructions. A naïve implementation, which iterates over each bit and moves selected bits one at a time, is extremely inefficient. To demonstrate this, Table [1](#_bookmark4) compares the software and BMI implementations of BLSI, PEXT, and PDEP on both Intel and AMD processors. Unsurprisingly, BMI is *two orders of magnitude faster* than our software implementation on both Intel and AMD processors. By contrast, the software implementation of BLSI runs at significantly higher throughput and is even surprisingly faster than its BMI counterpart.
 
+<a id="_bookmark4"></a>
+
 | Throughput (ops/s) | Intel Xeon Gold 6140 |          |          |          |         | AMD EPYC 7413 |
 | ------------------ | -------------------- | -------- | -------- | -------- | ------- | ------------- |
 |                    | BLSI                 | PEXT     | PDEP     | BLSI     | PEXT    | PDEP          |
@@ -82,6 +84,8 @@ that adaptively switches between run-length encoding (RLE) and bit-packing encod
 **Storage Format.** In Parquet, data is first partitioned into blocks in row-major order, called
 
 *row-groups*. Within each row-group, data is stored contiguously in column-major order, i.e., similar to the PAX layout [[15](#_bookmark60)]. Each root-to-leaf field path in the schema corresponds to a *column* in a row group, which includes three components: field values, repetition levels, and definition levels. The three components are stored independently in separate data pages. Unnecessary information is never physically stored in Parquet: null values are omitted from the field values; definition levels are not physically stored if the field is a required field; similarly, repetition levels are omitted for non-repeated fields.
+
+<a id="_bookmark6"></a>
 
 ## 3 BIT-PARALLEL SELECT OPERATOR
 
@@ -163,7 +167,7 @@ In general, Algorithm [3](#_bookmark14) shows the steps to generate masks for an
 
 > 总体而言，算法 [3](#_bookmark14) 展示了为任意字长 𝑤 和位宽 𝑘 生成掩码的步骤。对于给定的 𝑤 和 𝑘，我们将  k 个 𝑤 字长的值分为一组，它们跨越 k 个处理器字。显然，**同组内相同位置的处理器字可使用相同掩码**，因为它们值的布局一致。所以我们只需生成  k 个掩码（每组内每个字对应一个）。这些掩码是预先创建，并可重复使用。
 
-<a id="_bookmark14"></a>**算法3 generate_masks(w, k)**  
+**算法3 generate_masks(w, k)** <a id="_bookmark14"></a> 
 1: $masks \leftarrow \emptyset $  
 2: **for** \( i := 0 \) **to** \( k \) **do**  
 3:   $offset \leftarrow k - (i \times w) \% k$  
@@ -229,13 +233,54 @@ In our framework, filter and project operations can be implemented by composing 
 
 As an example, Table [2](#_bookmark17) shows the steps of the example filter and project operations. The first filter operation is implemented as an unpack operator followed by an evaluate operator. The select and transform operators are avoided because this is the first filter and has to read all values. In contrast, the second filter operation performs all four operators: it pre-selects the values based on bitmap*𝑎*, which, however, requires an additional bitmap transformation at the end of this operation. The refined bitmap, bitmap*𝑏* , is then used to accelerate the project operation on column c, which is implemented as a select operator followed by an unpack operator.
 
-|          |                                                              |
-| -------- | ------------------------------------------------------------ |
-| column a | filter(a, null, < 10) = evaluate~<10~(unpack(a))             |
-| column b | filter(b, bitmap~𝑎~ , < 4) = transform( evaluate~<4~(unpack(select(b, bitmap~𝑎~ ))), bitmap~𝑎~ ) |
-| column c | project(c, bitmap~𝑏~ ) = unpack(select(c, bitmap~𝑏~ ))       |
-
+![image-20250602120623090](./image/table-2.png)
 Table 2. Implementation of example filter and project operations
+
+> 在我们的框架中，过滤和投影操作可以通过组合四个基本运算符来实现，如下所示：
+>
+> - **选择（Select）**：第一步，我们使用 [3](#_bookmark6) 节中描述的选择运算符，从目标列中删除不相关的值。**下推选择运算符可减少需传递到后续操作符的数据量**。如果过滤或投影操作没有输入选择位图（例如，查询中的第一个过滤器），则可以跳过此步骤。
+>
+> - **解包（Unpack）**：接下来，我们使用解包运算符将编码值转换为原始数据类型的原生表示形式。对此运算符，我们采用最先进的基于 SIMD 的实现 [[41](#_bookmark86)]。对于投影操作，我们现在可以返回解包结果并跳过剩下的两个运算符/步骤。
+>
+> - **求值（Evaluate）**：对于过滤操作，我们接下来使用过滤谓词评估所有解码值，并生成一个位图来指示每个（选择的）值是否满足谓词。由于所有列值都已解包和解码，因此该运算符允许任意谓词。此外，由于所有（选择的）列值现在存储为原始数据类型，可通过 SIMD 向量化 [[34–36]](#_bookmark81) 更简单地实现谓词评估。
+>
+> - **转换（Transform）**：评估运算符生成的位图不能直接用作下一个操作的选择位图。<u>这是因为位图的位数与选定的记录数相同，而不是所有记录的位数</u>。转换运算符旨在将此类位图转换为适用于后续操作的选择位图。第 [4.3](#_bookmark18) 节将描述如何通过 BMI 高效实现此运算符。
+>
+> 例如，表 [2](#_bookmark17) 展示了示例过滤和投影操作的步骤。第一个过滤操作实现为一个解包运算符，后跟一个求值运算符。由于这是第一个过滤器，需要读取所有值，因此避免使用选择运算符和转换运算符。相比之下，第二个过滤操作执行所有四个运算符：它根据位图 **𝑎** 预先选择值，但这需要在此操作结束时进行额外的位图转换。然后，使用改进的位图 bitmap~𝑏~ 来加速对 **c** 列的投影操作，该操作实现为一个选择运算符，后跟一个解包运算符。
+
+#### Unpack 和 Decode
+
+Unpack 的本质是数据从**存储优化形态**到**计算优化形态**的转换，它平衡了存储效率与计算效率。通过 SIMD 加速和选择下推，该操作成为现代分析型数据库实现高性能查询的基石技术。
+
+在数据库执行引擎的上下文中，**（解包）和 Decode（解码）本质相同**，但存在**细粒度技术差异**。以下是关键解析：
+
+##### 一、**术语定义对比**
+
+| **术语**   | **技术本质**                                            | **操作目标**                | **输入/输出**       |
+| :--------- | :------------------------------------------------------ | :-------------------------- | :------------------ |
+| **Unpack** | 将**压缩存储的编码值**转换为**连续内存的原生数据**      | 优化内存访问模式 + 数据对齐 | 编码值 → 原始值数组 |
+| **Decode** | 将**特定编码格式**（如字典/RLE/位压缩）**解释为语义值** | 还原数据语义                | 压缩数据块 →        |
+
+##### 二、**在框架中的实际关系**
+
+```mermaid
+graph TB
+    A[列存储数据] -->|压缩块| B(Select算子)
+    B -->|筛选后的编码值| C[Unpack]
+    C --> D{内存操作}
+    D -->|物理解压| E[连续内存原始数组]
+    D -->|逻辑解释| F[Decode：转换编码规则]
+    E & F --> G[Evaluate]
+```
+
+1. **耦合性**
+   在实现中，Unpack **必然包含 Decode**
+   - *例*：字典编码列需先查字典（Decode）再填充到连续内存（Unpack）
+2. **差异焦点**
+   - `Decode` 侧重 **数据语义还原**（编码值 → 逻辑值）
+     *如：字典ID 42 → 字符串 "Beijing"*
+   - `Unpack` 侧重 **内存布局转换**（分散存储 → 连续数组）
+     *如：位压缩数据[0b1101] → 数组[1,0,1,1]*
 
 ### 4.3 Bitmap Transform Operator
 
@@ -248,6 +293,10 @@ To transform the filtered bitmap, we need to deposit the bits in “filtered” 
 |     ![Figure 1](./image/06.png)     |
 | :------------------------------------: |
 | Fig. 6. Selection pushdown on example column b |
+
+> 为了演示变换运算符的必要性，我们首先在运行示例中演示对 b 列的过滤操作。图 [6](#_bookmark19) 分解了此操作的关键步骤。**第一步**应用 bitmap~𝑎~（即由 a 列上的过滤器生成的位图），并选择通过第一个过滤器的 8 个值 (v3，v9-11，v18，v24，v29，v31)（详细步骤参见图 [4](#_bookmark12)）。**接下来**，我们解包这些 3 位编码值并评估所有解码值，生成一个名为 **filtered** 的 8 位位图（步骤 2）。**但是**，此位图指示的是列中每个**选定的值**（而不是任何值）是否满足谓词，因此需要经过转换才能用作后续操作的选择位图。
+>
+> 要转换这个 **filtered** 位图，我们需要将 **filtered** 中的位存入选择位图 bitmap~𝑎~ 中选定值对应的位位置（即 bitmap~𝑎~ 中的 1）。换句话说，我们需要将选择位图中的第 *𝑖* 个 1 替换为 **filtered** 中的第 *𝑖* 个位，同时将选择位图中的所有 0 保留在其原始位位置。有趣的是，这正是 PDEP 指令通过使用 **filtered** 作为源操作数，并使用选择位图作为掩码操作数所执行的操作（参见第 [2.1](#_bookmark1) 和图 [2](#_bookmark3)）。继续图 [6](#_bookmark19)（步骤 3）中的示例，我们用 **filtered** 中（最右侧）的第一个 0 替换 bitmap~𝑎~ 中（最右侧）的第一个 1，这表明第一个选定值 v3 未通过 b 列的谓词。使用 PDEP 使我们能够将 **filtered** 中的所有 8 位并行移动到选择位图中的适当位置。值得注意的是，如果没有硬件实现的 BMI 指令，此转换（以及选择运算符）的开销将显著增加，如表 [1](#_bookmark4) 所示，这进一步凸显了 BMI 在整个解决方案设计中的关键作用。
 
 ### 4.4 Filter Ordering <a id="_bookmark20"></a>
 
@@ -268,9 +317,25 @@ Based on these observations, it becomes evident that a simple greedy approach ca
 
 Finally, we extend our framework to allow conjunctions, disjunctions, negations, or an arbitrary boolean combination of them. For each disjunction in the WHERE clause, we always convert it to a combination of conjunctions and negations by applying De Morgan’s laws: $a \vee b = \neg (\neg a\wedge \neg b)$. To support negations, we add a boolean flag, namely **negate**, as an addition input parameter to the filter operation. If this flag is true, we need to flip the bitmap produced by the evaluate operator. All other operators within a filter operation remain unchanged. With this approach, our framework supports disjunctions and negations with negligible overhead.
 
+> 最后，我们扩展了框架，使其支持合取（AND）、析取（OR）、否定（NOT）或其任意的布尔组合。对于 WHERE 子句中的每个析取（OR）条件，我们总是应用 De Morgan 定律：$a \vee b = \neg (\neg a\wedge \neg b)$，将其转换为合取（AND）和否定（NOT）的组合。为了支持否定（NOT），我们添加了一个布尔标志，名为 **negate**，作为过滤操作的附加输入参数。如果该标志为真，如果此标志为真，则需要翻转求值运算符生成的位图。过滤操作中的所有其他运算符保持不变。通过这种方法，我们的框架能够以可忽略的开销支持析取（OR）和否定（NOT）。
+
+```mermaid
+graph 
+    A[a OR b] -->|德摩根定律| B["NOT(NOT a AND NOT b)"]
+    B --> C["Filter a: 输出位图A"]
+    C --> D["取反: NOT A"]
+    B --> E["Filter b: 输出位图B"]
+    E --> F["取反: NOT B"]
+    D --> G["合并位图: NOT A AND NOT B"]
+    F --> G
+    G --> H["取反: NOT(NOT A AND NOT B)"]
+```
+
 ## 5 SELECTION PUSHDOWN IN PARQUET
 
 The techniques described in the previous sections are general techniques that can be applied to most column stores. In this section, we adapt and extend these techniques to enable selection pushdown in one specific but widely adopted storage format, Apache Parquet.
+
+> 前几节中描述的技术是通用技术，可以应用于大多数列存储。在本节中，我们将调整和扩展这些技术，以便在一种特定但广泛采用的存储格式 Apache Parquet 中实现选择下推。
 
 ### 5.1 Overview
 
@@ -288,6 +353,13 @@ In this section, we present our techniques to efficiently transform the input se
 | :------------------------------------: |
 | Fig. 7. Selecting an example repeated column in Parquet |
 
+> 正如我们在 [2.2](#_bookmark5) 节中所述，Parquet 中的每个列值都是一个三元组：**重复级别**，**定义级别**，**字段值**。重复级别和定义级别是用于以列式方式表示复杂结构的元数据。Parquet 中的 select 操作以一个列作为输入，包含编码后的重复层级、定义层级以及字段值，同时还需要一个指示待选记录的位图；输出所有被选中记录的重复/定义层级和字段值，就像我们使用标准 reader 读取仅包含匹配记录的 Parquet 文件一样。
+>
+> 挑战源于 Parquet 对结构信息进行编码以表示可选、嵌套或重复字段的方式（[2.2](#_bookmark5) 节）。由于 Parquet 从不显式存储空值，并且所有重复值都连续存储在同一个数组中，因此列中的级别或值的数量可能与记录数不同，这意味着我们在 [3](#_bookmark6) 节中介绍的 select 操作不能直接应用于 Parquet。
+>
+> 在本节中，我们将介绍一些技术，用于高效地将输入的选择位图转换为可应用于字段值和重复/定义级别的位图。此转换需要了解数据的结构信息，该结构由重复和定义级别表示。限于篇幅，我们省略了这些概念的正式定义，但引入两个将在本节通篇使用的简单事实：① 如果列值的定义级别不等于该列的最大定义级别，则该列值为空；② 如果列值的重复级别不为 0，则该列值与其前一个列值属于同一条记录。
+>
+> **本节示例**。图 [7](#_bookmark24) 展示了一个重复列的示例，其中包含 24 条记录的 32 个列值。每个列值都有一个定义级别和一个重复级别。因此，共有 32 个定义/重复级别。可以通过根据 ② 查看重复级别来构建级别和记录之间的映射：第 1 和第 2 个级别属于第一条记录（因为第 2 个重复级别非 0 ）；第二和第三条记录只有一个值；接下来的三个级别均属于第四条记录，依此类推。32 个列值中有一半的定义级别不等于 2（此列中的最大定义级别），这意味着有 16 个空值 (①)。这些空值未显式存储在字段值中。因此，即使该列包含 32 个列值，其值数组中也只存储了 16 个非空字段值。在图 [7](#_bookmark24) 中，我们还包含一个 24 位的选择位图。位图中的每个位指示是否需要选择每条记录（即属于该记录的所有列值）。我们将选择位图中的每个位与相应的重复和定义级别以及非空字段值用实线连接起来。因此，当且仅当某个级别或值与选择位图中的 1 连接时，才需要将其包含在选定列中。
 
 ### 5.2 Workflow
 
