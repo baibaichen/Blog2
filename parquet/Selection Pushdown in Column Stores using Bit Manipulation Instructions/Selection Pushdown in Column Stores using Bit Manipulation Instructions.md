@@ -357,7 +357,7 @@ In this section, we present our techniques to efficiently transform the input se
 >
 > 挑战源于 Parquet 对结构信息进行编码以表示可选、嵌套或重复字段的方式（[2.2](#_bookmark5) 节）。由于 Parquet 从不显式存储空值，并且所有重复值都连续存储在同一个数组中，因此列中的级别或值的数量可能与记录数不同，这意味着我们在 [3](#_bookmark6) 节中介绍的 select 操作不能直接应用于 Parquet。
 >
-> 在本节中，我们将介绍一些技术，用于高效地将输入的选择位图转换为可应用于字段值和重复/定义级别的位图。此转换需要了解数据的结构信息，该结构由重复和定义级别表示。限于篇幅，我们省略了这些概念的正式定义，但引入两个将在本节通篇使用的简单事实：① 如果列值的定义级别不等于该列的最大定义级别，则该列值为空；② 如果列值的重复级别不为 0，则该列值与其前一个列值属于同一条记录。
+> 在本节中，我们将介绍一些技术，用于高效地将输入的选择位图转换为可应用于字段值和重复/定义级别的位图。此转换需要了解数据的结构信息，该结构由重复和定义级别表示。限于篇幅，我们省略了这些概念的正式定义，但引入两个将在本节通篇使用的简单事实：① **如果列值的定义级别不等于该列的最大定义级别，则该列值为空**；② **如果列值的重复级别不为 0，则该列值与其前一个列值属于同一条记录**。
 >
 > **本节示例**。图 [7](#_bookmark24) 展示了一个重复列的示例，其中包含 24 条记录的 32 个列值。每个列值都有一个定义级别和一个重复级别。因此，共有 32 个定义/重复级别。可以通过根据 ② 查看重复级别来构建级别和记录之间的映射：第 1 和第 2 个级别属于第一条记录（因为第 2 个重复级别非 0 ）；第二和第三条记录只有一个值；接下来的三个级别均属于第四条记录，依此类推。32 个列值中有一半的定义级别不等于 2（此列中的最大定义级别），这意味着有 16 个空值 (①)。这些空值未显式存储在字段值中。因此，即使该列包含 32 个列值，其值数组中也只存储了 16 个非空字段值。在图 [7](#_bookmark24) 中，我们还包含一个 24 位的选择位图。位图中的每个位指示是否需要选择每条记录（即属于该记录的所有列值）。我们将选择位图中的每个位与相应的重复和定义级别以及非空字段值用实线连接起来。因此，当且仅当某个级别或值与选择位图中的 1 连接时，才需要将其包含在选定列中。
 
@@ -419,34 +419,18 @@ Fig. 9. Equality comparisons on 16 2-bit definition levels
 
 ### 5.4 Transforming the Select Bitmap
 
-1.  *Select Bitmap to Level Bitmap.* The upper part of Figure [8](#_bookmark26) illustrates the transformation from the select bitmap to the level bitmap. For each bit in the select bitmap, we need to duplicate it as many times as the number of values in the corresponding record. Interestingly, this transformation
+**5.4.1 Select Bitmap to Level Bitmap**. The upper part of Figure [8](#_bookmark26) illustrates the transformation from the select bitmap to the level bitmap. For each bit in the select bitmap, we need to duplicate it as many times as the number of values in the corresponding record. Interestingly, this transformation can be implemented by using the extend operator (Algorithm [2)](#_bookmark11) we introduced in Section [3.2](#_bookmark8). In the select operator, for **𝑘-bit** values, we use the extend operator to copy each bit in the bitmap to **𝑘** bits by using a specific predefined bitmap 0^𝑘−1^1...0^𝑘−1^1 as the mask. In general, the extend operator duplicates the **𝑖-th** bit in the input **𝑘** times, where **𝑘** denotes the distance between the **𝑖-th 1** and **(𝑖 + 1) -th 1** in the mask bitmap. By performing the equality comparisons between the repetition levels and 0s (Section [5.3),](#_bookmark27) we have generated the record bitmap where each 1-bit represents the first value in each record (according to 2 ). Thus, the distance between each pair of adjacent 1s represents the number of values in the corresponding record. Based on this finding, we now can extend the select bitmap by using the record bitmap as the mask of the extend operator, duplicating each bit **𝑘** times where **𝑘** is the number of values in the corresponding record. The result bitmap is the level bitmap. Figure [10](#_bookmark32) demonstrates the steps of this transformation for the running example. In this figure, we alternate background color to distinguish values or bits in different records.
 
-can be implemented by using the extend operator (Algorithm [2)](#_bookmark11) we introduced in Section [3.2.](#_bookmark8) In the select operator, for *𝑘*-bit values, we use the extend operator to copy each bit in the bitmap to *𝑘* bits by using a specific predefined bitmap 0*𝑘* −11*...*0*𝑘* −11 as the mask. In general, the extend operator duplicates the *𝑖*-th bit in the input *𝑘* times, where *𝑘* denotes the distance between the *𝑖*-th 1 and
-
-![](media/c5d815c89f49499e6f05696ae04850e3.png)*𝑖* 1 -th 1 in the mask bitmap. By performing the equality comparisons between the repetition levels and 0s (Section [5.3),](#_bookmark27) we have generated the record bitmap where each 1-bit represents the first value in each record (according to 2 ). Thus, the distance between each pair of adjacent 1s represents the number of values in the corresponding record. Based on this finding, we now can extend the select bitmap by using the record bitmap as the mask of the extend operator, duplicating each bit *𝑘* times where *𝑘* is the number of values in the corresponding record. The result bitmap is the level bitmap. Figure [10](#_bookmark32) demonstrates the steps of this transformation for the running example. In this figure, we alternate background color to distinguish values or bits in different records.
-
-**input** b*𝑠𝑒𝑙𝑒𝑐𝑡* : 010000010001100000100001
-
-b*𝑟𝑒𝑐𝑜𝑟𝑑* : 10111111111100011110111110011101
-
-low = PDEP(b*𝑠𝑒𝑙𝑒𝑐𝑡* , b*𝑟𝑒𝑐𝑜𝑟𝑑* ): 00100000100000011000000100000001
-
-high = PDEP(b*𝑠𝑒𝑙𝑒𝑐𝑡* , b*𝑟𝑒𝑐𝑜𝑟𝑑* -1): 10000001000100010000001000000100
-
-**output** b*𝑙𝑒𝑣𝑒𝑙*  = high low: 01100000100011111000000100000011
-
+<a id="_bookmark32"></a>
+![image-20250602203139577](./image/10.png)
 Fig. 10. Transforming a select bitmap to a level bitmap
 
-1.  *Level Bitmap to Value Bitmap.* As described earlier, Parquet does not explicitly store null values in the field values. Consequently, to produce a bitmap that can be used to select field values, we need to extract all bits from the level bitmap that corresponds to non-null values. This transformation is illustrated in the lower part of Figure [8.](#_bookmark26) As we have generated the valid bitmap by comparing the definition levels (Section [5.3),](#_bookmark27) this transformation can be simply implemented by applying PEXT on the level bitmap with the use of the valid bitmap as the mask (similar to Section [4.3).](#_bookmark18)
+**5.4.2 Level Bitmap to Value Bitmap**. As described earlier, Parquet does not explicitly store null values in the field values. Consequently, to produce a bitmap that can be used to select field values, we need to extract all bits from the level bitmap that corresponds to non-null values. This transformation is illustrated in the lower part of Figure [8](#_bookmark26). As we have generated the valid bitmap by comparing the definition levels (Section [5.3)](#_bookmark27), this transformation can be simply implemented by applying PEXT on the level bitmap with the use of the valid bitmap as the mask (similar to Section [4.3](#_bookmark18)).
 
-    Figure [11](#_bookmark34) demonstrates that a single PEXT instruction transforms the level bitmap *𝑏𝑙𝑒𝑣𝑒𝑙* to the value bitmap *𝑏𝑣𝑎𝑙𝑢𝑒* , removing all bits in *𝑏𝑙𝑒𝑣𝑒𝑙* that correspond to 0s in *𝑏𝑣𝑎𝑙𝑖𝑑* . The produced *𝑏𝑣𝑎𝑙𝑢𝑒* is then be used to select the non-null values from the example column.
+Figure [11](#_bookmark34) demonstrates that a single PEXT instruction transforms the level bitmap **𝑏𝑙𝑒𝑣𝑒𝑙** to the value bitmap **𝑏𝑣𝑎𝑙𝑢𝑒** , removing all bits in **𝑏𝑙𝑒𝑣𝑒𝑙** that correspond to 0s in **𝑏𝑣𝑎𝑙𝑖𝑑** . The produced **𝑏𝑣𝑎𝑙𝑢𝑒** is then be used to select the non-null values from the example column.
 
-**input** b*𝑙𝑒𝑣𝑒𝑙* : 01100000100011111000000100000011
-
-b*𝑣𝑎𝑙𝑖𝑑* : 01100001000111110001100101110011
-
-**output**  b*𝑣𝑎𝑙𝑢𝑒*  = PEXT(b*𝑙𝑒𝑣𝑒𝑙* , b*𝑣𝑎𝑙𝑖𝑑* ): 1100111100100011
-
+<a id="_bookmark34"></a>
+![image-20250602204412108](./image/11.png)
 Fig. 11. Transforming a level bitmap to a value bitmap
 
 ## 6 PARQUET-SELECT
