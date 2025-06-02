@@ -76,7 +76,7 @@ cd "${SPARK_HOME}" || {
 --conf spark.gluten.sql.columnar.coalesce.batches=false \
 --conf spark.gluten.sql.columnar.sort=true \
 --conf spark.gluten.sql.columnar.backend.ch.runtime_config.logger.level=information \
---conf spark.gluten.sql.columnar.backend.ch.runtime_config.dump_pipeline=true \
+--conf spark.gluten.sql.columnar.backend.ch.runtime_config.dump_pipeline=false \
 --conf spark.shuffle.manager=org.apache.spark.shuffle.sort.ColumnarShuffleManager \
 --conf spark.io.compression.codec=LZ4 \
 --conf spark.gluten.sql.columnar.shuffle.customizedCompression.codec=LZ4 \
