@@ -1,4 +1,5 @@
-# 2 [反向传播算法工作原理](http://neuralnetworksanddeeplearning.com/chap2.html)
+[TOC]
+## 2 [反向传播算法工作原理](http://neuralnetworksanddeeplearning.com/chap2.html)
 
 第 1 章介绍了神经网络如何使用梯度下降算法来学习权重和偏置，但其中存在一个问题：没有讨论如何计算代价函数的梯度。本章会讲解计算这些梯度的快速算法——反向传播算法。
 
