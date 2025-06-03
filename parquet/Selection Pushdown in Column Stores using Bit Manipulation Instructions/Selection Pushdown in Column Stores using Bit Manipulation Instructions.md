@@ -42,15 +42,20 @@ Most bitwise operations supported by BMI have a sufficiently fast software imple
 >
 > BMI 支持的大多数位操作都拥有足够快的软件实现。例如，BLSI 指令从 64 位操作数 x 中提取最右边的 1，这可以通过两条算术指令来实现：`x& − x`[27]。因此，即使在 BMI 出现之前，这些位操作就已经应用于包括数据库应用程序在内的各种场景（例如 [28, 29]）。随着 BMI 的出现，现有软件中这些软件实现的操作可以通过编译器技术或手动优化轻松地被 BMI 对应操作取代，而无需重新考虑算法设计。
 
-2.1.1.  **PEXT and PDEP**. Two BMI instructions, namely PEXT and PDEP, do not fall into the above mentioned category. The PEXT (parallel bit extract) instruction extracts the bits selected by a select mask operand from a source operand and copies them to the contiguous low-order bits in the destination, with the high-order bits set to 0s. The PDEP (parallel bit deposit) instruction does the opposite of PEXT: the contiguous low-order bits from the source operand are copied to the selected bits of destination, indicated by the select mask operand, while other bits in the destination are set to 0s. Figure [2](#_bookmark3) shows examples of PEXT and PDEP on 16-bit operands. Notice that we use the little-endian view throughout this paper, which means the first bit, value, or word is the rightmost one in all figures and the last one is the leftmost one.
+**2.1.1.  PEXT and PDEP**. Two BMI instructions, namely PEXT and PDEP, do not fall into the above mentioned category. The PEXT (parallel bit extract) instruction extracts the bits selected by a select mask operand from a source operand and copies them to the contiguous low-order bits in the destination, with the high-order bits set to 0s. The PDEP (parallel bit deposit) instruction does the opposite of PEXT: the contiguous low-order bits from the source operand are copied to the selected bits of destination, indicated by the select mask operand, while other bits in the destination are set to 0s. Figure [2](#_bookmark3) shows examples of PEXT and PDEP on 16-bit operands. Notice that we use the little-endian view throughout this paper, which means the first bit, value, or word is the rightmost one in all figures and the last one is the leftmost one.
 
-![](http://darwin-controller-pro.oss-cn-hangzhou.aliyuncs.com/docs/1378848234281619456/%E3%80%90%E5%8E%9F%E6%96%87%E3%80%91Selection%20Pushdown%20in%20Column%20Stores%20using%20Bit%20Manipulation_2.jpg?Expires=1748871504&OSSAccessKeyId=LTAI5tBVMtznbk7xyCa56gof&Signature=RaAyu2anFgjmTSQLSg%2BmRpAtaP8%3D)
+> **2.1.1. PEXT 和 PDEP** PEXT 和 PDEP 这两个 BMI 指令不属于上述类别。PEXT（并行位提取）指令从源操作数中提取由选择掩码操作数选定的位，并将其复制到目标操作数的连续低位，高位设置为 0。PDEP（并行位存放）指令与 PEXT 相反：将源操作数的连续低位复制到目标操作数的选定位（由选择掩码操作数指定），而目标操作数的其他位设置为 0。图 [2](#_bookmark3) 展示了 16 位操作数的 PEXT 和 PDEP 示例。请注意，本文通篇均采用小端字节序视图，这意味着所有图中的第一位、值或字都是最右边的，最后一个则是最左边的。
 
-> - [ ] Fig. 2. Examples of PEXT and PDEP
+<a id="_bookmark3"></a>
+|     ![Figure 2](./image/02.png)     |
+| :------------------------------------: |
+| Fig. 2. Examples of PEXT and PDEP |
 
 Unlike other BMI instructions such as BLSI, it remains an open question on how to efficiently implement PEXT and PDEP without using dedicated hardware instructions. A naïve implementation, which iterates over each bit and moves selected bits one at a time, is extremely inefficient. To demonstrate this, Table [1](#_bookmark4) compares the software and BMI implementations of BLSI, PEXT, and PDEP on both Intel and AMD processors. Unsurprisingly, BMI is *two orders of magnitude faster* than our software implementation on both Intel and AMD processors. By contrast, the software implementation of BLSI runs at significantly higher throughput and is even surprisingly faster than its BMI counterpart.
 
-<a id="_bookmark4"></a>
+> 与 BLSI 等其他 BMI 指令不同，如何在不使用专用硬件指令的情况下高效地实现 PEXT 和 PDEP 仍是一个悬而未决的问题。一种简单的实现方式，即迭代每个位并一次移动一位选定的位，效率极其低下。为了证明这一点，表 [1](#_bookmark4) 比较了 BLSI、PEXT 和 PDEP 在 Intel 和 AMD 处理器上的软件实现和 BMI 实现。不出所料，BMI 比我们在 Intel 和 AMD 处理器上的软件实现**快两个数量级**。相比之下，BLSI 的软件实现运行吞吐量明显更高，甚至比 BMI 实现的速度更快。
+
+<a id="_bookmark4"></a>Table 1. BMI vs. software implementation
 
 | Throughput (ops/s) | Intel Xeon Gold 6140 |          |          |          |         | AMD EPYC 7413 |
 | ------------------ | -------------------- | -------- | -------- | -------- | ------- | ------------- |
@@ -59,11 +64,13 @@ Unlike other BMI instructions such as BLSI, it remains an open question on how t
 | BMI                | 1381M                | 1150M    | 1143M    | 1243M    | 1713M   | 1651M         |
 | Speedup            | **0.46X**            | **142X** | **131X** | **0.2X** | **94X** | **89X**       |
 
-Table 1. BMI vs. software implementation
-
 Due to the prohibitively low performance of the software implementation of PEXT and PDEP, existing algorithms or systems tend to avoid these expensive bitwise operations in performancecritical tasks, making it rare to find opportunities to apply PEXT/PDEP directly in existing programs. Consequently, the advent of BMI requires us to fundamentally rethink the algorithm/system design with these powerful instructions. In this paper, we explore this opportunity for predicate pushdown in column stores.
 
 PEXT/PDEP support has been widely available in server processors for years. Intel first introduced PEXT and PDEP with the Haswell processors in 2013. AMD added support for these instructions through microcode starting with the Zen microarchitecture in 2017, followed by a full hardware implementation in the Zen 3 microarchitecture in 2020. However, ARM-based server processors, such as AWS Graviton [[5](#_bookmark50)] and Nvidia Grace [[11](#_bookmark56)], have yet to offer PEXT/PDEP support. One of the objectives of this paper is to motivate ARM engineers to assess the possibility of adding similar instructions in upcoming ARM-based processors.
+
+> 由于 PEXT 和 PDEP 的软件实现性能极低，现有算法或系统倾向于在性能关键型任务中避免这些昂贵的按位运算，因此很少有机会在现有程序中直接应用 PEXT/PDEP。因此，BMI 的出现要求我们从根本上重新思考使用这些强大指令的算法/系统设计。本文将探讨在列存储中实现谓词下推的这一可能性。
+>
+> 多年来，PEXT/PDEP 支持已在服务器处理器中广泛应用。英特尔于 2013 年在 Haswell 处理器中首次引入 PEXT 和 PDEP。AMD 于 2017 年从 Zen 微架构开始通过微代码添加了对这些指令的支持，随后于 2020 年在 Zen 3 微架构中实现了完整的硬件实现。然而，基于 ARM 的服务器处理器，例如 AWS Graviton [[5](#_bookmark50)] 和 Nvidia Grace [[11](#_bookmark56)]，尚未提供 PEXT/PDEP 支持。本文的目标之一是激励 ARM 工程师评估在即将推出的基于 ARM 的处理器中添加类似指令的可能性。
 
 ### 2.2 Apache Parquet <a id="_bookmark5"></a>
 
@@ -81,9 +88,7 @@ this structural information. We refer the readers to the original Dremel paper [
 
 that adaptively switches between run-length encoding (RLE) and bit-packing encoding: a long run of the same value is stored as a RLE run; other values are encoded in bit-packing runs. Thus, an encoded column typically contains interleaved RLE and bit-packed runs. Repetition and definition levels are directly encoded using this hybrid encoding. Field values, regardless of data types, are first mapped to codes using dictionary encoding, which are then encoded using this hybrid scheme. If the size of the dictionary reaches a certain threshold, Parquet falls back to use the plain encoding. The dictionary used in Parquet is not order-preserving, meaning that most predicates cannot be evaluated on dictionary codes directly.
 
-**Storage Format.** In Parquet, data is first partitioned into blocks in row-major order, called
-
-*row-groups*. Within each row-group, data is stored contiguously in column-major order, i.e., similar to the PAX layout [[15](#_bookmark60)]. Each root-to-leaf field path in the schema corresponds to a *column* in a row group, which includes three components: field values, repetition levels, and definition levels. The three components are stored independently in separate data pages. Unnecessary information is never physically stored in Parquet: null values are omitted from the field values; definition levels are not physically stored if the field is a required field; similarly, repetition levels are omitted for non-repeated fields.
+**Storage Format.** In Parquet, data is first partitioned into blocks in row-major order, called *row-groups*. Within each row-group, data is stored contiguously in column-major order, i.e., similar to the PAX layout [[15](#_bookmark60)]. Each root-to-leaf field path in the schema corresponds to a *column* in a row group, which includes three components: field values, repetition levels, and definition levels. The three components are stored independently in separate data pages. Unnecessary information is never physically stored in Parquet: null values are omitted from the field values; definition levels are not physically stored if the field is a required field; similarly, repetition levels are omitted for non-repeated fields.
 
 <a id="_bookmark6"></a>
 
@@ -91,27 +96,29 @@ that adaptively switches between run-length encoding (RLE) and bit-packing encod
 
 We begin by describing our fast select operator, which lays the foundation for efficient selection pushdown in column stores.
 
+我们首先介绍**快速选择运算符**，这为列存储中高效的**选择下推**奠定了技术基础。
+
 ### 3.1 Problem Statement
 
 A **select operator** takes as input a byte array consisting of *𝑛 𝑘*-bit values and an *𝑛*-bit select bitmap. It extracts all selected values where their corresponding bits in the select bitmap are 1s, and copies them into the contiguous bits in an output byte array, just as if the bits of all unselected values had been removed from the input.
 
 Figure [3](#_bookmark9) shows the input and the expected output when selecting 3 out of 8 example 4-bit values (ignoring the computation steps for now). As the 3rd, 7th, and 8th bits from the right in the bitmap are 1s, the output should contain v2, v6, and v7. Similarly, an example with 3-bit values is shown in Figure [4](#_bookmark12). Note that in this example, as the word size (32) is not a multiple of the bit width (3), some values such as v10 and v21 are placed across the word boundaries, which makes this problem even more challenging.
 
-An obvious solution to this problem would be to scan over all bit-packed values, extracting and gathering selected bit-packed values one at a time, which runs in *𝑂(n)* instructions. However, considering that each value is typically only a few bits long and much smaller than the processor word (e.g., 64 bits), this simple implementation does not fully utilize the width of a processor word, thus wasting the parallelism available in processors.
+An obvious solution to this problem would be to scan over all bit-packed values, extracting and gathering selected bit-packed values one at a time, which runs in $𝑂(n)$ instructions. However, considering that each value is typically only a few bits long and much smaller than the processor word (e.g., 64 bits), this simple implementation does not fully utilize the width of a processor word, thus wasting the parallelism available in processors.
 
-Hence, our goal is to design a *bit-parallel* select operator. Intuitively, this means that the algorithm is able to simultaneously process *all* values that are packed into a processor word, moving all selected values to appropriate positions in parallel. The formal definition of a bit-parallel algorithm is given in Definition [1.](#_bookmark7)
+Hence, our goal is to design a *bit-parallel* select operator. Intuitively, this means that the algorithm is able to simultaneously process *all* values that are packed into a processor word, moving all selected values to appropriate positions in parallel. The formal definition of a bit-parallel algorithm is given in Definition [1](#_bookmark7).
 
 **Definition 1.** For a given word size **𝑤** , an algorithm is a *bit-parallel algorithm* if it processes *𝑛𝑘*-bit values in $𝑂(\frac{nk}{w})$ instructions.
 
-**选择运算符**将一个由 n 个 k 位值和一个 n 位选择位图组成的字节数组作为输入。它会提取所有在选择位图中对应位为 1 的选定值，并将它们复制到输出字节数组的连续位中，就像所有未选定值的位都已从输入中删除一样。
-
-图 3 显示了从 8 个示例 4 位值中选择 3 个时的输入和预期输出（暂时忽略计算步骤）。由于位图中从右侧数第 3、7 和 8 位为 1，因此输出应包含 v2、v6 和 v7。类似地，图 4 显示了包含 3 位值的示例。请注意，在此示例中，由于字长 (32) 不是位宽 (3) 的倍数，因此某些值（例如 v10 和 v21）会超出字边界，这使得此问题更具挑战性。
-
-解决这个问题的一个显而易见的方法是扫描所有位打包值，一次提取并收集一个选定的位打包值，这需要 O(n) 条指令。然而，考虑到每个值通常只有几位长，远小于处理器字长（例如 64 位），这种简单的实现并没有充分利用处理器字宽，从而浪费了处理器可用的并行能力。
-
-因此，我们的目标是设计一个位并行选择算子。直观地说，这意味着该算法能够同时处理打包到处理器字中的所有值，并将所有选定的值并行移动到适当的位置。位并行算法的正式定义如定义 1 所示。
-
-**定义 1**. 对于给定的字长 $w$，如果一个算法在 $O(\frac{ nk} w)$ 条指令中处理 n 个 k 位值，则该算法是**位并行算法**。
+> **选择运算符**将一个由 n 个 k 位值和一个 n 位选择位图组成的字节数组作为输入。它会提取所有在选择位图中对应位为 1 的选定值，并将它们复制到输出字节数组的连续位中，就像所有未选定值的位都已从输入中删除一样。
+>
+> 图 [3](#_bookmark9) 显示了从 8 个示例 4 位值中选择 3 个时的输入和预期输出（暂时忽略计算步骤）。由于位图中从右侧数第 3、7 和 8 位为 1，因此输出应包含 v2，v6 和 v7。类似地，图 [4](#_bookmark12) 显示了包含 3 位值的示例。请注意，在此示例中，由于字长 32 不是位宽 3 的倍数，因此某些值（例如 v10 和 v21）会超出字边界，这使得此问题更具挑战性。
+>
+> 解决这个问题的一个显而易见的方法是扫描所有位打包值，一次提取并收集一个选定的位打包值，这需要 $O(n)$ 条指令。然而，考虑到每个值通常只有几位长，远小于处理器字长（例如 64 位），这种简单的实现并没有充分利用处理器字宽，从而浪费了处理器可用的并行能力。
+>
+> 因此，我们的目标是设计一个位并行选择算子。直观地说，这意味着该算法能够同时处理打包到处理器字中的所有值，并将所有选定的值并行移动到适当的位置。位并行算法的正式定义如定义 [1](#_bookmark7) 所示。
+>
+> <a id="_bookmark7"></a>**定义 1**. 对于给定的字长 $w$，如果一个算法在 $O(\frac{ nk} w)$ 条指令中处理 n 个 k 位值，则该算法是**位并行算法**。
 
 <a id="_bookmark8"></a>
 
@@ -131,15 +138,19 @@ This observation can be generalized to handle wider values. For *𝑘*-bit value
 
 Figure [3](#_bookmark9) shows the algorithm to select 3 4-bit values from 8 4-bit values. In the figure, we switch the background color to distinguish adjacent elements corresponding to different values. As seen in the figure, the algorithm runs in two steps. In the first step, it converts the input select bitmap **1**1**0**0**0**1**0**0 to an extended bitmap **1111**1111**0000**0000**0000**1111**0000**0000. In step 2, since all corresponding bits of the selected value have been set in the extended bitmap, we now can apply this extended bitmap and use PEXT to copy all selected bits to the output, essentially moving only the selected values v7, v6, and v2 to the output.
 
-> 图 3 展示了从 8 个 4 位值中选择 3 个 4 位值的算法。图中，我们切换背景颜色以区分对应于不同值的相邻元素。如图所示，该算法分两步运行。第一步，它将输入选择位图 **1**1**0**0**0**1**0**0 转换为扩展位图 **1111**1111**0000**0000**0000**1111**0000**0000。在第二步中，由于所选值的所有对应位都已在扩展位图中设置，我们现在可以应用此扩展位图并使用 PEXT 将所有选定位复制到输出，本质上只将选定值 v7、v6 和 v2 移动到输出。
+> 图 [3](#_bookmark9) 展示了从 8 个 4 位值中选择 3 个 4 位值的算法。图中，我们切换背景颜色以区分对应于不同值的相邻元素。如图所示，该算法分两步运行。第一步，它将输入选择位图 **1**1**0**0**0**1**0**0 转换为扩展位图 **1111**1111**0000**0000**0000**1111**0000**0000。在第二步中，由于所选值的所有对应位都已在扩展位图中设置，我们现在可以应用此扩展位图并使用 PEXT 将所有选定位复制到输出，本质上只将选定值 v7、v6 和 v2 移动到输出。
 
-![image-20250602094131945](./image/03.png)Fig. 3. Bit-parallel selection on 8 4-bit values
+<a id="_bookmark9"></a>
 
-With BMI, we design an elegant way to convert a select bitmap to the extended bitmap using only three instructions (two PDEP and one subtraction), regardless of the bit width of values. Figure [3](#_bookmark9) shows this computation on the example values in step 1. **The first PDEP instruction** moves each bit in the select bitmap to the rightmost position in the corresponding *𝑘*-bit field in the extended bitmap, according to the mask 0^𝑘−1^1...0^𝑘−1^1 (we use exponentiation to denote the bit repetition, e.g., 1^4^0^2^ = 111100). **The second PDEP instruction** uses a modified mask (*𝑚𝑎𝑠𝑘*  1), where the rightmost 1 is removed from *𝑚𝑎𝑠𝑘*. As a result, each bit in the select bitmap is now moved to the rightmost position in the *next 𝑘*-bit field in the extended bitmap. Thus, in the result mask *ℎ𝑖𝑔ℎ*, each moved bit is actually outside its corresponding *𝑘*-bit field, and can be thought of as a “borrowed” bit from the next field. With the two result masks *𝑙𝑜𝑤* and *ℎ𝑖𝑔ℎ*, we now perform a subtraction between the two masks (*ℎ𝑖𝑔ℎ 𝑙𝑜𝑤* ) to produce an extended bitmap. This last step relies on the propagating of the carries to set all bits between a pair of 1s to 1s, as illustrated below:
+|     ![Figure 3](./image/03.png)     |
+| :------------------------------------: |
+| Fig. 3. Bit-parallel selection on 8 4-bit values |
 
-> 利用 BMI，我们设计了一种优雅的方法，只需三条指令（两条 PDEP 指令和一条减法指令）即可将选择位图转换为扩展位图，而无需考虑值的位宽。图 3 展示了步骤 1 中示例值的计算过程。第一条 PDEP 指令根据掩码 0^k−1^1...0^k−1^1（我们使用幂来表示位重复，例如 1^4^0^2^= 111100），将选择位图中的每个位移动到扩展位图中相应 k 位字段的最右侧位置。第二条 PDEP 指令使用修改后的掩码（掩码 − 1），其中最右侧的 1 被从掩码中移除。<u>因此，选择位图中的每个位现在都移动到扩展位图中下一个 k 位字段的最右侧位置</u>。因此，在结果掩码高位中，每个移动的位实际上都位于其对应的 k 位字段之外，可以将其视为从下一个字段“借用”的位。有了两个结果掩码的低位和高位，我们现在对这两个掩码（高位 - 低位）进行减法运算，以生成一个扩展位图。最后一步依赖于进位的传播，将一对 1 之间的所有位设置为 1，如下所示：
+With BMI, we design an elegant way to convert a select bitmap to the extended bitmap using only three instructions (two PDEP and one subtraction), regardless of the bit width of values. Figure [3](#_bookmark9) shows this computation on the example values in step 1. **The first PDEP instruction** moves each bit in the select bitmap to the rightmost position in the corresponding 𝑘-bit field in the extended bitmap, according to the mask 0^𝑘−1^1...0^𝑘−1^1 (we use exponentiation to denote the bit repetition, e.g., 1^4^0^2^ = 111100). **The second PDEP instruction** uses a modified mask $(𝑚𝑎𝑠𝑘 - 1)$, where the rightmost 1 is removed from **mask**. As a result, each bit in the select bitmap is now moved to the rightmost position in the *next 𝑘*-bit field in the extended bitmap. Thus, in the result mask **high**, each moved bit is actually outside its corresponding *𝑘*-bit field, and can be thought of as a “borrowed” bit from the next field. With the two result masks **low** and **high**, we now perform a subtraction between the two masks $(high - low)$ to produce an extended bitmap. This last step relies on the propagating of the carries to set all bits between a pair of 1s to 1s, as illustrated below:
 
-![image-20250602094408413](./image/k.png)
+> 利用 BMI，我们设计了一种优雅的方法，只需三条指令（两条 PDEP 指令和一条减法指令）即可将选择位图转换为扩展位图，而无需考虑值的位宽。图 [3](#_bookmark9) 展示了步骤 1 中示例值的计算过程。**第一条 PDEP 指令**根据掩码 0^k−1^1...0^k−1^1（我们使用幂来表示位重复，例如 1^4^0^2^= 111100），将选择位图中的每个位移动到扩展位图中相应 k 位字段的最右侧位置，这生成了 **low** 掩码。**第二条 PDEP 指令**使用修改后的掩码 $(mask − 1)$，将掩码最右侧的 1 清除。<u>因此，选择位图中的每个位现在都**左**移动到扩展位图中下一个 k 位字段的最右侧位置</u>。这生成了 **high** 掩码，每个移动的位实际上都位于其对应的 k 位字段之外，可以将其视为从下一个字段**借用**的位。有了这两个结果掩码，我们现在对这两个掩码进行减法运算 $(high - low)$，就可以生成**扩展位图**。最后一步依赖于进位的传播，将一对 1 之间的所有位设置为 1，如下所示：
+
+![image-k](./image/k.png)
 
 Notice that the 1-bit in high prevents carries from propagating to the next 𝑘-bit field. As a result, the calculations are safely performed inside each *𝑘*-bit field and never interfere with each other. Thus, the subtraction acts as if it processes all *𝑘*-bit fields in parallel.
 
@@ -160,12 +171,12 @@ The length of the output for each word can be calculated by performing the `POPC
 
 We next extend the simplified algorithm to support an arbitrary bit width *𝑘*. Figure [4](#_bookmark12) shows an example of selecting 8 values from 32 3-bit values that are packed into 3 32-bit words. Since the bit width *𝑘* = 3 is not a power of 2, there are values (v10 and v21) placed across word boundaries. The key challenge of the general algorithm lies in dealing with these partial values with minimal overhead.
 
-> 接下来，我们扩展简化算法以支持任意位宽 k。图 4 展示了一个示例，该示例从 32 个 3 位值中选择 8 个值，这些值被打包成 3 个 32 位字。由于位宽 k=3 不是 2 的幂，因此存在跨字边界的值（v10 和 v21）。通用算法的关键挑战在于以最小的开销处理这些部分值。
+> 接下来，我们扩展简化算法以支持任意位宽 k。图 [4](#_bookmark12) 展示了一个示例，该示例从 32 个 3 位值中选择 8 个值，这些值被打包成 3 个 32 位字。由于位宽 k=3 不是 2 的幂，因此存在跨字边界的值（v10 和 v21）。通用算法的关键挑战在于以最小的开销处理这些部分值。
 
 <a id="_bookmark12"></a>
-![image-20250602084000038](./image/04.png)
-
-Fig. 4. Bit-parallel selection on 32 3-bit values (v10 and v21 span over multiple words)
+|     ![Figure 3](./image/04.png)     |
+| :------------------------------------: |
+| Fig. 4. Bit-parallel selection on 32 3-bit values (v10 and v21 span over multiple words) |
 
 > 有趣的是，我们发现即使处理器字中包含**部分值（partial values）**，只要掩码满足以下两个要求，算法 [1](#_bookmark10) 仍然有效。首先，掩码**需按字的布局进行移位对齐**。在图 [4](#_bookmark12) 中，字 2 中的掩码需**左移 2 位**，因为字 2 中的部分值 v21 占用了剩余的 2 位。类似地，字 1 中的掩码左移 1 位，以容纳字 1 中 v10 的剩余 1 位。其次，**mask** 中的最低有效位必须为 1，即使它对应于值中间的一位。对于最右端具有部分值的字，最右边位置的这个额外的 1 确保减法指令能够为扩展位图中的部分值生成一个 1 序列。例如，在图 [4,](#_bookmark12) 中，字 1 中 **mask** 的最右位被设置为 1，尽管它对应的是 v10 的第三位。这个额外的 1 位引导**第一条 PDEP 指令**：将选择位图的最右比特位移至 **low** 掩码的最末位，从而在扩展位图最右端生成所需的 1 。
 
@@ -241,8 +252,12 @@ In our framework, filter and project operations can be implemented by composing 
 
 As an example, Table [2](#_bookmark17) shows the steps of the example filter and project operations. The first filter operation is implemented as an unpack operator followed by an evaluate operator. The select and transform operators are avoided because this is the first filter and has to read all values. In contrast, the second filter operation performs all four operators: it pre-selects the values based on bitmap*𝑎*, which, however, requires an additional bitmap transformation at the end of this operation. The refined bitmap, bitmap*𝑏* , is then used to accelerate the project operation on column c, which is implemented as a select operator followed by an unpack operator.
 
-![image-20250602120623090](./image/table-2.png)
-Table 2. Implementation of example filter and project operations
+<a id="_bookmark17"></a>
+
+|     ![Table 2](./image/table-2.png)     |
+| :------------------------------------: |
+| Table 2. Implementation of example filter and project operations |
+
 
 > 在我们的框架中，过滤和投影操作可以通过组合四个基本运算符来实现，如下所示：
 >
@@ -303,8 +318,7 @@ To transform the filtered bitmap, we need to deposit the bits in “filtered” 
 > 要转换这个 **filtered** 位图，我们需要将 **filtered** 中的位存入选择位图 bitmap~𝑎~ 中选定值对应的位位置（即 bitmap~𝑎~ 中的 1）。换句话说，我们需要将选择位图中的第 *𝑖* 个 1 替换为 **filtered** 中的第 *𝑖* 个位，同时将选择位图中的所有 0 保留在其原始位位置。有趣的是，这正是 PDEP 指令通过使用 **filtered** 作为源操作数，并使用选择位图作为掩码操作数所执行的操作（参见第 [2.1](#_bookmark1) 和图 [2](#_bookmark3)）。继续图 [6](#_bookmark19)（步骤 3）中的示例，我们用 **filtered** 中（最右侧）的第一个 0 替换 bitmap~𝑎~ 中（最右侧）的第一个 1，这表明第一个选定值 v3 未通过 b 列的谓词。使用 PDEP 使我们能够将 **filtered** 中的所有 8 位并行移动到选择位图中的适当位置。值得注意的是，如果没有硬件实现的 BMI 指令，此转换（以及选择运算符）的开销将显著增加，如表 [1](#_bookmark4) 所示，这进一步凸显了 BMI 在整个解决方案设计中的关键作用。
 
 <a id="_bookmark19"></a>
-
-|     ![Figure 1](./image/06.png)     |
+|     ![Figure 6](./image/06.png)     |
 | :------------------------------------: |
 | Fig. 6. Selection pushdown on example column b |
 
@@ -396,13 +410,11 @@ Algorithm [4](#_bookmark25) shows the workflow to select repetition/definition l
 > 算法 [4](#_bookmark25) 展示了基于选择位图从 Parquet 列中选择重复/定义级别和字段值的工作流程。该算法的核心思想是将输入的选择位图转换为两个**辅助选择位图**——**层级位图**（level bitmap）和**值位图**（value bitmap），它们分别用于选择定义级别、重复级别和字段值。层级位图的生成方式是：将选择位图中的每一位复制若干次，**复制的次数等于对应记录中的层级数量**。随后，通过从层级位图中剔除与空值（null values）对应的位来创建值位图。图 [8](#_bookmark26) 展示了**示例列**从选择位图到层级和值位图的转换过程。
 
 <a id="_bookmark25"></a>
-
 | **Algorithm 4** select-parquet (*𝑟𝑒𝑝𝑠*, *𝑑𝑒𝑓𝑠*, *𝑣𝑎𝑙𝑢𝑒𝑠*, *𝑏𝑠𝑒𝑙𝑒𝑐𝑡* ) |
 | :----------------------------------------------------------: |
 |                    ![](./image/algo4.png)                    |
 
 <a id="_bookmark26"></a>
-
 |     ![](./image/08.png)     |
 | :------------------------------------: |
 | Fig. 8. Transformations on the select bitmap |
@@ -415,17 +427,50 @@ Finally, we select the field values by using the value bitmap as the select bitm
 
 It is worth pointing out that, according to Definition [1](#_bookmark7), all operators used in Algorithm [4](#_bookmark25) are bit-parallel algorithms. Additionally, all operators rely on either the PDEP or PEXT instruction to achieve the full data parallelism available in processor words.
 
->  在算法的第一部分（第 1-5 行），我们生成用于选择重复和定义级别的层级位图。对于列中没有重复值的简单情况，这一步可以跳过：由于<u>**层级数**</u>与记录数匹配，我们可以直接重用输入的选择位图（第 1 行）。为了生成层级位图，我们首先通过查找所有记录的第一个层级（即所有为 0 的重复级别（2））来生成一个名为**<u>记录位图</u>**的位图（第 4 行），然后使用生成的记录位图将输入选择位图扩展为层级位图（第 5 行）。在 [5.3](#_bookmark27) 节中，我们将描述用于前一步的位并行运算符，并在 [5.4.1](#_bookmark31) 节中介绍一种在后一步中重用现有运算符（扩展）的方法。现在，通过生成的<u>已对齐到各级别的层级位图</u>，我们可以重用 [3](#_bookmark6) 节中介绍的选择运算符来选择重复级别（第 6 行）和定义级别（第 12 行）。
+>  在算法的第一部分（第 1-5 行），我们生成用于选择重复级别和定义级别的**层级位图**。对于列中没有重复值的简单情况，这一步可以跳过：由于<u>**层级数**</u>与记录数匹配，我们可以直接重用输入的选择位图（第 1 行）。为了生成层级位图，我们首先通过查找所有记录的第一个层级（即所有为 0 的重复级别（2））来生成一个名为**<u>记录位图</u>**的位图（第 4 行），然后使用生成的记录位图将输入选择位图扩展为层级位图（第 5 行）。在 [5.3](#_bookmark27) 节中，我们将描述用于前一步的位并行运算符，并在 [5.4.1](#_bookmark31) 节中介绍一种在后一步中重用现有运算符（扩展）的方法。现在，通过生成的<u>已对齐到各级别的层级位图</u>，我们可以重用 [3](#_bookmark6) 节中介绍的选择运算符来选择重复级别（第 6 行）和定义级别（第 12 行）。
 >
-> 同样，为了适应所有空值在字段值中并不实际存储的事实，我们还需要生成值位图（第 7-11 行）。根据 1，我们可以通过将定义级别与列的最大定义级别进行比较来找到所有空值（第 10 行）。然后，使用结果位图（称为“有效位图”）来压缩输入选择位图，方法是删除所有与空值对应的位（第 11 行）。我们将在 [5.4.2](#_bookmark33) 节中更详细地描述此步骤。
+> 同样，为了适应所有空值在字段值中并不实际存储的事实，我们还需要生成值位图（第 7-11 行）。根据 1，我们可以通过将定义级别与列的最大定义级别进行比较来找到所有空值（第 10 行）。然后，使用结果位图（称为**有效位图**）来压缩输入选择位图，方法是删除所有与空值对应的位（第 11 行）。我们将在 [5.4.2](#_bookmark33) 节中更详细地描述此步骤。
 >
 > 最后，我们使用值位图作为选择位图来选择字段值（第 13 行），并返回所有选定的字段值以及重复/定义级别。请注意，在最常见的情况下，如果该列仅仅是必需列，则无需进行所有位图转换，只需选择字段值即可。在这种情况下，Parquet 选择运算符将简化为我们在 [3](#_bookmark6) 节中介绍的标准选择运算符。
 >
 > 值得指出的是，根据定义 [1](#_bookmark7)，算法 [4](#_bookmark25) 中使用的所有运算符都是**位并行算法**。此外，所有运算符都依赖于 PDEP 或 PEXT 指令来实现处理器字中的**完全数据并行性**。
->
+
+```mermaid
+flowchart TD
+    %% 左侧列：A-I流程
+    A([Start]) --> B["初始化:<br>b_level := b_select<br>selected_reps := ∅<br>selected_defs := ∅"]
+    B --> D{reps ≠ ∅?}
+    D -- Yes --> E["b_record := equal(reps, 0)"]
+    E --> F["b_level := extend(b_select, b_record)"]
+    F --> G["selected_reps := select(reps, b_level)"]
+    G --> I["b_value := b_level"]
+    D -- No --> I
+    
+    %% 右侧列：K-P流程（与左侧并排）
+    I --> K{defs ≠ ∅?}
+    K -- Yes --> L["b_valid := equal(defs, max_def_level)"]
+    L --> M["b_value := compress(b_level, b_valid)"]
+    M --> N["selected_defs := select(defs, b_level)"]
+    N --> P["selected_values := select(values, b_value)"]
+    K -- No --> P
+    
+    %% 底部结果区域
+    P --> Q["Return ⟨selected_reps, selected_defs, selected_values⟩"]
+    Q --> R([End])
+    
+    %% 样式设置
+    classDef leftColumn fill:#f8f8ff,stroke:#dde,stroke-width:2px;
+    classDef rightColumn fill:#f8fff8,stroke:#ded,stroke-width:2px;
+    class A,B,D,E,F,G,I leftColumn;
+    class K,L,M,N,P rightColumn;
+    
+    style E stroke:#f66,stroke-width:2px
+    style F stroke:#f66,stroke-width:2px
+    style L stroke:#66f,stroke-width:2px
+    style M stroke:#66f,stroke-width:2px
+```
 
 <a id="_bookmark27"></a>
-
 ### 5.3 Predicate Pushdown on Levels
 
 We describe a bit-parallel equal operator to compare a sequence of bit-packed values to a constant value and output an equality bitmap. It operates on encoded values directly and thus evaluates all values packed in a processor word in parallel. We use this operator to find: 1) all definition levels that are equal to the maximum definition level ( 1 ); and 2) all repetition levels that are 0s ( 2 ). In Parquet, repetition and definition levels are small integer values that are typically encoded with no more than a few bits. Consequently, applying this operator on levels is remarkably efficient due to the higher degree of data parallelism.
@@ -437,15 +482,19 @@ Algorithm [5](#_bookmark28) shows the steps to perform bit-parallel comparisons.
 > 算法 [5](#_bookmark28) 展示了执行位并行比较的步骤。对于 **𝑘** 位级别，第一步是将字面值复制到所有 **𝑘** 位字段。下一步，我们使用改编自 [[27](#_bookmark72)] 的公式同时比较所有 **𝑘** 位值。结果存储在每个 **𝑘** 位字段的最高有效位中：1 表示两个值相同。然后使用 PEXT 指令提取这些结果位，以生成紧凑的位图表示。
 
 <a id="_bookmark28"></a>
-![image-20250602161523250](./image/algo5.png)
+| **Algorithm 5** $equal(values, literal)$ |
+| :----------------------------------------------------------: |
+|                    ![](./image/algo5.png)  |
+
 
 Figure [9](#_bookmark29) shows an example of comparing the first 16 2-bit definition levels in the running example to the maximum definition level (2). The results are the first 16 bits of the valid bitmap `𝑏𝑣𝑎𝑙𝑖𝑑` , which indicates non-null values in the column.
 
 > 图 [9](#_bookmark29) 展示了将本节示例中的前 16 个 2 位定义级别与最大定义级别 (2) 进行比较的示例。结果是有效位图 `𝑏𝑣𝑎𝑙𝑖𝑑` 的前 16 位，表示该列中的值不为空。
 
 <a id="_bookmark29"></a>
-![image-20250602161835839](./image/09.png)
-Fig. 9. Equality comparisons on 16 2-bit definition levels
+|     ![](./image/09.png)     |
+| :------------------------------------: |
+| Fig. 9. Equality comparisons on 16 2-bit definition levels |
 
 ### 5.4 Transforming the Select Bitmap
 
@@ -454,20 +503,33 @@ Fig. 9. Equality comparisons on 16 2-bit definition levels
 > **5.4.1 从选择位图到级别位图**。图 [8](#_bookmark26) 的上半部分展示了从选择位图到级别位图的转换过程。对于选择位图中的每个位，我们需要根据对应记录中值的数量进行多次复制。有趣的是，这种转换可以通过使用我们在 [3.2](#_bookmark8) 节中介绍的扩展运算符（算法 [2](#_bookmark11)）来实现。在选择运算符中，对于 **𝑘** 位值，我们使用扩展运算符，以特定的预定义位图 0^𝑘−1^1...0^𝑘−1^1 作为掩码，将位图中的每个位复制到 **𝑘** 个位。本质上，扩展运算符会将输入中的第 𝑖 位复制 **𝑘** 次，其中 **𝑘** 表示掩码位图中第 **𝑖 个 1** 和 **(𝑖 + 1) 个 1** 之间的距离。**通过对重复级别和 0 进行相等性比较（[5.3](#_bookmark27)），我们生成了记录位图**（其中每个 1 位代表每条记录的首个数值，符合规则 2 ）。<u>此时，每对相邻 1 之间的距离代表相应记录中值的数量</u>。据此，我们可将记录位图作为扩展运算符的掩码：将选择位图的每位按对应记录的数值数量 **𝑘** 进行复制，最终生成<u>级别位图</u>。图 [10](#_bookmark32) 演示了正在运行的示例的转换步骤。在此图中，我们交替使用背景颜色来区分不同记录中的值或位。
 
 <a id="_bookmark32"></a>
-![image-20250602203139577](./image/10.png)
-Fig. 10. Transforming a select bitmap to a level bitmap
+|     ![](./image/10.png)     |
+| :------------------------------------: |
+| Fig. 10. Transforming a select bitmap to a level bitmap |
 
 **5.4.2 Level Bitmap to Value Bitmap**. As described earlier, Parquet does not explicitly store null values in the field values. Consequently, to produce a bitmap that can be used to select field values, we need to extract all bits from the level bitmap that corresponds to non-null values. This transformation is illustrated in the lower part of Figure [8](#_bookmark26). As we have generated the valid bitmap by comparing the definition levels (Section [5.3](#_bookmark27)), this transformation can be simply implemented by applying PEXT on the level bitmap with the use of the valid bitmap as the mask (similar to Section [4.3](#_bookmark18)).
 
 Figure [11](#_bookmark34) demonstrates that a single PEXT instruction transforms the level bitmap **𝑏𝑙𝑒𝑣𝑒𝑙** to the value bitmap **𝑏𝑣𝑎𝑙𝑢𝑒** , removing all bits in **𝑏𝑙𝑒𝑣𝑒𝑙** that correspond to 0s in **𝑏𝑣𝑎𝑙𝑖𝑑** . The produced **𝑏𝑣𝑎𝑙𝑢𝑒** is then be used to select the non-null values from the example column.
 
+<a id="_bookmark33"></a>
 **5.4.2 级别位图到值位图**。如前所述，Parquet 不会在字段值中显式存储空值。因此，为了生成可用于选择字段值的位图，我们需要从级别位图中提取与非空值对应的所有位。此转换如图 [8](#_bookmark26) 下半部分所示。由于我们已经通过比较<u>定义级别</u>（见 [5.3](#_bookmark27) 节）生成<u>有效位图</u>，因此，此转换可通过以<u>有效位图</u>为掩码对层级位图应用 PEXT 指令（类似于 [4.3](#_bookmark18) 节）来简单实现。
 
 图 [11](#_bookmark34) 演示了单个 PEXT 指令将级别位图 **𝑏𝑙𝑒𝑣𝑒𝑙** 转换为值位图 **𝑏𝑣𝑎𝑙𝑢𝑒** ，从而删除了 **𝑏𝑙𝑒𝑣𝑒𝑙** 中与 **𝑏𝑣𝑎𝑙𝑖𝑑** 中的 0 对应的所有位。然后使用生成的 **𝑏𝑣𝑎𝑙𝑢𝑒** 从示例列中选择非空值。
 
 <a id="_bookmark34"></a>
-![image-20250602204412108](./image/11.png)
-Fig. 11. Transforming a level bitmap to a value bitmap
+|     ![](./image/11.png)     |
+| :------------------------------------: |
+| Fig. 11. Transforming a level bitmap to a value bitmap |
+
+```
+d:    def levels
+V          Valid
+i:         index
+
+i: 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0
+d:  1  2  2  1  1  0  1  2  0  1  1  2  2  2  2  2  1  0  1  2  2  0 1 2 1 2 2 2 1 0 2 2
+V:  0  1  1  0  0  0  0  1  0  0  0  1  1  1  1  1  0  0  0  1  1  0 0 1 0 1 1 1 0 0 1 1
+```
 
 ## 6 PARQUET-SELECT
 
