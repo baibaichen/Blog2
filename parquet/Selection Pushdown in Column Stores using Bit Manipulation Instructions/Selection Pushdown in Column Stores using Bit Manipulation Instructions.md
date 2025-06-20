@@ -67,7 +67,7 @@ Most bitwise operations supported by BMI have a sufficiently fast software imple
 
 > 位操作指令集 (BMI) 是 Intel 和 AMD 处理器 X86 架构的扩展。顾名思义，BMI 的目标是通过使用专用硬件指令来加速常见的位操作。与 SIMD 指令集（例如 AVX2 或 AVX512）不同，BMI 指令操作于 64 位通用寄存器。BMI 总共包含 14 条指令。
 >
-> BMI 支持的大多数位操作都拥有足够快的软件实现。例如，BLSI 指令从 64 位操作数 x 中提取最右边的 1，这可以通过两条算术指令来实现：`x& − x`[27]。因此，即使在 BMI 出现之前，这些位操作就已经应用于包括数据库应用程序在内的各种场景（例如 [28, 29]）。随着 BMI 的出现，现有软件中这些软件实现的操作可以通过编译器技术或手动优化轻松地被 BMI 对应操作取代，而无需重新考虑算法设计。
+> BMI 支持的大多数位操作都拥有足够快的软件实现。例如，BLSI 指令从 64 位操作数 x 中提取最右边的 1，这可以通过两条算术指令来实现：`x& − x` [[27](#_bookmark72)]。因此，即使在 BMI 出现之前，这些位操作就已经应用于包括数据库应用程序在内的各种场景（例如 [[28](#_bookmark75), [29](#_bookmark74)]）。随着 BMI 的出现，现有软件中这些软件实现的操作可以通过编译器技术或手动优化轻松地被 BMI 对应操作取代，而无需重新考虑算法设计。
 
 **2.1.1.  PEXT and PDEP**. Two BMI instructions, namely PEXT and PDEP, do not fall into the above mentioned category. The PEXT (parallel bit extract) instruction extracts the bits selected by a select mask operand from a source operand and copies them to the contiguous low-order bits in the destination, with the high-order bits set to 0s. The PDEP (parallel bit deposit) instruction does the opposite of PEXT: the contiguous low-order bits from the source operand are copied to the selected bits of destination, indicated by the select mask operand, while other bits in the destination are set to 0s. Figure [2](#_bookmark3) shows examples of PEXT and PDEP on 16-bit operands. Notice that we use the little-endian view throughout this paper, which means the first bit, value, or word is the rightmost one in all figures and the last one is the leftmost one.
 
