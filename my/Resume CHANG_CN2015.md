@@ -38,12 +38,18 @@
   <div style="font-size: 18px;"><strong>Apache Gluten（Incubating）（2021年 10 月 ~ 至今）</strong></div>
   <div>负责人 & 首席研究员</div>
 </div>
-**项目描述**：Gluten 项目旨在为 Apache Spark 注入 Native Vectorized Execution 的能力，极大优化 Spark 的执行效率和成本。参考 https://cn.kyligence.io/blog/gluten-spark/ 
+**项目描述**： [Apache Gluten](https://cn.kyligence.io/blog/gluten-spark/) - Apache 顶级项目 | 创始核心贡献者 & 战略合作推动者
+
+  *   **主导促成 Intel 与 Kyligence 的战略技术合作**，共同定义并启动 Gluten 项目，致力于为 Apache Spark 提供业界领先的 Native Vectorized Execution 能力。
+  *   **从零构建项目核心团队与技术路线**，作为创始核心贡献者全程主导项目孵化、技术攻关及社区建设。
+  *   **项目成果**：大幅提升 Spark 执行效率与成本效益（较原生 Spark 至少提升 2 倍），为 Spark 用户提供高性能向量化执行方案，同时支持 ARM 和 x86 架构。
+
 **技术栈** ：Linux，C++，Spark
 **工作内容/个人职责** :
+
 1. 带领团队从一个初始的 idea 开始，完成 POC 验证，做好工程化，最后集成进 Kyligence Enterprise
-1. Parquet reader 支持 Page index
-1. 支持 Iceberg
+1. Parquet Reader： 1. 支持 Page index，2. 支持 Row Index
+1. 数据湖：1.支持 Delta 读写 Parquet 并收集统计信息，2 支持读取有轻量级更新的 Iceberg parquet
 
 <div style="display: flex; justify-content: space-between;">
   <div style="font-size: 18px;"><strong>Kyligence 企业版（2019年 10 月 ~ 2021 年 10 月）</strong></div>
