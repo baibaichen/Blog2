@@ -25,11 +25,13 @@
 | 时间                | 公司                                                                            | 职位                                     |
 |---------------------|---------------------------------------------------------------------------------|------------------------------------------|
 | 2019.10 - **至今** | [Kyligence Inc](https://kyligence.io/).                                         | 首席研究员                               |
-| 2017.09 – 2019.10 | 连尚网络                                                                        | 大数据专家                               |
+| 2017.09 – 2019.10 | [连尚网络（WIFI万能钥匙）](https://www.ilinksure.com/)        | 大数据专家                               |
 | 2013.01 – 2017.09 | 1号店                                                                           | 架构专家，**P10** 架构部大数据平台负责人 |
-| 2003.10 – 2012.12   | （Sonic Solutions，Rovi Corporation）[Corel Corporation](http://www.corel.com/) | 技术经理 高级软件工程师                  |
+| 2003.10 – 2012.12^1^ | Sonic Solutions，Rovi Corporation 和 [Corel Corporation](http://www.corel.com/) | 技术经理 高级软件工程师                  |
 | 2000.10 – 2003.09   | 上海超蓝软件有限公司                                                            | 高级软件工程师                           |
-| 1998.09 – 2000.09   | Arcsoft Inc. (HangZhou)                                                         | 软件工程师                               |
+| 1998.09 – 2000.09   | Arcsoft Inc. (HangZhou)                                                         | 软件工程师                              |
+
+> 1.  2009 年 Rovi 收购 Sonic， 2011 年 Corel 收购了 Rovi
 
 <div style="page-break-after: always;"></div>
 
@@ -40,9 +42,11 @@
 </div>
 **项目描述**： [Apache Gluten](https://cn.kyligence.io/blog/gluten-spark/) - Apache 顶级项目 | 创始核心贡献者 & 战略合作推动者
 
-  *   **主导促成 Intel 与 Kyligence 的战略技术合作**，共同定义并启动 Gluten 项目，致力于为 Apache Spark 提供业界领先的 Native Vectorized Execution 能力。
+  *   **主导促成 Intel 与 Kyligence 的战略技术合作**，共同定义并启动 Gluten 项目，打造高性能、**跨平台（x86 & ARM）** 的 Apache Spark Native Vectorized Execution 引擎。
   *   **从零构建项目核心团队与技术路线**，作为创始核心贡献者全程主导项目孵化、技术攻关及社区建设。
-  *   **项目成果**：大幅提升 Spark 执行效率与成本效益（较原生 Spark 至少提升 2 倍），为 Spark 用户提供高性能向量化执行方案，同时支持 ARM 和 x86 架构。
+  *   **成功推动 Gluten 通过 Apache 软件基金会孵化**，确立其在 Spark 生态的重要地位，华为、BIGO、微软、阿里、Google 等都在使用。
+  *   **深入探索国产化替代背景下的 ARM 架构深度优化**，提升其在关键场景的性能与适用性。
+  *   **项目成果**：为 Spark 用户提供高性能向量化执行方案，大幅提升 Spark 执行效率与成本效益（较原生 Spark 至少提升 2 倍）。
 
 **技术栈** ：Linux，C++，Spark
 **工作内容/个人职责** :
