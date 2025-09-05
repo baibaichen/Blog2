@@ -22,9 +22,9 @@
 
 ## Working Experience
 
-| Period          | Compary                                                                     | Position                             |
+| Period          | Compary                                                                     | Job Title                   |
 |---------------------|---------------------------------------------------------------------------------|------------------------------------------|
-| Oct. 2019 - **Present** | [Kyligence Inc](https://kyligence.io/).                                         | Chief Researcher             |
+| Oct. 2019 - May 2025 | [Kyligence Inc](https://kyligence.io/).                                         | Chief Researcher             |
 | Sep. 2017 – Oct. 2019 | [Shanghai Lianshang Network Technology Co., Ltd.](https://www.wifi.com/) | Big Data Expert                 |
 | Jan. 2013 – Sep. 2017 | Yihaodian                                                               | Senior Architecture &  Director |
 | Oct. 2003 – Dec. 2012   | Corel Corporation(Sonic Solutions, Rovi Corporation) | Technical Manager & Senior Software Engineer |
@@ -33,7 +33,7 @@
 
 ## Projects
 <div style="display: flex; justify-content: space-between;">
-  <div style="font-size: 18px;"><strong>Apache Gluten（Incubating）（Oct. 2021 ~ Present）</strong></div>
+  <div style="font-size: 18px;"><strong>Apache Gluten（Incubating）（Oct. 2021 ~ May 2025）</strong></div>
   <div>Leader & Chief Researcher</div>
 </div>
 **Description**: [Apache Gluten](https://github.com/apache/incubator-gluten) is an open-source project under the Apache Incubator that aims to enhance the performance of Apache Spark by integrating native vectorized execution engines. 
