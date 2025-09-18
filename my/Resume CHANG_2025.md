@@ -81,67 +81,73 @@
   <div style="font-size: 18px;"><strong>Yihaodian Hadoop Big Data Platform（2015 - 2017）</strong></div>
   <div>Senior Architect & Director</div>
 </div>
-
-**Description**: Design, build and maintaining of Yihaodian's Big Data platform
+**Description**: Designed, built, and maintained Yihaodian’s internal big data platform.  
 **Skills**: Linux, Hadoop
 **Responsibility** : 
 
-1. Optimized ETL processes on Hadoop clusters, improving core BI business operations by 3 hours.
-2. Integrated Yihaodian’s foundational data platform, built metadata databases, and established data processing pipelines.
-3. Developed and implemented big data application standards at Yihaodian.
-4. Lead the team in executing Spark data mining projects: customer churn models and comment tagging.
-5. Participated in optimizing the precision marketing architecture at Yihaodian.
-6. Lead the team to contribute the development of Apache Eagle, nurturing two Apache Committers.
+1. Optimized ETL processes on Hadoop clusters, improving core BI operations by 3 hours.  
+2. Integrated foundational data platforms, built metadata databases, and established data processing pipelines.  
+3. Developed and enforced big data application standards. 
+4. Led Spark-based data mining projects: customer churn prediction and comment tagging. 
+5. Participated in optimizing the precision marketing architecture.  
+6. Led team contributions to **Apache Eagle**, mentoring two Apache Committers.  
 
 <div style="display: flex; justify-content: space-between;">
-  <div style="font-size: 18px;"><strong>Deploy Yihaodian’s service in geographically distributed datacenter（Apr. 2014 - Jan. 2015）</strong></div>
+  <div style="font-size: 18px;"><strong>Geographically Distributed Deployment (Multi-DC Active-Active-Active)（Apr. 2014 - Jan. 2015）</strong></div>
   <div>Senior Architect & Domain Leader</div>
 </div>
-**Description**: This is one of our company’s strategic projects. As Yihaodian grows, we must ensure highly available services even in the event of failures such as fires. 
+
+**Description**: A strategic project to ensure high availability and disaster recovery for critical services. 
 **Skills** : Linux, C++, JAVA
-**Achievements**: As of November 11, 2014, we had successfully deployed our most critical services across two new data center. Approximately 30% of orders were being processed in these newly deployed data center. 
+**Achievements**: 
+1. By Nov. 11, 2014, 30% of orders were processed in newly deployed data centers.  
+2. Achieved seamless traffic switching across multiple IDCs for 5 major front-end services by Double 11, 2014. 
+
 **Responsibility**:
 
-1. Design the whole architecture for deploying company’s various service
-2. Design and lead the team to implement: 
+1. Designed the overall multi-data-center architecture.  
+2. Led implementation of:  
    1. Cache invalidation mechanism in multiple data centers  
    2. Single Sign on in multiple data centers 
-   3. Avoid connection storm
+   3. Protection against connection storms 
+3. Ensured business transparency during cache consistency management. 
 
 <div style="display: flex; justify-content: space-between;">
-  <div style="font-size: 18px;"><strong>Sharding the Order Database and moving it to MySQL （Aug. 2013 - Aug. 2014）</strong></div>
+  <div style="font-size: 18px;"><strong>Order Database Sharding and Migration from Oracle to MySQL （Aug. 2013 - Aug. 2014）</strong></div>
   <div>Senior Architect</div>
 </div>
-**Description**: This is one of our company’s strategic projects. The order database is critically important, and our goal is to migrate the order database from Oracle to MySQL. We aim to share the order data for scaling out while ensuring a smooth migration process that does not impact the online system.
+
+**Description**: Migrated Yihaodian’s critical order database from Oracle to MySQL with sharding for scalability, ensuring zero downtime.  
 **Skills**: Linux, JAVA
 **Responsibility**: 
 
-1. Design the database sharing plan 
-1. Implement DB aggregation function in DAL 
-1. Design the test plan 
-1. Optimize the SQL 
-1. Our new system went online on August 31, 2014, and successfully achieved all of its objectives. 
+1. Designed the sharding strategy and data sharing plan.  
+1. Implemented aggregation functions in the Data Access Layer (DAL).  
+1. Designed test plans and optimized SQL. 
+1. Successfully went live on August 31, 2014, with minimal issues and smoothly handled the 2014 Double 11 peak.  
 
 <div style="display: flex; justify-content: space-between;">
   <div style="font-size: 18px;"><strong>Yihaodian Distributed Cache Platform（Jan. 2013 - Aug. 2013）</strong></div>
   <div>Senior Architect & Domain Leader</div>
 </div>
-
-**Description**: A Distributed KV stores builds on top of memcache and zookeeper. The feature includes: Automatically Failover, Dynamically increasing capacity, Manageable, Client-side Load Balance and Cache Invalidation.
+**Description**: Built a distributed key-value cache platform based on Memcached and ZooKeeper, featuring automatic failover, dynamic capacity scaling, client-side load balancing, and cache invalidation.
 **Skills**: Linux, JAVA
 **Responsibility**: 
 
-1. Design and lead the team to implement distributed memcache store 
-2. As of October 2014, our client library was being used company-wide for accessing Memcached. This allowed us to dynamically increase cache capacity during the 11.11 promotion and subsequently remove the added cache once the promotion ended.
+1. Designed and led the implementation of the distributed Memcached system. 
+2. Developed `yconsole` for cache management and `Capture` tool for analyzing cache access patterns.  
+3. Established monitoring, alerting, and standardized cache allocation.  
+4. By Oct. 2014, the platform was adopted company-wide, enabling dynamic scaling during promotions (e.g., Double 11).  
 
 <div style="display: flex; justify-content: space-between;">
-  <div style="font-size: 18px;"><strong>Other Projects（Before Entering the Internet Industry, Sep. 1998 ~ Jan.2013）</strong></div>
+  <div style="font-size: 18px;"><strong>Other Projects（Pre-Internet Industry, Sep. 1998 ~ Jan.2013）</strong></div>
   <div>Senior Software Engineer & Software Engineer</div>
 </div>
 
-Primarily used C++ to develop desktop software for Windows.
+
+Developed Windows desktop applications primarily using C++.  
 
 1. **PC Game Capture**: Software for recording gameplay videos.
 2. **MediaSky**: Cross-device multimedia file management and synchronization.
 3. **AuthorScript BDMV SDK & AuthorScript HDDVD SDK**: Blu-ray authoring SDK.
-4. Image editing software with WYSIWYG print preview.
+4. Contributed to multiple image editing software projects, including implementing WYSIWYG print preview.
