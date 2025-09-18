@@ -64,13 +64,18 @@
   <div style="font-size: 18px;"><strong>LinkSure Recruiting data warehousing solution（Sep. 2017 - Oct. 2019）</strong></div>
   <div>Senior Architect</div>
 </div>
-**Description**: Hadoop based data warehouse solution
+**Description**: Built a Hadoop-based big data platform for location-based marketing, recruitment, and real-time analytics.
 **Skills** : Linux, Hadoop, Spark
-**Achievements**:  Improving data extraction and transformation speeds by 55%, and supporting more efficient downstream processing. 
+**Achievements**:  
+
+1. Increased data extraction and transformation speed by 55%, enabling more efficient downstream processing.  
+2. Reduced data processing latency by 60% through a new Kafka-based data pipeline, supporting real-time analytics for over 20 million daily user behaviors.  
+
 **Responsibility** : 
 
-1.  Engineered a new data pipeline leveraging Apache Kafka, reducing data processing latency by 60%, and enabling real-time analytics for over 20 million daily user behavior.
-2. Directed the adoption of ETL processes using Hadoop and Spark.
+1.  Led the design and implementation of the big data foundation and data pipeline.  
+2.  Directed ETL processes using Hadoop and Spark.  
+3.  Built real-time streaming platform for recruitment and real estate projects.  
 
 <div style="display: flex; justify-content: space-between;">
   <div style="font-size: 18px;"><strong>Yihaodian Hadoop Big Data Platform（2015 - 2017）</strong></div>
