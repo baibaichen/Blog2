@@ -8,17 +8,16 @@
 
 | University            | Degree & Major | Duration      |
 | ------------------------- | -------------- | ----------------- |
-| FuDan University | Master in Software Engineering | Mar. 2013 - Jan. 2017 |
+| Fudan University | Master in Software Engineering | Mar. 2013 - Jan. 2017 |
 | China Jiliang University              | Bachelor in Electricity and Magnetism Metrology | Sep. 1994 - Jun.1998 |
 
 ## SUMMARY/IT Skills
--   [Apache Gluten（Incubating）](https://github.com/apache/incubator-gluten)Initial Committer. **Double Vanilla Spark's performance!**
--   Proficient in project management, adept at leading cross-functional teams to transform concepts into launched products.
--   Over 25-years software development experience, strong in coding with C/C++, Java and Scala.
--   Familiar with various components on the Hadoop platform, expert in Spark
--   Experienced in Database such as Clubhouse
--   Knowledgeable in distributed systems theory and concurrency, with a deep understanding of computer hardware and software, capable of quickly learning new technologies.
--   Outgoing personality, easy to get along with, values teamwork, able to work under significant pressure.
+-   [Apache Gluten（Incubating）](https://github.com/apache/incubator-gluten)Initial Committer & PMC member:  Led the project from concept to Apache incubation, doubling the performance of Vanilla Spark.  
+-   Over 25 years of software development experience, including 14 years in C++; proficient in C++, Java, and Scala.  
+-   Expert in **Spark**, familiar with Hadoop ecosystem components (HDFS, MapReduce, YARN).  
+-   Strong background in **distributed systems**, concurrency, and computer architecture; capable of rapid adoption of new technologies.  
+-   Proven leader in cross-functional teams, skilled in project management and turning ideas into production-ready products.  
+-   Outgoing, team-oriented, and able to thrive under pressure.
 
 ## Working Experience
 
