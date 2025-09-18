@@ -56,8 +56,9 @@
 **Skills** : Linux, Hadoop, Spark
 **Responsibility** : 
 
-1. Improved performance, for instance, by using lazy OR operations to enhance the performance of `RoaringBitmap`'s union, achieving a 5 to 6-fold increase in certain scenarios.
-2. Familiar with the Spark optimizer, implemented intelligent tiered storage, and applied for an invention patent titled ["Hybrid Query Method and System for Cloud-Based Analytical Scenarios, and Storage Medium"](https://patents.google.com/patent/CN113918561A/zh) which is currently under public announcement. Patent No.: 2021110620674.
+1. Improved performance by optimizing `RoaringBitmap`’s union operation using lazy OR, achieving 5–6x speedup in certain scenarios.  
+2. Designed and implemented intelligent tiered storage leveraging Spark’s optimizer.  
+3. Filed an invention patent: ["Hybrid Query Method and System for Cloud-Based Analytical Scenarios, and Storage Medium"](https://patents.google.com/patent/CN113918561A/zh)  (Patent No.: 2021110620674), currently under public review.  
 
 <div style="display: flex; justify-content: space-between;">
   <div style="font-size: 18px;"><strong>LinkSure Recruiting data warehousing solution（Sep. 2017 - Oct. 2019）</strong></div>
