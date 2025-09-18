@@ -32,17 +32,21 @@
 
 ## Projects
 <div style="display: flex; justify-content: space-between;">
-  <div style="font-size: 18px;"><strong>Apache Gluten（Incubating）（Oct. 2021 ~ May 2025）</strong></div>
+  <div style="font-size: 18px;"><strong>Apache Gluten（Incubating）（Oct. 2021 ~ Present）</strong></div>
   <div>Leader & Chief Researcher</div>
 </div>
 **Description**: [Apache Gluten](https://github.com/apache/incubator-gluten) is an open-source project under the Apache Incubator that aims to enhance the performance of Apache Spark by integrating native vectorized execution engines. 
 **Skills** : Linux, C++, Spark
-**Achievements**:  **Double Vanilla Spark's performance!**
+**Achievements**:  
+1. Doubled the performance of Vanilla Spark in key workloads.  
+2. Successfully incubated into the Apache Software Foundation, establishing its role in the Spark ecosystem.  
+3. Advanced ARM architecture optimization for domestic technology substitution scenarios.
+
 **Responsibility** :
 
-1. Lead the team to start from an initial idea, complete POC verification, and finally integrate it into Kyligence Enterprise. 
-1. Support Parquet Page index
-1. Support Iceberg
+1. Led the team from initial concept to POC validation, engineering implementation, and integration into Kyligence Enterprise.  
+1. Implemented Parquet Reader features: Page Index and Row Index support.  
+1. Extended data lake support: Delta Lake (read/write with statistics collection) and Iceberg (read support for lightweight-updated Parquet files).  
 
 <div style="display: flex; justify-content: space-between;">
   <div style="font-size: 18px;"><strong>Kyligence Enterprise（Oct. 2019 ~ Oct. 2021）</strong></div>
