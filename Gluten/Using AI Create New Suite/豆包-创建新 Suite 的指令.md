@@ -3,11 +3,10 @@
 ## 1. 环境与路径定义
 在执行所有步骤前，请明确以下基准路径：
 
-*   **Gluten 项目根目录**: `/home/chang/SourceCode/gluten1`
-*   **Gluten Spark40 测试源码路径**: `${GLUTEN_ROOT}/gluten-ut/spark40/src/test/scala`
 *   **Spark 4.0 源码路径**: `/home/chang/OpenSource/spark40/sql`
-*   **Spark 4.1 源码路径**: `/home/chang/OpenSource/spark/sql` (注意：此处目录名为 `spark`，请确保上下文正确)
-*   **Gluten Spark41 目标路径**: `${GLUTEN_ROOT}/gluten-ut/spark41/src/test/scala`
+*   **Gluten 项目根目录**: `/home/chang/SourceCode/gluten1`
+*   **Gluten Spark40 路径**: `${GLUTEN_ROOT}/gluten-ut/spark40/src/test/scala`
+*   **Gluten Spark41 路径**: `${GLUTEN_ROOT}/gluten-ut/spark41/src/test/scala`
 
 ---
 
@@ -65,34 +64,31 @@
 
 ---
 
-## 4. 步骤三：对比 Spark 4.1 增量
-**目标**: 找出 Spark 4.1 在上述“唯一包名”下新增的测试文件。
+## 4. 步骤三：查找 Spark 4.0 遗失的 Suite
+**目标**: 找出 Spark 4.0 在上述“唯一包名”下新增的测试文件。
 
 1.  获取 **步骤二** 生成的“唯一包名”列表。
 2.  **遍历对比**: 对列表中的每一个包路径 `PACKAGE_DIR`：
     *   **Spark 4.0 列表**: 在 `${SPARK_40_ROOT}/${PACKAGE_DIR}` 下执行 **非递归** 搜索 (Max Depth 1)，找出所有 `.scala` 文件。
-    *   **Spark 4.1 列表**: 在 `${SPARK_41_ROOT}/${PACKAGE_DIR}` 下执行 **非递归** 搜索 (Max Depth 1)，找出所有 `.scala` 文件。
-    *   *注意*: 如果 Spark 4.1 的目录结构变更导致该路径不存在，则跳过。
-
 3.  **差异分析**:
-    *   找出 **仅存在于 Spark 4.1** 中的文件。
+    *   找出 **仅存在于 Spark 4.0** 中的文件。
     *   **过滤**: 仅保留文件名以 `Suite.scala` 结尾的文件。
-
-4.  **输出**: 将这些“Spark 4.1 新增 Suite”追加到 Markdown 文件中。
+4.  **输出**: 将这些“Spark 4.0 新增 Suite”追加到 Markdown 文件中。
 
 ---
 
-## 5. 步骤四：创建 Gluten Spark41 Suite
-**目标**: 为 Spark 4.1 新增的 Suite 在 Gluten 项目中生成对应的适配代码。
+## 5. 步骤四：创建 Gluten Spark41 和 Spark40 Suite
+**目标**: 为 Spark 4.0 遗失的 Suite 在 Gluten 项目中生成对应的适配代码。
 
 ### 5.1 路径映射逻辑
-对于每一个 Spark 4.1 新增的文件 `${SPARK_41_FILE}`:
-1.  **计算相对路径**: 相对于 `${SPARK_41_ROOT}` 的路径 (例如: `core/src/test/scala/org/apache/spark/.../NewSuite.scala`)。
+对于每一个 Spark 4.0 遗失的文件 `${SPARK_40_FILE}`:
+1.  **计算相对路径**: 相对于 `${SPARK_40_ROOT}` 的路径 (例如: `core/src/test/scala/org/apache/spark/.../NewSuite.scala`)。
 2.  **确定 Gluten 目标目录**:
-    *   拼接路径: `${GLUTEN_SPARK41_TARGET}/{package_path}`
+    *   拼接路径: `${GLUTEN_SPARK40_TARGET}/{package_path}`
     *   **包路径计算**: 去掉文件名，取剩余目录结构。
 3.  **确定 Gluten 目标文件名**:
     *   在原文件名前添加 `Gluten` 前缀 (例如: `NewSuite.scala` -> `GlutenNewSuite.scala`)。
+4. 对 Spark 4.1做同样工作   
 
 ### 5.2 文件生成模板
 在目标目录下创建新文件。如果目录不存在，请自动创建 (`mkdir -p`)。
@@ -132,7 +128,23 @@ class GlutenNewSuite extends NewSuite with GlutenSQLTestsTrait {}
 
 ---
 
-## 6. 清理工作
+## 6. 验证
+
+### 格式化
+```
+build/mvn -P java-17,spark-4.1,scala-2.13,backends-velox,hadoop-3.3,spark-ut -Piceberg,iceberg-test,delta,paimon spotless:apply
+build/mvn -P java-17,spark-4.0,scala-2.13,backends-velox,hadoop-3.3,spark-ut -Piceberg,iceberg-test,delta,paimon spotless:apply
+```
+
+### 编译
+```
+build/mvn -P java-17,spark-4.1,scala-2.13,backends-velox,hadoop-3.3,spark-ut clean test-compile
+build/mvn -P java-17,spark-4.0,scala-2.13,backends-velox,hadoop-3.3,spark-ut -Piceberg,iceberg-test,delta,paimon clean test-compile
+```
+
+---
+
+## 7. 清理工作
 *   如果过程中生成了任何临时的 `.txt` 或中间缓存文件，请在任务结束时删除。
 *   确保最终生成的 Markdown 报告格式整齐，无乱码。
 
