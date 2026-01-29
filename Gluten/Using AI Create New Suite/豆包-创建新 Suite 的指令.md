@@ -121,14 +121,31 @@ package org.apache.spark.sql.xxx
 // EXTENDS: 原类名 with GlutenSQLTestsTrait
 class GlutenNewSuite extends NewSuite with GlutenSQLTestsTrait {}
 ```
+#### 规则
+1. 如果 `NewSuite` 是 `abstract class`，排除
 
-### 5.3 执行保障
+2. 如果 `NewSuite extends SparkFunSuit`,，则 `class GlutenNewSuite extends NewSuite with GlutenTestsCommonTrait {}`
+
+3. 如果 `NewSuite.scala` 里真正的 `Suite` class 和文件名不同，我们需要把提前真正的 Suite class，但是还是要放到 `GlutenNewSuite.scala` 中
+
+   
+
+### 5.3 集成
+
+在 `${GLUTEN_SPARK40_TEST}/org/apache/gluten/utils/velox/VeloxTestSettings.scala`  和 `${GLUTEN_SPARK41_TEST}/org/apache/gluten/utils/velox/VeloxTestSettings.scala`   中调用 `enableSuite` 以便集成新的 Suite
+
+### 5.4 执行保障
 *   **包名推导**: 根据目标文件的目录结构自动生成正确的 `package` 声明。
 *   **防覆盖**: 如果目标文件已经存在，**请勿覆盖**，并在控制台输出警告信息。
 
 ---
 
 ## 6. 验证
+
+### 操作
+
+1. 先搞 spark 40，spark 40 通过之后再搞 spark 41
+2. 一个 package,一个 package的搞，我来帮助你 fix 问题
 
 ### 格式化
 ```
