@@ -123,12 +123,8 @@ class GlutenNewSuite extends NewSuite with GlutenSQLTestsTrait {}
 ```
 #### 规则
 1. 如果 `NewSuite` 是 `abstract class`，排除
-
 2. 如果 `NewSuite extends SparkFunSuit`,，则 `class GlutenNewSuite extends NewSuite with GlutenTestsCommonTrait {}`
-
 3. 如果 `NewSuite.scala` 里真正的 `Suite` class 和文件名不同，我们需要把提前真正的 Suite class，但是还是要放到 `GlutenNewSuite.scala` 中
-
-   
 
 ### 5.3 集成
 
