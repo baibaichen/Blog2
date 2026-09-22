@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="435" viewBox="0 0 400 435">
+  <rect width="400" height="435" fill="white"/>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="200" cy="90" rx="120" ry="42"/>
+    <path d="M80 90V330M320 90V330M80 330A120 42 0 0 0 320 330"/>
+    <path d="M80 330A120 42 0 0 1 320 330M80 330H320M200 90V330M80 90L233.6 370.32M80 90L320 330M80 330L233.6 370.32L320 330" stroke-dasharray="7 6"/>
+  </g>
+  <g fill="#111">
+    <circle cx="200" cy="90" r="2.5"/>
+    <circle cx="200" cy="330" r="2.5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-style="italic" font-size="24">
+    <text x="48" y="94">A</text>
+    <text x="49" y="347">B</text>
+    <text x="337" y="347">C</text>
+    <text x="226" y="406">D</text>
+    <text x="223" y="319">O</text>
+    <text x="215" y="78">O'</text>
+  </g>
+</svg>

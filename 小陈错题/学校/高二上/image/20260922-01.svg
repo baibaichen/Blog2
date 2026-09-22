@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="240" viewBox="0 0 1120 240">
+  <rect width="1120" height="240" fill="white"/>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <g transform="translate(10 20)">
+      <path d="M20 45H105V145H20ZM20 45L45 20H130L105 45M130 20V120L105 145"/>
+      <path d="M45 20V120H130M45 120L20 145" stroke-dasharray="6 5"/>
+    </g>
+    <g transform="translate(175 20)">
+      <path d="M0 145L28 62H146L163 123L118 145ZM146 62L118 145"/>
+      <path d="M0 145L45 123L28 62M45 123H163" stroke-dasharray="6 5"/>
+    </g>
+    <g transform="translate(365 20)">
+      <path d="M38 38H79L103 84L80 133H39L17 87ZM38 38L24 22H65L79 38M24 22L0 70L17 87M0 70L24 117L39 133"/>
+      <path d="M65 22L89 68L66 117H24M89 68L103 84M66 117L80 133" stroke-dasharray="6 5"/>
+    </g>
+    <g transform="translate(510 20)">
+      <path d="M0 42H88L130 150H42ZM0 42L28 23H116L88 42M116 23L158 131L130 150"/>
+      <path d="M28 23L70 131H158M70 131L42 150" stroke-dasharray="6 5"/>
+    </g>
+    <g transform="translate(700 20)">
+      <path d="M10 47L40 24H78L107 47ZM10 47V157H107V47"/>
+      <path d="M40 24V134H78V24M10 157L40 134M78 134L107 157" stroke-dasharray="6 5"/>
+    </g>
+    <g transform="translate(850 20)">
+      <path d="M25 58H91L58 77ZM25 58L14 132L58 154L104 132L91 58M58 77V154"/>
+      <path d="M14 132H104" stroke-dasharray="6 5"/>
+    </g>
+    <g transform="translate(995 20)">
+      <path d="M22 39H96L58 59ZM22 39L28 79L8 127L44 149L89 131L105 83L96 39M58 59L64 100L44 149M28 79L64 100L105 83"/>
+      <path d="M28 79L105 83M8 127L89 131" stroke-dasharray="6 5"/>
+    </g>
+    <circle cx="85" cy="214" r="12"/>
+    <circle cx="255" cy="214" r="12"/>
+    <circle cx="417" cy="214" r="12"/>
+    <circle cx="589" cy="214" r="12"/>
+    <circle cx="758" cy="214" r="12"/>
+    <circle cx="908" cy="214" r="12"/>
+    <circle cx="1053" cy="214" r="12"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="18" text-anchor="middle">
+    <text x="85" y="220">1</text>
+    <text x="255" y="220">2</text>
+    <text x="417" y="220">3</text>
+    <text x="589" y="220">4</text>
+    <text x="758" y="220">5</text>
+    <text x="908" y="220">6</text>
+    <text x="1053" y="220">7</text>
+  </g>
+</svg>

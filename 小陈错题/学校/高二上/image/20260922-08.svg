@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="430" viewBox="0 0 400 430">
+  <rect width="400" height="430" fill="white"/>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="200" cy="100" rx="115" ry="40"/>
+    <path d="M85 100H315M85 100V330M315 100V330M85 330A115 40 0 0 0 315 330"/>
+    <path d="M85 330A115 40 0 0 1 315 330M85 330H315L200 370M85 330L200 60" stroke-dasharray="7 6"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-style="italic" font-size="24">
+    <text x="53" y="346">A</text>
+    <text x="333" y="346">B</text>
+    <text x="191" y="404">C</text>
+    <text x="43" y="105">A<tspan baseline-shift="sub" font-style="normal" font-size="16">1</tspan></text>
+    <text x="333" y="105">B<tspan baseline-shift="sub" font-style="normal" font-size="16">1</tspan></text>
+    <text x="186" y="37">C<tspan baseline-shift="sub" font-style="normal" font-size="16">1</tspan></text>
+  </g>
+</svg>
