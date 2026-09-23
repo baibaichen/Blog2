@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="380" height="270" viewBox="0 0 380 270">
+  <rect width="380" height="270" fill="white"/>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M50.0 75.0L120.0 110.0M260.0 180.0L330.0 110.0"/>
+    <path d="M50 40h70v70h-70ZM50 110h70v70h-70ZM120 110h70v70h-70ZM190 110h70v70h-70ZM260 110h70v70h-70ZM120 180h70v70h-70Z"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-style="italic" font-size="24">
+    <text x="20.1" y="88.6">A</text>
+    <text x="132.6" y="139.1">B</text>
+    <text x="257.1" y="209.2">C</text>
+    <text x="343.4" y="117.9">D</text>
+  </g>
+</svg>

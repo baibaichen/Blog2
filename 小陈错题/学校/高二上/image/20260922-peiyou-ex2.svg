@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="470" height="340" viewBox="0 0 470 340">
+  <rect width="470" height="340" fill="white"/>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M60.0 290.0L310.0 290.0M310.0 290.0L310.0 140.0M310.0 140.0L60.0 140.0M60.0 140.0L60.0 290.0M310.0 290.0L420.0 235.0M420.0 235.0L420.0 85.0M420.0 85.0L310.0 140.0M60.0 140.0L170.0 85.0M170.0 85.0L420.0 85.0M60.0 140.0L420.0 85.0M310.0 290.0L420.0 85.0"/>
+    <path d="M60.0 290.0L170.0 235.0M170.0 235.0L420.0 235.0M170.0 235.0L170.0 85.0M60.0 290.0L420.0 85.0" stroke-dasharray="7 6"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-style="italic" font-size="24">
+    <text x="57.1" y="319.2">A</text>
+    <text x="307.1" y="319.2">B</text>
+    <text x="433.4" y="242.9">C</text>
+    <text x="174.4" y="265.4">D</text>
+    <text x="20.9" y="144.9">A<tspan baseline-shift="sub" font-style="normal" font-size="16">1</tspan></text>
+    <text x="323.7" y="171.8">B<tspan baseline-shift="sub" font-style="normal" font-size="16">1</tspan></text>
+    <text x="432.9" y="89.9">C<tspan baseline-shift="sub" font-style="normal" font-size="16">1</tspan></text>
+    <text x="150.1" y="64.8">D<tspan baseline-shift="sub" font-style="normal" font-size="16">1</tspan></text>
+  </g>
+</svg>
