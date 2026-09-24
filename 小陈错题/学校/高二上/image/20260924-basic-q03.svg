@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="250" viewBox="0 0 440 250">
+  <style>line{stroke:#111;stroke-width:2;fill:none}text{font:italic 20px serif;fill:#111}</style>
+  <line x1="55" y1="178" x2="395" y2="178"/>
+  <line x1="124" y1="225" x2="335" y2="42"/>
+  <line x1="178" y1="178" x2="90" y2="76"/>
+  <line x1="90" y1="76" x2="350" y2="178"/>
+  <text x="166" y="202">O′</text><text x="350" y="169">A′</text><text x="70" y="70">B′</text>
+  <text x="397" y="184">x′</text><text x="337" y="43">y′</text>
+</svg>

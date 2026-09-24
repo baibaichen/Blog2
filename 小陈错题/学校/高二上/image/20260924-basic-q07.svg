@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="350" viewBox="0 0 420 350">
+  <style>.s{stroke:#111;stroke-width:2;fill:none}.h{stroke:#111;stroke-width:2;stroke-dasharray:7 6;fill:none}text{font:italic 18px serif}</style>
+  <path class="s" d="M65 295L270 295L270 105L65 105ZM65 105L115 55L320 55L270 105M270 295L320 250L320 55"/>
+  <path class="h" d="M65 295L115 250L320 250M115 250L115 55"/>
+  <line class="s" x1="65" y1="105" x2="270" y2="295"/>
+  <text x="42" y="322">A</text><text x="277" y="322">B</text><text x="330" y="264">C</text><text x="126" y="274">D</text>
+  <text x="31" y="99">A₁</text><text x="284" y="130">B₁</text><text x="334" y="45">C₁</text><text x="91" y="36">D₁</text>
+</svg>

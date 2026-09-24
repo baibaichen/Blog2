@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="315" viewBox="0 0 980 315">
+  <style>.s{stroke:#111;stroke-width:2;fill:none}.h{stroke:#111;stroke-width:2;stroke-dasharray:7 6;fill:none}text{font:italic 17px serif}</style>
+  <g transform="translate(0,0)">
+    <path class="s" d="M35 275L175 275L175 125L35 125ZM35 125L75 80L215 80L175 125M175 275L215 230L215 80"/>
+    <path class="h" d="M35 275L75 230L215 230M75 230L75 80"/>
+    <text x="17" y="301">A</text><text x="180" y="301">B</text><text x="222" y="251">C</text><text x="86" y="255">D</text><text x="7" y="116">A₁</text><text x="184" y="146">B₁</text><text x="222" y="72">C₁</text><text x="52" y="67">D₁</text>
+  </g>
+  <g transform="translate(325,0)">
+    <path class="s" d="M35 275L175 275L175 125L35 125ZM35 125L75 80L215 80L175 125M175 275L215 230L215 80"/>
+    <path class="h" d="M35 275L75 230L215 230M75 230L75 80"/>
+    <text x="17" y="301">A</text><text x="180" y="301">B</text><text x="222" y="251">C</text><text x="86" y="255">D</text><text x="7" y="116">A₁</text><text x="184" y="146">B₁</text><text x="222" y="72">C₁</text><text x="52" y="67">D₁</text>
+  </g>
+  <g transform="translate(650,0)">
+    <path class="s" d="M35 275L175 275L175 125L35 125ZM35 125L75 80L215 80L175 125M175 275L215 230L215 80"/>
+    <path class="h" d="M35 275L75 230L215 230M75 230L75 80"/>
+    <text x="17" y="301">A</text><text x="180" y="301">B</text><text x="222" y="251">C</text><text x="86" y="255">D</text><text x="7" y="116">A₁</text><text x="184" y="146">B₁</text><text x="222" y="72">C₁</text><text x="52" y="67">D₁</text>
+  </g>
+</svg>

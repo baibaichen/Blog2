@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="390" viewBox="0 0 420 390">
+  <style>.s{stroke:#111;stroke-width:2;fill:none}.h{stroke:#111;stroke-width:2;stroke-dasharray:7 6;fill:none}text{font:italic 18px serif}</style>
+  <path class="s" d="M65 340L275 340L275 105L65 105ZM65 105L120 50L330 50L275 105M275 340L330 285L330 50"/>
+  <path class="h" d="M65 340L120 285L330 285M120 285L120 50"/>
+  <line class="h" x1="65" y1="340" x2="120" y2="50"/>
+  <line class="h" x1="120" y1="50" x2="330" y2="285"/>
+  <line class="h" x1="120" y1="285" x2="275" y2="340"/>
+  <line class="h" x1="120" y1="285" x2="225" y2="167.5"/>
+  <line class="h" x1="225" y1="167.5" x2="275" y2="340"/>
+  <text x="38" y="369">A</text><text x="280" y="369">B</text><text x="338" y="294">C</text><text x="88" y="283">D</text>
+  <text x="33" y="101">A₁</text><text x="283" y="130">B₁</text><text x="337" y="42">C₁</text><text x="95" y="36">D₁</text>
+  <text x="238" y="155">E</text>
+</svg>

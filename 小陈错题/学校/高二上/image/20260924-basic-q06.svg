@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="330" viewBox="0 0 440 330">
+  <style>.s{stroke:#111;stroke-width:2;fill:none}.h{stroke:#111;stroke-width:2;stroke-dasharray:7 6;fill:none}text{font:italic 19px serif}</style>
+  <path class="s" d="M70 245A150 42 0 0 0 370 245"/>
+  <path class="h" d="M70 245A150 42 0 0 1 370 245"/>
+  <line class="s" x1="70" y1="245" x2="370" y2="245"/>
+  <line class="s" x1="70" y1="55" x2="70" y2="245"/>
+  <line class="s" x1="70" y1="55" x2="370" y2="245"/>
+  <line class="h" x1="70" y1="55" x2="220" y2="203"/>
+  <line class="h" x1="70" y1="245" x2="220" y2="203"/>
+  <line class="h" x1="220" y1="203" x2="370" y2="245"/>
+  <text x="54" y="43">P</text><text x="45" y="260">A</text><text x="378" y="260">B</text>
+  <text x="211" y="269">O</text><text x="213" y="196">C</text>
+</svg>
