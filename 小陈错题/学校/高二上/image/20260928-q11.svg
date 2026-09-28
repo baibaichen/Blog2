@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 410 280" width="410" height="280" role="img" aria-labelledby="title">
+  <title id="title">Pyramid P-ABCD with E as the midpoint of BC</title>
+  <defs>
+    <style>
+      .edge { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .hidden { fill: none; stroke: #111; stroke-width: 2; stroke-dasharray: 7 6; stroke-linecap: round; }
+      .marker { fill: none; stroke: #111; stroke-width: 1.6; stroke-linejoin: round; }
+      .point { fill: #111; }
+      .label { fill: #111; font-family: "Times New Roman", serif; font-size: 18px; font-style: italic; }
+    </style>
+  </defs>
+  <rect width="410" height="280" fill="#fff" />
+  <path class="hidden" d="M138 137 L35 220 M138 137 L345 140 M105 25 L138 137" />
+  <path class="edge" d="M35 220 L240 220 L345 140" />
+  <path class="edge" d="M105 25 L35 220 M105 25 L345 140 M105 25 L140 220 M140 220 L345 140" />
+  <path class="marker" d="M132 121 L145 125 L148 139" />
+  <circle class="point" cx="105" cy="25" r="3" />
+  <circle class="point" cx="138" cy="137" r="3" />
+  <circle class="point" cx="35" cy="220" r="3" />
+  <circle class="point" cx="140" cy="220" r="3" />
+  <circle class="point" cx="240" cy="220" r="3" />
+  <circle class="point" cx="345" cy="140" r="3" />
+  <text class="label" x="96" y="16">P</text>
+  <text class="label" x="116" y="136">A</text>
+  <text class="label" x="10" y="238">B</text>
+  <text class="label" x="232" y="247">C</text>
+  <text class="label" x="363" y="144">D</text>
+  <text class="label" x="133" y="249">E</text>
+</svg>

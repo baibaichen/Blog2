@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 430 330" width="430" height="330" role="img" aria-labelledby="title">
+  <title id="title">Cone SO with generators SA and SB</title>
+  <defs>
+    <style>
+      .edge { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .hidden { fill: none; stroke: #111; stroke-width: 2; stroke-dasharray: 7 6; stroke-linecap: round; }
+      .angle { fill: none; stroke: #111; stroke-width: 1.5; }
+      .point { fill: #111; }
+      .label { fill: #111; font-family: "Times New Roman", serif; font-size: 18px; font-style: italic; }
+      .measure { fill: #111; font-family: "Times New Roman", serif; font-size: 15px; }
+    </style>
+  </defs>
+  <rect width="430" height="330" fill="#fff" />
+  <path class="edge" d="M205 20 L45 250 M205 20 L385 250" />
+  <path class="hidden" d="M45 250 A170 52 0 0 1 385 250" />
+  <path class="edge" d="M45 250 A170 52 0 0 0 385 250" />
+  <path class="edge" d="M205 20 L150 298" />
+  <path class="hidden" d="M205 20 L205 250 M45 250 L178 159 M45 250 L205 250 M205 250 L150 298" />
+  <path class="angle hidden" d="M179 250 A28 15 0 0 0 188 271" />
+  <circle class="point" cx="205" cy="20" r="3" />
+  <circle class="point" cx="205" cy="250" r="3" />
+  <circle class="point" cx="45" cy="250" r="3" />
+  <circle class="point" cx="150" cy="298" r="3" />
+  <circle class="point" cx="178" cy="159" r="3" />
+  <text class="label" x="197" y="15">S</text>
+  <text class="label" x="217" y="270">O</text>
+  <text class="label" x="18" y="270">A</text>
+  <text class="label" x="139" y="324">B</text>
+  <text class="label" x="151" y="160">C</text>
+</svg>

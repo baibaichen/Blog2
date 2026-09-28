@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 370 250" width="370" height="250" role="img" aria-labelledby="title">
+  <title id="title">Tetrahedron ABCD with midpoints O and E</title>
+  <defs>
+    <style>
+      .edge { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .hidden { fill: none; stroke: #111; stroke-width: 2; stroke-dasharray: 7 6; stroke-linecap: round; }
+      .point { fill: #111; }
+      .label { fill: #111; font-family: "Times New Roman", serif; font-size: 18px; font-style: italic; }
+    </style>
+  </defs>
+  <rect width="370" height="250" fill="#fff" />
+  <path class="edge" d="M180 24 L38 205 L332 205 Z M180 24 L238 133" />
+  <path class="hidden" d="M38 205 L238 133 L332 205 M180 24 L138 169" />
+  <circle class="point" cx="180" cy="24" r="3" />
+  <circle class="point" cx="38" cy="205" r="3" />
+  <circle class="point" cx="332" cy="205" r="3" />
+  <circle class="point" cx="238" cy="133" r="3" />
+  <circle class="point" cx="138" cy="169" r="3" />
+  <circle class="point" cx="185" cy="205" r="3" />
+  <text class="label" x="174" y="15">A</text>
+  <text class="label" x="13" y="222">B</text>
+  <text class="label" x="342" y="222">C</text>
+  <text class="label" x="247" y="130">D</text>
+  <text class="label" x="116" y="166">O</text>
+  <text class="label" x="179" y="232">E</text>
+</svg>

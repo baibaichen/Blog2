@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 290" width="390" height="290" role="img" aria-labelledby="title">
+  <title id="title">Pyramid P-ABCD with PD perpendicular to the square base</title>
+  <defs>
+    <style>
+      .edge { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .hidden { fill: none; stroke: #111; stroke-width: 2; stroke-dasharray: 7 6; stroke-linecap: round; stroke-linejoin: round; }
+      .marker { fill: none; stroke: #111; stroke-width: 1.6; stroke-linejoin: round; }
+      .point { fill: #111; }
+      .label { fill: #111; font-family: "Times New Roman", serif; font-size: 18px; font-style: italic; }
+    </style>
+  </defs>
+  <rect width="390" height="290" fill="#fff" />
+  <path class="hidden" d="M130 30 L130 170 M130 170 L45 225 M130 170 L325 175 M130 170 L255 250" />
+  <path class="edge" d="M130 30 L45 225 M130 30 L255 250 M130 30 L325 175" />
+  <path class="edge" d="M45 225 L255 250 L325 175" />
+  <path class="marker" d="M130 154 L143 162 L143 178" />
+  <circle class="point" cx="130" cy="30" r="3" />
+  <circle class="point" cx="130" cy="170" r="3" />
+  <circle class="point" cx="45" cy="225" r="3" />
+  <circle class="point" cx="255" cy="250" r="3" />
+  <circle class="point" cx="325" cy="175" r="3" />
+  <text class="label" x="124" y="18">P</text>
+  <text class="label" x="103" y="174">D</text>
+  <text class="label" x="21" y="239">A</text>
+  <text class="label" x="260" y="275">B</text>
+  <text class="label" x="345" y="178">C</text>
+</svg>
