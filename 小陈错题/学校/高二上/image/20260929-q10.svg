@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 360" width="400" height="360" role="img" aria-labelledby="title">
+  <title id="title">Regular triangular pyramid S-ABC</title>
+  <defs>
+    <style>
+      .edge { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .hidden { fill: none; stroke: #111; stroke-width: 2; stroke-dasharray: 7 6; stroke-linecap: round; stroke-linejoin: round; }
+      .label { fill: #111; font-family: "Times New Roman", serif; font-size: 22px; font-style: italic; }
+    </style>
+  </defs>
+  <rect width="400" height="360" fill="#fff" />
+  <path class="edge" d="M185 50 L60 255 L155 315 L335 235 Z M185 50 L155 315" />
+  <path class="hidden" d="M60 255 L335 235" />
+  <text class="label" x="177" y="29">S</text>
+  <text class="label" x="31" y="266">A</text>
+  <text class="label" x="146" y="345">B</text>
+  <text class="label" x="352" y="243">C</text>
+</svg>

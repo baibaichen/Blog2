@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 410 360" width="410" height="360" role="img" aria-labelledby="title">
+  <title id="title">Pyramid P-ABCD with Q the midpoint of PD</title>
+  <defs>
+    <style>
+      .edge { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .hidden { fill: none; stroke: #111; stroke-width: 2; stroke-dasharray: 7 6; stroke-linecap: round; stroke-linejoin: round; }
+      .point { fill: #111; }
+      .label { fill: #111; font-family: "Times New Roman", serif; font-size: 22px; font-style: italic; }
+    </style>
+  </defs>
+  <rect width="410" height="360" fill="#fff" />
+  <path class="edge" d="M150 45 L70 300 L270 300 L350 220 Z M150 45 L270 300" />
+  <path class="hidden" d="M70 300 L150 220 L350 220 M150 45 L150 220 M70 300 L350 220 M70 300 L150 132.5 L350 220" />
+  <circle class="point" cx="150" cy="132.5" r="2.5" />
+  <text class="label" x="143" y="25">P</text>
+  <text class="label" x="43" y="327">A</text>
+  <text class="label" x="269" y="332">B</text>
+  <text class="label" x="367" y="232">C</text>
+  <text class="label" x="163" y="249">D</text>
+  <text class="label" x="165" y="183">Q</text>
+</svg>

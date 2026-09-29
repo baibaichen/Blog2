@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 420" width="420" height="420" role="img" aria-labelledby="title">
+  <title id="title">Cone S-AB with points Q, C, O and H</title>
+  <defs>
+    <style>
+      .edge { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .hidden { fill: none; stroke: #111; stroke-width: 2; stroke-dasharray: 7 6; stroke-linecap: round; stroke-linejoin: round; }
+      .point { fill: #111; }
+      .label { fill: #111; font-family: "Times New Roman", serif; font-size: 22px; font-style: italic; }
+    </style>
+  </defs>
+  <rect width="420" height="420" fill="#fff" />
+  <path class="edge" d="M205 45 L55 270 M205 45 L355 270 M205 45 L130 347.942" />
+  <path class="hidden" d="M55 270 A150 90 0 0 1 355 270" />
+  <path class="edge" d="M55 270 A150 90 0 0 0 355 270" />
+  <path class="hidden" d="M55 270 L355 270 M205 45 L205 270 M130 347.942 L355 270 M205 45 L242.5 308.971 M205 270 L235 256.177 M205 270 L130 347.942" />
+  <circle class="point" cx="205" cy="270" r="2.5" />
+  <circle class="point" cx="130" cy="347.942" r="2.5" />
+  <circle class="point" cx="242.5" cy="308.971" r="2.5" />
+  <circle class="point" cx="235" cy="256.177" r="2.5" />
+  <text class="label" x="197" y="27">S</text>
+  <text class="label" x="27" y="283">A</text>
+  <text class="label" x="370" y="283">B</text>
+  <text class="label" x="173" y="253">O</text>
+  <text class="label" x="103" y="380">Q</text>
+  <text class="label" x="251" y="254">H</text>
+  <text class="label" x="238" y="342">C</text>
+</svg>

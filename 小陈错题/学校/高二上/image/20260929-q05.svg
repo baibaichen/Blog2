@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 360" width="400" height="360" role="img" aria-labelledby="title">
+  <title id="title">Triangular prism ABC-A1B1C1 and tetrahedron B1-ABC1</title>
+  <defs>
+    <style>
+      .edge { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .hidden { fill: none; stroke: #111; stroke-width: 2; stroke-dasharray: 7 6; stroke-linecap: round; stroke-linejoin: round; }
+      .label { fill: #111; font-family: "Times New Roman", serif; font-size: 22px; font-style: italic; }
+      .sub { font-size: 15px; }
+    </style>
+  </defs>
+  <rect width="400" height="360" fill="#fff" />
+  <path class="edge" d="M70 300 L70 130 L235 50 L310 130 L310 300 Z M70 130 L310 130 M70 300 L310 130" />
+  <path class="hidden" d="M70 300 L235 220 L310 300 M235 220 L235 50 M70 300 L235 50 L310 300" />
+  <text class="label" x="41" y="325">A</text>
+  <text class="label" x="312" y="333">B</text>
+  <text class="label" x="253" y="214">C</text>
+  <text class="label" x="33" y="128">A<tspan class="sub" dy="6">1</tspan></text>
+  <text class="label" x="325" y="132">B<tspan class="sub" dy="6">1</tspan></text>
+  <text class="label" x="226" y="29">C<tspan class="sub" dy="6">1</tspan></text>
+</svg>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 410 350" width="410" height="350" role="img" aria-labelledby="title">
+  <title id="title">Regular tetrahedron A-BCD obtained by cutting four corners off a cube</title>
+  <defs>
+    <style>
+      .cube { fill: none; stroke: #111; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+      .edge { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .hidden { stroke-dasharray: 7 6; }
+      .label { fill: #111; font-family: "Times New Roman", serif; font-size: 22px; font-style: italic; }
+    </style>
+  </defs>
+  <rect width="410" height="350" fill="#fff" />
+  <path class="cube" d="M55 295 L255 295 L345 240 L345 40 L145 40 L55 95 Z M55 95 L255 95 L345 40 M255 95 L255 295" />
+  <path class="cube hidden" d="M55 295 L145 240 L345 240 M145 240 L145 40" />
+  <path class="edge" d="M55 95 L345 40 L255 295" />
+  <path class="edge hidden" d="M55 95 L255 295 L145 240 L55 95 M145 240 L345 40" />
+  <text class="label" x="28" y="97">A</text>
+  <text class="label" x="250" y="327">B</text>
+  <text class="label" x="360" y="41">C</text>
+  <text class="label" x="96" y="240">D</text>
+</svg>

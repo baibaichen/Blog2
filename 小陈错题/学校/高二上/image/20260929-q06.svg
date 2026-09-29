@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 410 380" width="410" height="380" role="img" aria-labelledby="title">
+  <title id="title">Triangular prism ABC-A'B'C' with shaded face AA'B'B</title>
+  <defs>
+    <style>
+      .edge { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .hidden { fill: none; stroke: #111; stroke-width: 2; stroke-dasharray: 7 6; stroke-linecap: round; stroke-linejoin: round; }
+      .label { fill: #111; font-family: "Times New Roman", serif; font-size: 22px; font-style: italic; }
+    </style>
+  </defs>
+  <rect width="410" height="380" fill="#fff" />
+  <polygon id="shaded-face" points="70,60 230,140 230,330 70,250" fill="#bdbdbd" />
+  <path class="edge" d="M70 60 L320 60 L320 250 L230 330 L70 250 Z M70 60 L230 140 L320 60 M230 140 L230 330" />
+  <path class="hidden" d="M70 250 L320 250 M70 60 L320 250 M230 140 L320 250" />
+  <text class="label" x="41" y="265">A</text>
+  <text class="label" x="222" y="361">B</text>
+  <text class="label" x="338" y="264">C</text>
+  <text class="label" x="37" y="61">A'</text>
+  <text class="label" x="213" y="112">B'</text>
+  <text class="label" x="334" y="62">C'</text>
+</svg>
