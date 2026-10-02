@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="245" viewBox="0 0 800 245">
+  <rect width="800" height="245" fill="white"/>
+  <defs>
+    <g id="cube" fill="none" stroke="#222" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M30 70 H130 V170 H30 Z M30 70 L68 32 H168 V132 L130 170 M130 70 L168 32"/>
+      <path d="M30 170 L68 132 H168 M68 132 V32" stroke-dasharray="5 4"/>
+    </g>
+  </defs>
+  <g font-family="Times New Roman, serif" font-size="21" fill="#111">
+    <g transform="translate(0 8)">
+      <use href="#cube"/>
+      <path d="M68 32 L130 170" fill="none" stroke="#222" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <path d="M130 70 L168 132" fill="none" stroke="#222" stroke-width="1.5"/>
+      <g font-style="italic"><text x="60" y="20">A</text><text x="125" y="197">B</text><text x="106" y="58">C</text><text x="181" y="139">D</text></g>
+      <circle cx="99" cy="216" r="13" fill="none" stroke="#222" stroke-width="1.1"/><text x="99" y="223" text-anchor="middle" font-size="19">1</text>
+    </g>
+    <g transform="translate(200 8)">
+      <use href="#cube"/>
+      <path d="M68 32 L30 170" fill="none" stroke="#222" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <path d="M30 70 L130 170" fill="none" stroke="#222" stroke-width="1.5"/>
+      <g font-style="italic"><text x="60" y="20">A</text><text x="14" y="196">B</text><text x="6" y="68">C</text><text x="141" y="193">D</text></g>
+      <circle cx="99" cy="216" r="13" fill="none" stroke="#222" stroke-width="1.1"/><text x="99" y="223" text-anchor="middle" font-size="19">2</text>
+    </g>
+    <g transform="translate(400 8)">
+      <use href="#cube"/>
+      <path d="M30 70 L68 132" fill="none" stroke="#222" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <g font-style="italic"><text x="9" y="68">A</text><text x="81" y="157">B</text><text x="181" y="36">C</text><text x="181" y="144">D</text></g>
+      <circle cx="99" cy="216" r="13" fill="none" stroke="#222" stroke-width="1.1"/><text x="99" y="223" text-anchor="middle" font-size="19">3</text>
+    </g>
+    <g transform="translate(600 8)">
+      <use href="#cube"/>
+      <path d="M68 32 L130 170" fill="none" stroke="#222" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <g font-style="italic"><text x="60" y="20">A</text><text x="125" y="197">B</text><text x="181" y="36">C</text><text x="181" y="144">D</text></g>
+      <circle cx="99" cy="216" r="13" fill="none" stroke="#222" stroke-width="1.1"/><text x="99" y="223" text-anchor="middle" font-size="19">4</text>
+    </g>
+  </g>
+</svg>

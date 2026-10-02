@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="370" height="280" viewBox="0 0 370 280">
+  <rect width="370" height="280" fill="white"/>
+  <g fill="none" stroke="#222" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M55 205 V35 L325 205 Z"/>
+    <path d="M272 171.64 A135 42 0 0 1 325 205 A135 42 0 0 1 55 205"/>
+    <path d="M55 205 A135 42 0 0 1 272 171.64 M55 35 L125 168.2 M55 205 L125 168.2 L325 205" stroke-dasharray="6 5"/>
+  </g>
+  <circle cx="190" cy="205" r="2.5" fill="#222"/>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="31" y="29">P</text><text x="28" y="220">A</text>
+    <text x="337" y="215">B</text><text x="138" y="147">C</text><text x="180" y="235">O</text>
+  </g>
+</svg>

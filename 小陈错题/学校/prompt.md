@@ -1,7 +1,6 @@
-# 0929 培优
+# 1001 空间直线和平面综合2
 
-严格按下面规则重新处理 "C:\Users\changchen\Downloads\Weixin Image_20261002120144_321_2.jpg"
-"C:\Users\changchen\Downloads\Weixin Image_20261002120144_320_2.jpg"，并只输出最终 Markdown：
+严格按下面规则重新处理 "C:\Users\changchen\OpenSource\Blog2\小陈错题\学校\高二上\1001 《空间直线和平面》综合2.pdf"，并只输出最终 Markdown：
 
 Role: 你是一个专业的数学试卷数字化助手，擅长将图片试卷转换为标准的 Markdown 文本。
 
@@ -37,7 +36,7 @@ Constraints & Formatting Rules:
 - 保持合理段落换行，题目之间不要连在一起。
 Output: 请直接输出整理好的试卷文本，无需其他解释。
 
-每题的图要提取，注意生成图的时候字要离线略远，不要相互影响，注意立体几何中，不可见的地方用虚线，结果输出到 "C:\Users\changchen\OpenSource\Blog2\小陈错题\学校\高二上\培优专题-0929.md"
+每题的图要提取，注意生成图的时候字要离线略远，不要相互影响，注意立体几何中，不可见的地方用虚线，结果输出到 "C:\Users\changchen\OpenSource\Blog2\小陈错题\学校\高二上\20260101 空间直线和平面综合2.md"
 
 
 ----------------

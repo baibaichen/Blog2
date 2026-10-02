@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="250" viewBox="0 0 360 250">
+  <rect width="360" height="250" fill="white"/>
+  <g fill="none" stroke="#222" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M25 195 H330 M35 220 L235 20"/>
+    <path d="M322 191 L330 195 L322 199 M226 24 L235 20 L231 29"/>
+    <path d="M150 157 H265 V102 H205 Z"/>
+    <path d="M98 157 H150 M153 102 H205 M112 195 L150 157" stroke-dasharray="5 5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="21" font-style="italic">
+    <text x="63" y="225">O'</text><text x="111" y="225">E'</text>
+    <text x="164" y="184">A'</text><text x="278" y="168">B'</text>
+    <text x="277" y="108">C'</text><text x="204" y="83">D'</text>
+    <text x="321" y="224">x'</text><text x="248" y="36">y'</text>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="21">
+    <text x="219" y="131">2</text><text x="154" y="129">4</text><text x="207" y="183">5</text>
+  </g>
+</svg>
