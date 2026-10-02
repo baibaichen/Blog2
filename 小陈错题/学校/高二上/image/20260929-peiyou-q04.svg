@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="390" viewBox="0 0 360 390">
+  <rect width="360" height="390" fill="white"/>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M55 310L180 42L305 310M55 310A125 48 0 0 0 305 310"/>
+    <path d="M55 310A125 48 0 0 1 305 310M55 310L305 310" stroke-dasharray="7 6"/>
+  </g>
+  <circle cx="180" cy="310" r="3" fill="#111"/>
+  <g fill="#111" font-family="Times New Roman, serif" font-style="italic" font-size="24">
+    <text x="172" y="25">S</text>
+    <text x="29" y="339">A</text>
+    <text x="170" y="343">O</text>
+  </g>
+</svg>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="470" height="360" viewBox="0 0 470 360">
+  <rect width="470" height="360" fill="white"/>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M65 300L285 300L405 215L405 45L185 45L65 130L285 130L405 45M65 130L65 300M285 130L285 300M285 130L405 215M345 172.5L405 130"/>
+    <path d="M65 300L185 215L405 215M185 215L185 45M280 75L405 130M280 75L345 172.5" stroke-dasharray="7 6"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-style="italic" font-size="24">
+    <text x="53" y="332">A</text>
+    <text x="279" y="332">B</text>
+    <text x="421" y="226">C</text>
+    <text x="197" y="247">D</text>
+    <text x="25" y="138">A<tspan baseline-shift="sub" font-style="normal" font-size="16">1</tspan></text>
+    <text x="246" y="159">B<tspan baseline-shift="sub" font-style="normal" font-size="16">1</tspan></text>
+    <text x="420" y="51">C<tspan baseline-shift="sub" font-style="normal" font-size="16">1</tspan></text>
+    <text x="145" y="27">D<tspan baseline-shift="sub" font-style="normal" font-size="16">1</tspan></text>
+    <text x="248" y="79">P</text>
+    <text x="310" y="196">Q</text>
+    <text x="421" y="138">E</text>
+  </g>
+</svg>
