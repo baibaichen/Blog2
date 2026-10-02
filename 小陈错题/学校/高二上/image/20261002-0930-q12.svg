@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 370 380" width="370" height="380" role="img" aria-labelledby="title">
+  <title id="title">Cylinder with triangular pyramid A1-ABP and hidden interior edges</title>
+  <defs>
+    <style>
+      .edge { fill: none; stroke: #111; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .hidden { fill: none; stroke: #111; stroke-width: 2; stroke-dasharray: 7 6; stroke-linecap: round; stroke-linejoin: round; }
+      .point { fill: #111; }
+      .label { fill: #111; font-family: "Times New Roman", serif; font-size: 24px; font-style: italic; }
+      .subscript { font-size: 15px; font-style: normal; }
+    </style>
+  </defs>
+  <rect width="370" height="380" fill="#fff" />
+  <path class="hidden" d="M70 280 A110 44 0 0 1 290 280 M70 280 L290 280 M70 80 L290 280 M70 80 L235 318.105 M70 280 L235 318.105 L290 280" />
+  <path class="hidden" d="M180 280 L235 318.105" />
+  <ellipse class="edge" cx="180" cy="80" rx="110" ry="44" />
+  <path class="edge" d="M70 80 L290 80 M70 80 L70 280 M290 80 L290 280 M70 280 A110 44 0 0 0 290 280" />
+  <circle class="point" cx="180" cy="80" r="2.5" />
+  <circle class="point" cx="180" cy="280" r="2.5" />
+  <circle class="point" cx="235" cy="318.105" r="2.5" />
+  <text class="label" x="34" y="88">A<tspan class="subscript" dy="5">1</tspan></text>
+  <text class="label" x="306" y="88">B<tspan class="subscript" dy="5">1</tspan></text>
+  <text class="label" x="165" y="64" style="font-size: 22px;">O<tspan class="subscript" dy="4" style="font-size: 12px;">1</tspan></text>
+  <text class="label" x="42" y="288">A</text>
+  <text class="label" x="306" y="288">B</text>
+  <text class="label" x="156" y="265">O</text>
+  <text class="label" x="234" y="351">P</text>
+</svg>

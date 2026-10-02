@@ -1,4 +1,4 @@
-0929 培优
+# 0929 培优
 
 严格按下面规则重新处理 "C:\Users\changchen\Downloads\Weixin Image_20261002120144_321_2.jpg"
 "C:\Users\changchen\Downloads\Weixin Image_20261002120144_320_2.jpg"，并只输出最终 Markdown：
@@ -42,8 +42,9 @@ Output: 请直接输出整理好的试卷文本，无需其他解释。
 
 ----------------
 
-0929  锥体的体积
-严格按下面规则重新处理 "C:\Users\changchen\OpenSource\Blog2\小陈错题\学校\高二上\0929  锥体的体积.pdf" 的第3 和第4页，并只输出最终 Markdown：
+# 0930  锥体的表面积
+
+严格按下面规则重新处理 "C:\Users\changchen\OpenSource\Blog2\小陈错题\学校\高二上\0930  锥体的表面积.pdf" 的第3 和第4页，并只输出最终 Markdown：
 
 Role: 你是一个专业的数学试卷数字化助手，擅长将图片试卷转换为标准的 Markdown 文本。
 
