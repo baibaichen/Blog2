@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="470" height="285" viewBox="0 0 470 285" role="img" aria-labelledby="title">
+  <title id="title">第3题：矩形底面上的棱锥及截面 BCFE</title>
+  <rect width="470" height="285" fill="white"/>
+  <g fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path id="base-visible" d="M60 230H330L405 175 M60 230L135 175H211.316"/>
+    <path id="DC-hidden" d="M211.316 175H405" stroke-dasharray="6 5"/>
+    <path id="AP" d="M60 230L100 40"/>
+    <path id="PD-visible" d="M100 40L114 94 M124.579 134.805L135 175"/>
+    <path id="PD-hidden" d="M114 94L124.579 134.805" stroke-dasharray="6 5"/>
+    <path id="section" d="M84 116L114 94L405 175 M84 116L330 230"/>
+  </g>
+  <g fill="black" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="40" y="254">A</text>
+    <text x="327" y="260">B</text>
+    <text x="420" y="182">C</text>
+    <text x="147" y="202">D</text>
+    <text x="58" y="117">E</text>
+    <text x="130" y="75">F</text>
+    <text x="94" y="28">P</text>
+  </g>
+</svg>

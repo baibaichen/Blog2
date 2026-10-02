@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="410" height="345" viewBox="0 0 410 345" role="img" aria-labelledby="title">
+  <title id="title">第4题：三棱锥 A-BCD 与两个面的重心 M、N</title>
+  <rect width="410" height="345" fill="white"/>
+  <g fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path id="visible-edges" d="M170 40L65 235L250 285L350 205Z M170 40L250 285"/>
+    <path id="BD" d="M65 235L350 205" stroke-dasharray="6 5"/>
+    <path id="MN" d="M161.667 186.667L256.667 176.667" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="black">
+    <circle id="M" cx="161.667" cy="186.667" r="3.5"/>
+    <circle id="N" cx="256.667" cy="176.667" r="3.5"/>
+  </g>
+  <g fill="black" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="163" y="27">A</text>
+    <text x="40" y="246">B</text>
+    <text x="245" y="319">C</text>
+    <text x="366" y="212">D</text>
+    <text x="124" y="184">M</text>
+    <text x="272" y="199">N</text>
+  </g>
+</svg>

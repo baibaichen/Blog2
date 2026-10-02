@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="425" height="340" viewBox="0 0 425 340" role="img" aria-labelledby="title">
+  <title id="title">第9题：正方体 ABCD-A1B1C1D1</title>
+  <rect width="425" height="340" fill="white"/>
+  <g fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path id="visible-edges" d="M70 280H280L350 210V40H140L70 110V280 M70 110H280V280 M280 110L350 40"/>
+    <path id="hidden-edges" d="M70 280L140 210H350 M140 210V40" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="black" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="114" y="202">A</text>
+    <text x="49" y="312">B</text>
+    <text x="278" y="312">C</text>
+    <text x="368" y="217">D</text>
+    <text x="100" y="24">A<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="31" y="109">B<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="299" y="132">C<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="366" y="46">D<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+  </g>
+</svg>

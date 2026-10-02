@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="435" height="345" viewBox="0 0 435 345" role="img" aria-labelledby="title">
+  <title id="title">第10题：正方体 ABCD-A1B1C1D1</title>
+  <rect width="435" height="345" fill="white"/>
+  <g fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path id="visible-edges" d="M70 285H285L365 205V45H150L70 125V285 M70 125H285V285 M285 125L365 45"/>
+    <path id="hidden-edges" d="M70 285L150 205H365 M150 205V45" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="black" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="52" y="317">A</text>
+    <text x="281" y="317">B</text>
+    <text x="383" y="212">C</text>
+    <text x="159" y="236">D</text>
+    <text x="30" y="122">A<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="305" y="150">B<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="381" y="52">C<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="119" y="29">D<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+  </g>
+</svg>

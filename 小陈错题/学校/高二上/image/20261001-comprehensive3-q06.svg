@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="330" viewBox="0 0 440 330" role="img" aria-labelledby="title">
+  <title id="title">第6题：长方体 ABCD-A1B1C1D1</title>
+  <rect width="440" height="330" fill="white"/>
+  <g fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path id="visible-edges" d="M65 265H290L365 195V50H140L65 120V265 M65 120H290V265 M290 120L365 50"/>
+    <path id="hidden-edges" d="M65 265L140 195H365 M140 195V50" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="black" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="50" y="296">A</text>
+    <text x="284" y="296">B</text>
+    <text x="383" y="202">C</text>
+    <text x="149" y="225">D</text>
+    <text x="26" y="118">A<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="307" y="149">B<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="381" y="57">C<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="109" y="33">D<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+  </g>
+</svg>

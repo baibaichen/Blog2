@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="445" height="365" viewBox="0 0 445 365" role="img" aria-labelledby="title">
+  <title id="title">第19题：矩形底面上的棱锥与平面 AEF 的交点 G</title>
+  <rect width="445" height="365" fill="white"/>
+  <g fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path id="visible-edges" d="M140 60L60 320H310L390 250Z M140 60L310 320"/>
+    <path id="hidden-edges" d="M60 320L140 250H390 M140 250V60" stroke-dasharray="6 5"/>
+    <path id="EF" d="M84 242L215.556 175.556"/>
+    <path id="FG" d="M215.556 175.556L277.255 164.314"/>
+    <path id="AE" d="M84 242L140 250" stroke-dasharray="6 5"/>
+    <path id="AF" d="M140 250L215.556 175.556" stroke-dasharray="6 5"/>
+    <path id="AG" d="M140 250L277.255 164.314" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="black" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="151" y="283">A</text>
+    <text x="45" y="349">B</text>
+    <text x="303" y="349">C</text>
+    <text x="408" y="256">D</text>
+    <text x="54" y="241">E</text>
+    <text x="166" y="169">F</text>
+    <text x="291" y="151">G</text>
+    <text x="132" y="47">P</text>
+  </g>
+</svg>

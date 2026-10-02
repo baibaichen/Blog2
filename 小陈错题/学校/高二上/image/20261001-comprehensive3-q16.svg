@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="460" height="410" viewBox="0 0 460 410" role="img" aria-labelledby="title">
+  <title id="title">第16题：正方体中的平面 AB1D1 及交线 l</title>
+  <rect width="460" height="410" fill="white"/>
+  <g fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path id="visible-edges" d="M115 300H305L380 240V50H190L115 110V300 M115 110H305V300 M305 110L380 50"/>
+    <path id="hidden-edges" d="M190 240H380 M190 240V50" stroke-dasharray="6 5"/>
+    <path id="AD" d="M115 300L190 240" stroke-dasharray="6 5"/>
+    <path id="AD1" d="M115 300L190 50" stroke-dasharray="6 5"/>
+    <path id="AB1-B1D1" d="M115 300L305 110L190 50"/>
+    <path id="intersection-l" d="M40 260.87L218 353.739"/>
+  </g>
+  <g fill="black" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="89" y="331">A</text>
+    <text x="301" y="334">B</text>
+    <text x="398" y="247">C</text>
+    <text x="158" y="214">D</text>
+    <text x="73" y="107">A<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="323" y="134">B<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="396" y="57">C<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="150" y="40">D<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="231" y="373">l</text>
+  </g>
+</svg>

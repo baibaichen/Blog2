@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="435" height="345" viewBox="0 0 435 345" role="img" aria-labelledby="title">
+  <title id="title">第18题：沿 EF 折起的正方形及线段 AC、GH</title>
+  <rect width="435" height="345" fill="white"/>
+  <g fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path id="boundary" d="M65 275H305L350 235V75H110V235Z"/>
+    <path id="EF" d="M110 235H350" stroke-dasharray="6 5"/>
+    <path id="AC" d="M65 275L350 75"/>
+    <path id="GH" d="M207.5 175L327.5 255"/>
+  </g>
+  <g fill="black" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="40" y="300">A</text>
+    <text x="302" y="307">B</text>
+    <text x="366" y="77">C</text>
+    <text x="82" y="69">D</text>
+    <text x="64" y="230">E</text>
+    <text x="366" y="242">F</text>
+    <text x="177" y="159">G</text>
+    <text x="356" y="286">H</text>
+  </g>
+</svg>
