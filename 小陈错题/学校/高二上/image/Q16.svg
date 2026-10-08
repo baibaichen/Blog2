@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="330" viewBox="0 0 360 330">
+  <style>
+    .e{stroke:#111;stroke-width:2;fill:none}
+    .h{stroke:#111;stroke-width:2;fill:none;stroke-dasharray:6 5}
+    .t{font:18px 'Times New Roman', serif;fill:#111}
+  </style>
+  <line class="e" x1="180" y1="24" x2="42" y2="284"/>
+  <line class="e" x1="180" y1="24" x2="112" y2="284"/>
+  <line class="e" x1="180" y1="24" x2="320" y2="180"/>
+  <line class="h" x1="180" y1="24" x2="180" y2="180"/>
+  <line class="h" x1="180" y1="180" x2="42" y2="284"/>
+  <line class="e" x1="42" y1="284" x2="112" y2="284"/>
+  <line class="e" x1="112" y1="284" x2="320" y2="180"/>
+  <line class="h" x1="180" y1="180" x2="320" y2="180"/>
+  <line class="h" x1="111" y1="154" x2="112" y2="284"/>
+  <line class="h" x1="111" y1="154" x2="320" y2="180"/>
+  <line class="h" x1="111" y1="154" x2="180" y2="180"/>
+  <text class="t" x="168" y="22">P</text>
+  <text class="t" x="190" y="209">A</text>
+  <text class="t" x="24" y="306">B</text>
+  <text class="t" x="114" y="306">C</text>
+  <text class="t" x="324" y="185">D</text>
+  <text class="t" x="88" y="161">Q</text>
+</svg>

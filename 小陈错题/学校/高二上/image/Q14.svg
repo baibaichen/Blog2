@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="355" viewBox="0 0 320 355">
+  <style>
+    .e{stroke:#111;stroke-width:2;fill:none}
+    .h{stroke:#111;stroke-width:2;fill:none;stroke-dasharray:6 5}
+    .t{font:italic 19px 'Times New Roman', serif;fill:#111}
+  </style>
+  <line class="h" x1="38" y1="325" x2="100" y2="245"/>
+  <line class="h" x1="100" y1="245" x2="100" y2="35"/>
+  <line class="h" x1="38" y1="115" x2="100" y2="245"/>
+  <line class="h" x1="218" y1="315" x2="100" y2="245"/>
+  <line class="e" x1="38" y1="325" x2="218" y2="315"/>
+  <line class="e" x1="218" y1="315" x2="280" y2="235"/>
+  <line class="e" x1="280" y1="235" x2="100" y2="245"/>
+  <line class="e" x1="38" y1="325" x2="38" y2="115"/>
+  <line class="e" x1="218" y1="315" x2="218" y2="105"/>
+  <line class="e" x1="280" y1="235" x2="280" y2="25"/>
+  <line class="e" x1="38" y1="115" x2="218" y2="105"/>
+  <line class="e" x1="218" y1="105" x2="280" y2="25"/>
+  <line class="e" x1="280" y1="25" x2="100" y2="35"/>
+  <line class="e" x1="100" y1="35" x2="38" y2="115"/>
+  <line class="e" x1="38" y1="115" x2="280" y2="25"/>
+  <line class="e" x1="38" y1="115" x2="218" y2="315"/>
+  <line class="e" x1="218" y1="315" x2="280" y2="25"/>
+  <line class="h" x1="280" y1="25" x2="100" y2="245"/>
+  <text class="t" x="17" y="348">A</text>
+  <text class="t" x="222" y="337">B</text>
+  <text class="t" x="284" y="241">C</text>
+  <text class="t" x="78" y="263">D</text>
+  <text class="t" x="14" y="110">A<tspan baseline-shift="super" font-size="12">'</tspan></text>
+  <text class="t" x="228" y="130">B<tspan baseline-shift="super" font-size="12">'</tspan></text>
+  <text class="t" x="285" y="23">C<tspan baseline-shift="super" font-size="12">'</tspan></text>
+  <text class="t" x="85" y="31">D<tspan baseline-shift="super" font-size="12">'</tspan></text>
+</svg>

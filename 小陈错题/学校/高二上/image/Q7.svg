@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="280" height="255" viewBox="0 0 280 255">
+  <style>
+    .e{stroke:#111;stroke-width:2;fill:none}
+    .h{stroke:#111;stroke-width:2;fill:none;stroke-dasharray:6 5}
+    .t{font:italic 20px 'Times New Roman', serif;fill:#111}
+  </style>
+  <line class="e" x1="91" y1="37" x2="31" y2="94"/>
+  <line class="e" x1="91" y1="37" x2="225" y2="37"/>
+  <line class="e" x1="31" y1="94" x2="225" y2="37"/>
+  <line class="e" x1="31" y1="94" x2="37" y2="226"/>
+  <line class="e" x1="225" y1="37" x2="224" y2="165"/>
+  <line class="e" x1="37" y1="226" x2="224" y2="165"/>
+  <line class="h" x1="91" y1="37" x2="91" y2="165"/>
+  <line class="h" x1="91" y1="37" x2="224" y2="165"/>
+  <line class="h" x1="91" y1="165" x2="224" y2="165"/>
+  <line class="h" x1="37" y1="226" x2="91" y2="165"/>
+  <text class="t" x="73" y="20">A<tspan baseline-shift="sub" font-size="13">1</tspan></text>
+  <text class="t" x="228" y="34">C<tspan baseline-shift="sub" font-size="13">1</tspan></text>
+  <text class="t" x="9" y="99">B<tspan baseline-shift="sub" font-size="13">1</tspan></text>
+  <text class="t" x="25" y="247">B</text>
+  <text class="t" x="73" y="195">A</text>
+  <text class="t" x="228" y="181">C</text>
+</svg>

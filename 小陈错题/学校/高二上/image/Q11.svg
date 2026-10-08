@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="240" viewBox="0 0 340 240">
+  <style>
+    .e{stroke:#111;stroke-width:2;fill:none}
+    .h{stroke:#111;stroke-width:2;fill:none;stroke-dasharray:6 5}
+    .t{font:italic 19px 'Times New Roman', serif;fill:#111}
+  </style>
+  <line class="e" x1="105" y1="16" x2="30" y2="160"/>
+  <line class="e" x1="105" y1="16" x2="155" y2="210"/>
+  <line class="e" x1="105" y1="16" x2="310" y2="140"/>
+  <line class="e" x1="30" y1="160" x2="155" y2="210"/>
+  <line class="e" x1="155" y1="210" x2="310" y2="140"/>
+  <line class="h" x1="30" y1="160" x2="310" y2="140"/>
+  <line class="h" x1="92.5" y1="185" x2="207.5" y2="78"/>
+  <text class="t" x="88" y="20">A</text>
+  <text class="t" x="10" y="171">B</text>
+  <text class="t" x="146" y="232">C</text>
+  <text class="t" x="314" y="146">D</text>
+  <text class="t" x="74" y="207">M</text>
+  <text class="t" x="211" y="72">N</text>
+</svg>

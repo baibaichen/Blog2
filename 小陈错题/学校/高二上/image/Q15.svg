@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="230" viewBox="0 0 320 230">
+  <style>
+    .e{stroke:#111;stroke-width:2;fill:none}
+    .h{stroke:#111;stroke-width:2;fill:none;stroke-dasharray:6 5}
+    .t{font:italic 19px 'Times New Roman', serif;fill:#111}
+  </style>
+  <line class="e" x1="86" y1="22" x2="18" y2="187"/>
+  <line class="e" x1="86" y1="22" x2="302" y2="187"/>
+  <line class="h" x1="86" y1="22" x2="152" y2="140"/>
+  <line class="e" x1="18" y1="187" x2="302" y2="187"/>
+  <line class="h" x1="18" y1="187" x2="152" y2="140"/>
+  <line class="h" x1="152" y1="140" x2="302" y2="187"/>
+  <line class="h" x1="86" y1="22" x2="85" y2="163.5"/>
+  <line class="e" x1="86" y1="22" x2="160" y2="187"/>
+  <text class="t" x="77" y="18">A</text>
+  <text class="t" x="2" y="211">B</text>
+  <text class="t" x="304" y="211">C</text>
+  <text class="t" x="157" y="136">D</text>
+  <text class="t" x="62" y="151">O</text>
+  <text class="t" x="153" y="215">E</text>
+</svg>
