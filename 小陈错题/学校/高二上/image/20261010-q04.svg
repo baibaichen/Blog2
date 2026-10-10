@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 405" width="255" height="304" role="img" aria-labelledby="title">
+  <title id="title">Cylinder with top diameter CB, bottom diameter DA, radius r and generator l</title>
+  <rect width="340" height="405" fill="#fff" />
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path class="hidden" stroke-dasharray="7 6" d="M70 330 A100 45 0 0 1 270 330 M70 330 L270 330 M170 80 L170 330" />
+  <ellipse class="edge" cx="170" cy="80" rx="100" ry="45" />
+  <path class="edge" d="M70 80 L270 80 M70 80 L70 330 M270 80 L270 330 A100 45 0 0 1 70 330" />
+  </g>
+  <circle cx="170" cy="80" r="3" fill="#111" />
+  <circle cx="170" cy="330" r="3" fill="#111" />
+  <g fill="#111" font-family="Times New Roman, serif" font-size="24" font-style="italic">
+  <text class="label" x="40" y="87">C</text>
+  <text class="label" x="289" y="87">B</text>
+  <text class="label" x="40" y="337">D</text>
+  <text class="label" x="290" y="337">A</text>
+  <text class="label" x="185" y="106">O<tspan font-size="15" dy="6" font-style="normal">1</tspan></text>
+  <text class="label" x="184" y="357">O</text>
+  <text class="label" x="200" y="70">r</text>
+  <text class="label" x="292" y="218">l</text>
+  </g>
+</svg>

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 430" width="294" height="301" role="img" aria-labelledby="title">
+  <title id="title">Triangular frustum A'B'C'-ABC with cutting edges A'B and A'C</title>
+  <rect width="420" height="430" fill="#fff" />
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path class="hidden" stroke-dasharray="7 6" d="M50 300 L370 300 M110 50 L370 300" />
+  <path class="edge" d="M110 50 L185 90 L270 50 Z M110 50 L50 300 L200 380 L370 300 L270 50 M185 90 L200 380 M110 50 L200 380" />
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="24" font-style="italic">
+  <text class="label" x="22" y="309">A</text>
+  <text class="label" x="193" y="413">B</text>
+  <text class="label" x="389" y="308">C</text>
+  <text class="label" x="82" y="33">A'</text>
+  <text class="label" x="201" y="113">B'</text>
+  <text class="label" x="286" y="47">C'</text>
+  </g>
+</svg>

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 490 435" width="368" height="326" role="img" aria-labelledby="title">
+  <title id="title">Cube ABCD-A1B1C1D1 with midpoint section EFG cutting off tetrahedron B1EFG</title>
+  <rect width="490" height="435" fill="#fff" />
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path class="hidden" stroke-dasharray="7 6" d="M70 370 L190 270 L430 270 M190 270 L190 60" />
+  <path class="edge" d="M70 370 L70 160 L190 60 L430 60 L430 270 L310 370 Z M70 160 L310 160 L430 60 M310 160 L310 370" />
+  <path class="edge" d="M190 160 L310 265 L370 110 Z" />
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="24" font-style="italic">
+  <text class="label" x="44" y="400">A</text>
+  <text class="label" x="306" y="405">B</text>
+  <text class="label" x="449" y="279">C</text>
+  <text class="label" x="155" y="265">D</text>
+  <text class="label" x="20" y="168">A<tspan font-size="15" dy="6" font-style="normal">1</tspan></text>
+  <text class="label" x="269" y="195">B<tspan font-size="15" dy="6" font-style="normal">1</tspan></text>
+  <text class="label" x="449" y="69">C<tspan font-size="15" dy="6" font-style="normal">1</tspan></text>
+  <text class="label" x="160" y="38">D<tspan font-size="15" dy="6" font-style="normal">1</tspan></text>
+  <text class="label" x="202" y="137">E</text>
+  <text class="label" x="331" y="303">F</text>
+  <text class="label" x="391" y="140">G</text>
+  </g>
+</svg>

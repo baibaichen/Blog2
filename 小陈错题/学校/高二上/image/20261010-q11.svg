@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 490 280" width="392" height="224" role="img" aria-labelledby="title">
+  <title id="title">Polyhedron with rectangular base ABCD and congruent isosceles trapezoids ABFE and DCFE</title>
+  <rect width="490" height="280" fill="#fff" />
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path class="hidden" stroke-dasharray="7 6" d="M50 220 L115 150 L430 150 M115 150 L130 60" />
+  <path class="edge" d="M50 220 L130 60 L285 60 L365 220 Z M285 60 L430 150 L365 220" />
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="24" font-style="italic">
+  <text class="label" x="25" y="247">A</text>
+  <text class="label" x="360" y="252">B</text>
+  <text class="label" x="449" y="157">C</text>
+  <text class="label" x="126" y="181">D</text>
+  <text class="label" x="109" y="38">E</text>
+  <text class="label" x="285" y="38">F</text>
+  </g>
+</svg>
