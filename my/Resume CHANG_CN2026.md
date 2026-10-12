@@ -42,6 +42,7 @@
   <div style="font-size: 18px;"><strong>Microsoft Gluten / Velox 后端（2025.11 - 至今）</strong></div>
   <div>Senior Software Engineer</div>
 </div>
+
 **项目描述**：负责微软 Gluten / Velox 后端性能优化与 Spark 4.1 支持，涉及执行效率、内存管理和版本兼容。
 **技术栈** ：Linux，C++，Java，Scala，Spark SQL，Gluten，Velox
 **工作内容/个人职责** :
@@ -71,7 +72,7 @@
 
 1. 带领团队从初始方案出发，完成 POC 验证、工程化及 Kyligence Enterprise 产品集成
 1. Parquet Reader：支持 Page Index 和 Row Index
-1. 数据湖：支持 Delta 读写 Parquet 并收集统计信息，支持读取包含轻量级更新的 Iceberg Parquet 数据
+1. 数据湖：支持 Delta 读写 Parquet 并收集统计信息，支持读取 Iceberg Parquet 数据
 
 <div style="display: flex; justify-content: space-between;">
   <div style="font-size: 18px;"><strong>Kyligence 企业版（2019.10 - 2022.10）</strong></div>
@@ -88,6 +89,7 @@
   <div style="font-size: 18px;"><strong>连尚网络招聘大数据平台建设（2017.09 - 2019.10）</strong></div>
   <div>架构专家</div>
 </div>
+
 **项目描述**：建设位置营销大数据基础平台与业务数据体系
 **技术栈** ：Linux，Hadoop 生态系统
 **工作内容/个人职责** : 
@@ -99,6 +101,7 @@
   <div style="font-size: 18px;"><strong>1号店大数据平台建设（2015 - 2017）</strong></div>
   <div>架构专家 & 总监</div>
 </div>
+
 **项目描述**：构建1号店内部的大数据基础平台
 **技术栈** ：Linux，Hadoop 生态系统
 **工作内容/个人职责** : 
@@ -114,6 +117,7 @@
   <div style="font-size: 18px;"><strong>1号店异地三活（2014.04 - 2015.01）</strong></div>
   <div>高级架构师 & Domain Leader</div>
 </div>
+
 **项目描述**：战略性项目，1号店需要提供高可用的数据库服务 
 **技术栈** ：Linux，C++，Java
 **工作内容/个人职责** : 
@@ -126,6 +130,7 @@
   <div style="font-size: 18px;"><strong>1号店订单服务去O分库（2013.08 - 2014.08）</strong></div>
   <div>高级架构师</div>
 </div>
+
 **项目描述**：将1号店订单库从 Oracle 迁移至 MySQL，并实施分库
 **技术栈** ：Linux，Java
 **工作内容/个人职责**
@@ -136,6 +141,7 @@
   <div style="font-size: 18px;"><strong>1号店分布式缓存平台（2013.01 - 2013.08）</strong></div>
   <div>高级架构师 & Domain Leader</div>
 </div>
+
 **项目描述**：1号店缓存平台
 **技术栈** ：Linux，Java
 **工作内容/个人职责**

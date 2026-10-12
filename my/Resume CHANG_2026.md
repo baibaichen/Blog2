@@ -39,13 +39,14 @@
   <div style="font-size: 18px;"><strong>Microsoft Gluten / Velox Backend (Nov. 2025 - Present)</strong></div>
   <div>Senior Software Engineer</div>
 </div>
+
 **Description**: Improve Gluten / Velox performance at Microsoft and support Spark 4.1, covering execution efficiency, memory management, and version compatibility.
 **Skills** : Linux, C++, Java, Scala, Spark SQL, Gluten, Velox
 **Responsibilities** :
 
 1. **High-performance analytics engines**: Optimize the Gluten / Velox backend for internal Microsoft workloads. Analyze compute and memory costs in Spark SQL to improve C++ native execution.
 1. **Spark 4.1 and query execution**: Adapt core interfaces for Spark 4.1 and preserve partitioning in columnar Union. Add regression tests to ensure correct aggregation and joins when a shuffle is skipped.
-1. **Memory management and concurrency**: Add dynamic limits for new native memory allocations without changing existing virtual address ranges. Improve memory reservation and reclamation for concurrent allocations to support cache size changes under Spark memory pressure.
+1. **Memory management and concurrency**: Add dynamic admission control for new native memory allocations while preserving existing virtual address ranges. Improve memory reservation and reclamation for concurrent allocations to support cache size changes under Spark memory pressure.
 1. **SQL expressions and CPU efficiency**: Optimize vectorized expressions by reducing unnecessary initialization and repeated work. Check performance gains and limits across data types, NULL distributions, and encodings.
 1. **Performance analysis and validation**: Use repeatable before-and-after microbenchmarks and regression tests to check performance and correctness. Track native offloading, fallbacks, and failures in ANSI SQL expressions to find coverage gaps and set fix priorities.
 1. **Cross-language integration and open-source collaboration**: Work on API compatibility, C++ dependencies, and continuous integration across Spark, Gluten, and Velox. Contribute engine improvements upstream to support reliable builds and compatibility across versions.
@@ -54,7 +55,8 @@
   <div style="font-size: 18px;"><strong>Apache Gluten（Oct. 2022 - Present）</strong></div>
   <div>Project Lead & Chief Researcher (while at Kyligence)</div>
 </div>
-**Description**: [Apache Gluten](https://gluten.apache.org/) is an Apache top-level project that speeds up Spark SQL through native vectorized execution. As a founding core contributor, helped build the project and develop technical partnerships.
+
+**Description**: [Apache Gluten](https://gluten.apache.org/) is an Apache top-level project that speeds up Spark SQL through native vectorized execution. As a founding core contributor, I helped build Gluten and develop technical partnerships.
 **Skills** : Linux, C++, Spark
 **Achievements**:  
 1. Led the technical partnership between Intel and Kyligence to define and launch Gluten, a Spark native vectorized execution engine for x86 and ARM.
@@ -67,7 +69,7 @@
 
 1. Led the team from the initial design through POC validation, engineering work, and integration into Kyligence Enterprise.  
 1. Added Page Index and Row Index support to the Parquet Reader.  
-1. Added support for reading and writing Parquet with Delta Lake and collecting statistics, as well as reading Iceberg Parquet data with lightweight updates.  
+1. Added Parquet read/write and statistics collection support for Delta Lake, and Parquet reading support for Iceberg.  
 
 <div style="display: flex; justify-content: space-between;">
   <div style="font-size: 18px;"><strong>Kyligence Enterprise（Oct. 2019 - Oct. 2022）</strong></div>
@@ -86,13 +88,9 @@
   <div style="font-size: 18px;"><strong>LinkSure Recruitment Data Platform（Sep. 2017 - Oct. 2019）</strong></div>
   <div>Senior Architect</div>
 </div>
+
 **Description**: Built a big data platform and business data systems for location-based marketing.
 **Skills** : Linux, Hadoop ecosystem
-**Achievements**:  
-
-1. Established a shared data platform for location-based marketing.  
-2. Added real-time stream processing to support business data needs.  
-
 **Responsibilities** : 
 
 1.  Built the big data platform for location-based marketing.  
@@ -103,6 +101,7 @@
   <div style="font-size: 18px;"><strong>Yihaodian Hadoop Big Data Platform（2015 - 2017）</strong></div>
   <div>Senior Architect & Director</div>
 </div>
+
 **Description**: Led the development of Yihaodian's internal big data platform.  
 **Skills**: Linux, Hadoop ecosystem
 **Responsibilities** : 
@@ -152,6 +151,7 @@
   <div style="font-size: 18px;"><strong>Yihaodian Distributed Cache Platform（Jan. 2013 - Aug. 2013）</strong></div>
   <div>Senior Architect & Domain Leader</div>
 </div>
+
 **Description**: Built Yihaodian's internal cache platform based on Memcached.
 **Skills**: Linux, Java
 **Responsibilities**: 
