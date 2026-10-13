@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="400" viewBox="0 0 440 400">
+  <rect width="440" height="400" fill="white"/>
+  <g fill="none" stroke="#111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="220" cy="200" r="170"/>
+    <path d="M 50 200 A 170 40 0 0 1 390 200" stroke-dasharray="6 5"/>
+    <path d="M 50 200 A 170 40 0 0 0 390 200"/>
+    <path d="M 70 280 A 150 45 0 0 1 370 280" stroke-dasharray="6 5"/>
+    <path d="M 70 280 A 150 45 0 0 0 370 280"/>
+    <path d="M 90.10 257.5 L 349.90 257.5 L 220 325 Z M 220 200 L 220 280 L 349.90 257.5 L 220 200" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="#111">
+    <circle cx="220" cy="200" r="2.5"/>
+    <circle cx="220" cy="280" r="2.5"/>
+    <circle cx="90.10" cy="257.5" r="2.5"/>
+    <circle cx="349.90" cy="257.5" r="2.5"/>
+    <circle cx="220" cy="325" r="2.5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="21" font-style="italic">
+    <text x="192" y="190">O</text>
+    <text x="184" y="287">O<tspan baseline-shift="sub" font-size="14" font-style="normal">1</tspan></text>
+    <text x="359" y="251">A</text>
+    <text x="94" y="291">B</text>
+    <text x="212" y="351">C</text>
+  </g>
+</svg>
