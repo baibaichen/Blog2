@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="375" height="360" viewBox="0 0 375 360">
+  <rect width="375" height="360" fill="white"/>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linejoin="round">
+    <path d="M130 55 V240 L55 310 M130 240 H320 M130 55 L55 310 M130 55 L320 240 M130 240 L187.5 275 M130 240 L320 55" stroke-dasharray="6 5"/>
+    <path d="M55 310 V125 L130 55 H320 V240 Z M55 125 L320 55 M187.5 275 L320 55"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="100" y="235">A</text><text x="32" y="337">B</text>
+    <text x="332" y="247">C</text><text x="180" y="305">D</text>
+    <text x="113" y="36">A<tspan dy="5" font-size="14" font-style="normal">1</tspan></text>
+    <text x="18" y="127">B<tspan dy="5" font-size="14" font-style="normal">1</tspan></text>
+    <text x="311" y="36">C<tspan dy="5" font-size="14" font-style="normal">1</tspan></text>
+  </g>
+</svg>

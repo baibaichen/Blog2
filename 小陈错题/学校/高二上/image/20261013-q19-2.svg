@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="350" height="230" viewBox="0 0 350 230">
+  <rect width="350" height="230" fill="white"/>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linejoin="round">
+    <path d="M60 90 L290 165" stroke-dasharray="6 5"/>
+    <path d="M60 90 L245 50 L290 165 H100 Z M100 165 L245 50"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="80" y="192">A</text><text x="293" y="191">B</text><text x="32" y="90">D</text>
+    <text x="236" y="31">C<tspan dy="5" font-size="14" font-style="normal">1</tspan></text>
+  </g>
+  <text x="175" y="216" text-anchor="middle" fill="#111" font-family="SimSun, serif" font-size="18">图 2</text>
+</svg>
