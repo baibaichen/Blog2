@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="415" height="315" viewBox="0 0 415 315" role="img" aria-labelledby="title">
+  <title id="title">Exercise 1: tetrahedron A-BCD</title>
+  <rect width="415" height="315" fill="white"/>
+  <g fill="none" stroke="#222" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path data-edge="BD" d="M48 178 L304 178" stroke-dasharray="6 5"/>
+    <path data-edge="AB" d="M368 51 L48 178"/>
+    <path data-edge="AC" d="M368 51 L149 274"/>
+    <path data-edge="AD" d="M368 51 L304 178"/>
+    <path data-edge="BC" d="M48 178 L149 274"/>
+    <path data-edge="CD" d="M149 274 L304 178"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="21" font-style="italic" text-anchor="middle">
+    <text x="375" y="31">A</text>
+    <text x="24" y="184">B</text>
+    <text x="149" y="302">C</text>
+    <text x="331" y="185">D</text>
+  </g>
+</svg>
