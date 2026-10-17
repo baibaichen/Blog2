@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="390" viewBox="0 0 340 390">
+  <rect width="340" height="390" fill="white"/>
+  <g fill="none" stroke="#222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M65 340H230L285 285V45H120L65 100V340 M65 100H230L285 45 M230 100V340"/>
+    <path d="M65 340L120 285H285 M120 285V45 M120 45L230 340" stroke-dasharray="7 6"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="23" font-style="italic">
+    <text x="47" y="368">A</text>
+    <text x="231" y="368">B</text>
+    <text x="297" y="292">C</text>
+    <text x="94" y="276">D</text>
+    <text x="27" y="105">A<tspan dy="6" font-size="14" font-style="normal">1</tspan></text>
+    <text x="243" y="122">B<tspan dy="6" font-size="14" font-style="normal">1</tspan></text>
+    <text x="297" y="52">C<tspan dy="6" font-size="14" font-style="normal">1</tspan></text>
+    <text x="107" y="27">D<tspan dy="6" font-size="14" font-style="normal">1</tspan></text>
+  </g>
+</svg>

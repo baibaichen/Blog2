@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="750" height="275" viewBox="0 0 750 275">
+  <rect width="750" height="275" fill="white"/>
+  <g fill="none" stroke="#222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M40 235H190L255 175V25H105L40 85V235 M40 85H190L255 25 M190 85V235 M40 85L190 235"/>
+    <path d="M40 235L105 175H255 M105 175V25 M105 25L255 175" stroke-dasharray="7 6"/>
+    <path d="M310 235H520L605 200L710 95H500L415 130Z M415 130H625L710 95 M625 130L520 235 M415 130L520 235"/>
+    <path d="M310 235L395 200H605 M395 200L500 95L605 200" stroke-dasharray="7 6"/>
+  </g>
+</svg>
