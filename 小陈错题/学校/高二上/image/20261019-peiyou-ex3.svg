@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="740" height="320" viewBox="0 0 740 320">
+  <rect width="740" height="320" fill="white"/>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M50 60 H250 V260 H50 Z M50 60 L150 260 L250 160 Z"/>
+    <path d="M300 160 H350 M342 154 L350 160 L342 166"/>
+    <path d="M450 175 H690 M565 60 L607.5 222.5 M450 175 L607.5 222.5" stroke-dasharray="7 6"/>
+    <path d="M450 175 L565 60 L690 175 L525 270 Z M565 60 L525 270"/>
+  </g>
+  <g fill="#111">
+    <circle cx="200" cy="210" r="2.5"/>
+    <circle cx="607.5" cy="222.5" r="2.5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-style="italic" font-size="24">
+    <text x="26" y="53">A</text>
+    <text x="26" y="282">B</text>
+    <text x="260" y="283">C</text>
+    <text x="264" y="55">D</text>
+    <text x="142" y="294">E</text>
+    <text x="263" y="168">F</text>
+    <text x="211" y="237">O</text>
+    <text x="421" y="183">A</text>
+    <text x="555" y="40">G</text>
+    <text x="517" y="305">E</text>
+    <text x="703" y="182">F</text>
+    <text x="616" y="252">O</text>
+  </g>
+</svg>

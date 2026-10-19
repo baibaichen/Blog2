@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="330" viewBox="0 0 420 330">
+  <rect width="420" height="330" fill="white"/>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M95 200 H355 M95 200 L35 270 H165" stroke-dasharray="7 6"/>
+    <path d="M95 200 L185 65 L355 200 L295 270 H165 Z M185 65 L165 270 M185 65 L295 270"/>
+  </g>
+  <circle cx="270" cy="132.5" r="2.8" fill="#111"/>
+  <g fill="#111" font-family="Times New Roman, serif" font-style="italic" font-size="24">
+    <text x="56" y="193">A</text>
+    <text x="10" y="291">B</text>
+    <text x="293" y="304">C</text>
+    <text x="368" y="207">D</text>
+    <text x="156" y="304">E</text>
+    <text x="281" y="122">F</text>
+    <text x="157" y="43">P(B)</text>
+  </g>
+</svg>

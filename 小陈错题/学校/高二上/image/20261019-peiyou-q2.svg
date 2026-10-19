@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="770" height="385" viewBox="0 0 770 385">
+  <rect width="770" height="385" fill="white"/>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M50 110 L120.95 209.32 M260 260 L189.05 160.68" stroke-dasharray="7 6"/>
+    <path d="M50 110 H260 V260 H50 Z M50 260 L260 110"/>
+    <path d="M129.08 203.51 L123.27 195.37 L115.13 201.19 M180.92 166.49 L186.73 174.63 L194.87 168.81" stroke-width="1.5"/>
+    <path d="M430 195 H710 M540 60 L523.33 195 L565 290 L616.67 195" stroke-dasharray="7 6"/>
+    <path d="M430 195 L540 60 L710 195 L565 290 Z M540 60 L565 290"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-style="italic" font-size="24">
+    <text x="26" y="104">A</text>
+    <text x="25" y="282">B</text>
+    <text x="272" y="282">C</text>
+    <text x="272" y="115">D</text>
+    <text x="128" y="244">E</text>
+    <text x="175" y="142">F</text>
+    <text x="529" y="40">A</text>
+    <text x="401" y="202">B</text>
+    <text x="580" y="319">C</text>
+    <text x="723" y="202">D</text>
+    <text x="490" y="179">E</text>
+    <text x="622" y="179">F</text>
+  </g>
+  <g fill="#111" font-family="SimSun, Microsoft YaHei, serif" font-size="19" text-anchor="middle">
+    <text x="155" y="360">&#22270;&#65288;1&#65289;</text>
+    <text x="570" y="360">&#22270;&#65288;2&#65289;</text>
+  </g>
+</svg>
