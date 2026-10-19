@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="300" viewBox="0 0 440 300">
+  <rect width="440" height="300" fill="white"/>
+  <g fill="none" stroke="#222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M55 160L365 35V160L210 252Z M55 160H365"/>
+    <path d="M349 160V144H365" stroke-width="1.5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="23" font-style="italic">
+    <text x="23" y="167">A</text>
+    <text x="203" y="282">B</text>
+    <text x="382" y="168">C</text>
+    <text x="350" y="24">D</text>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="22">
+    <text x="175" y="145">30&#176;</text>
+    <text x="130" y="190">45&#176;</text>
+    <text x="193" y="226">90&#176;</text>
+  </g>
+</svg>

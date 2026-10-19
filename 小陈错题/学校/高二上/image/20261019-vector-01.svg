@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="430" height="390" viewBox="0 0 430 390">
+  <rect width="430" height="390" fill="white"/>
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0L9 4.5L0 9Z" fill="#222"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="#222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M77 325H267L323 269V79H133L77 135V325 M77 135H267L323 79 M267 135V325"/>
+    <path d="M77 325L133 269H323 M133 269V79 M133 79L267 230 M172 325L295 297" stroke-dasharray="6 5"/>
+    <path d="M172 325L267 135L295 297"/>
+    <path d="M77 325L42 360" marker-end="url(#arrow)"/>
+    <path d="M323 269H395" marker-end="url(#arrow)"/>
+    <path d="M133 79V28" marker-end="url(#arrow)"/>
+  </g>
+  <g fill="#222">
+    <circle cx="172" cy="325" r="2.5"/>
+    <circle cx="295" cy="297" r="2.5"/>
+    <circle cx="267" cy="230" r="2.5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="23" font-style="italic">
+    <text x="87" y="361">A</text>
+    <text x="261" y="354">B</text>
+    <text x="337" y="255">C</text>
+    <text x="103" y="267">D</text>
+    <text x="36" y="140">A<tspan dy="6" font-size="14" font-style="normal">1</tspan></text>
+    <text x="286" y="164">B<tspan dy="6" font-size="14" font-style="normal">1</tspan></text>
+    <text x="338" y="85">C<tspan dy="6" font-size="14" font-style="normal">1</tspan></text>
+    <text x="88" y="69">D<tspan dy="6" font-size="14" font-style="normal">1</tspan></text>
+    <text x="164" y="355">E</text>
+    <text x="320" y="324">F</text>
+    <text x="232" y="253">M</text>
+    <text x="24" y="379">x</text>
+    <text x="404" y="276">y</text>
+    <text x="145" y="35">z</text>
+  </g>
+</svg>
