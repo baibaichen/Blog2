@@ -3,8 +3,8 @@
   <g fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M50 60 H250 V260 H50 Z M50 60 L150 260 L250 160 Z"/>
     <path d="M300 160 H350 M342 154 L350 160 L342 166"/>
-    <path d="M450 175 H690 M565 60 L607.5 222.5 M450 175 L607.5 222.5" stroke-dasharray="7 6"/>
-    <path d="M450 175 L565 60 L690 175 L525 270 Z M565 60 L525 270"/>
+    <path d="M450 175 H690 M450 175 L607.5 222.5" stroke-dasharray="7 6"/>
+    <path d="M450 175 L565 60 L690 175 L525 270 Z M565 60 L525 270 M565 60 L607.5 222.5"/>
   </g>
   <g fill="#111">
     <circle cx="200" cy="210" r="2.5"/>

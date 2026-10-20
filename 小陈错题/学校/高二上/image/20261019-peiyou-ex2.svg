@@ -2,6 +2,7 @@
   <rect width="760" height="320" fill="white"/>
   <g fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M50 110 H330 V250 H50 Z M50 250 L190 110"/>
+    <path d="M50 110 L120 180 L330 250 M120 180 V250"/>
     <path d="M430 260 L495 150 H605 M430 260 L605 150" stroke-dasharray="7 6"/>
     <path d="M430 260 L520 70 L605 150 H715 L650 260 Z M520 70 L650 260"/>
   </g>
@@ -11,6 +12,8 @@
     <text x="340" y="272">C</text>
     <text x="342" y="116">D</text>
     <text x="183" y="91">E</text>
+    <text x="74" y="190">F</text>
+    <text x="111" y="285">G</text>
     <text x="500" y="184">A</text>
     <text x="509" y="47">A<tspan baseline-shift="sub" font-style="normal" font-size="16">1</tspan></text>
     <text x="402" y="268">B</text>
