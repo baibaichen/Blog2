@@ -7,7 +7,6 @@
       .label { fill: #111; font-family: "Times New Roman", serif; font-size: 22px; font-style: italic; }
     </style>
   </defs>
-  <rect width="400" height="360" fill="#fff" />
   <path class="edge" d="M185 50 L60 255 L155 315 L335 235 Z M185 50 L155 315" />
   <path class="hidden" d="M60 255 L335 235" />
   <text class="label" x="177" y="29">S</text>

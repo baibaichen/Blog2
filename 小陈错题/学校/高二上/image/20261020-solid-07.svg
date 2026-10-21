@@ -1,5 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="160" height="320" viewBox="0 0 200 400">
-  <rect width="200" height="400" fill="white"/>
   <defs>
     <pattern id="water" width="8" height="9" patternUnits="userSpaceOnUse">
       <path d="M0 4.5H8" fill="none" stroke="#888" stroke-width="1"/>
@@ -9,12 +8,10 @@
     </pattern>
   </defs>
   <g stroke="#222" stroke-width="2">
-    <rect x="55" y="60" width="90" height="270" fill="url(#water)"/>
-    <g fill="white">
-      <circle cx="100" cy="105" r="45"/>
-      <circle cx="100" cy="195" r="45"/>
-      <circle cx="100" cy="285" r="45"/>
-    </g>
+    <path d="M55 60H145V330H55Z
+             M100 60a45 45 0 1 0 0 90a45 45 0 1 0 0 -90Z
+             M100 150a45 45 0 1 0 0 90a45 45 0 1 0 0 -90Z
+             M100 240a45 45 0 1 0 0 90a45 45 0 1 0 0 -90Z" fill="url(#water)" fill-rule="evenodd"/>
     <rect x="42" y="330" width="116" height="14" fill="url(#base)"/>
   </g>
 </svg>

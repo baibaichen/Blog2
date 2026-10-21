@@ -9,7 +9,6 @@
       .label { fill: #111; font-family: "Times New Roman", serif; font-size: 18px; font-style: italic; }
     </style>
   </defs>
-  <rect width="410" height="280" fill="#fff" />
   <path class="hidden" d="M138 137 L35 220 M138 137 L345 140 M105 25 L138 137" />
   <path class="edge" d="M35 220 L240 220 L345 140" />
   <path class="edge" d="M105 25 L35 220 M105 25 L345 140 M105 25 L140 220 M140 220 L345 140" />

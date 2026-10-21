@@ -1,6 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="425" height="340" viewBox="0 0 425 340" role="img" aria-labelledby="title">
   <title id="title">第9题：正方体 ABCD-A1B1C1D1</title>
-  <rect width="425" height="340" fill="white"/>
   <g fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
     <path id="visible-edges" d="M70 280H280L350 210V40H140L70 110V280 M70 110H280V280 M280 110L350 40"/>
     <path id="hidden-edges" d="M70 280L140 210H350 M140 210V40" stroke-dasharray="6 5"/>

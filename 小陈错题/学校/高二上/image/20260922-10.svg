@@ -1,5 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="400" height="435" viewBox="0 0 400 435">
-  <rect width="400" height="435" fill="white"/>
   <g fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <ellipse cx="200" cy="90" rx="120" ry="42"/>
     <path d="M80 90V330M320 90V330M80 330A120 42 0 0 0 320 330"/>

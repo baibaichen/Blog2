@@ -1,8 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="232" height="300" viewBox="0 0 290 375">
-  <rect width="290" height="375" fill="white"/>
   <g stroke="#222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M80 45A140 140 0 0 1 80 325Z" fill="#222"/>
-    <path d="M80 45L201.24355653 255L80 325Z" fill="white"/>
+    <path d="M80 45A140 140 0 0 1 80 325Z M80 45L201.24355653 255L80 325Z" fill="#222" fill-rule="evenodd"/>
   </g>
   <g fill="#111" font-family="Times New Roman, serif" font-size="24" font-style="italic">
     <text x="49" y="348">A</text>

@@ -1,6 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 490 435" width="368" height="326" role="img" aria-labelledby="title">
   <title id="title">Cube ABCD-A1B1C1D1 with midpoint section EFG cutting off tetrahedron B1EFG</title>
-  <rect width="490" height="435" fill="#fff" />
   <g fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <path class="hidden" stroke-dasharray="7 6" d="M70 370 L190 270 L430 270 M190 270 L190 60" />
   <path class="edge" d="M70 370 L70 160 L190 60 L430 60 L430 270 L310 370 Z M70 160 L310 160 L430 60 M310 160 L310 370" />

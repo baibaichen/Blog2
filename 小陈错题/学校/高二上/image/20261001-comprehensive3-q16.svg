@@ -1,6 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="460" height="410" viewBox="0 0 460 410" role="img" aria-labelledby="title">
   <title id="title">第16题：正方体中的平面 AB1D1 及交线 l</title>
-  <rect width="460" height="410" fill="white"/>
   <g fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
     <path id="visible-edges" d="M115 300H305L380 240V50H190L115 110V300 M115 110H305V300 M305 110L380 50"/>
     <path id="hidden-edges" d="M190 240H380 M190 240V50" stroke-dasharray="6 5"/>

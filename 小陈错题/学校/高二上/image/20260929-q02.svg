@@ -8,7 +8,6 @@
       .sub { font-size: 15px; }
     </style>
   </defs>
-  <rect width="400" height="330" fill="#fff" />
   <path class="edge" d="M65 265 L250 265 L330 195 L330 55 L145 55 L65 125 Z M65 125 L250 125 L330 55 M250 125 L250 265" />
   <path class="hidden" d="M65 265 L145 195 L330 195 M145 195 L145 55" />
   <path class="hidden" d="M65 265 L145 55 L330 195 Z" />

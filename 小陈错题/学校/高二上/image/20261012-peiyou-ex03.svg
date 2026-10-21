@@ -1,6 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="410" height="285" viewBox="0 0 410 285" role="img" aria-labelledby="title">
   <title id="title">Example 3: tetrahedron ABCD</title>
-  <rect width="410" height="285" fill="white"/>
   <g fill="none" stroke="#222" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
     <path data-edge="AC" d="M42 237 L187 170" stroke-dasharray="6 5"/>
     <path data-edge="BC" d="M354 155 L187 170" stroke-dasharray="6 5"/>

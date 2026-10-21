@@ -1,6 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="470" height="285" viewBox="0 0 470 285" role="img" aria-labelledby="title">
   <title id="title">第3题：矩形底面上的棱锥及截面 BCFE</title>
-  <rect width="470" height="285" fill="white"/>
   <g fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
     <path id="base-visible" d="M60 230H330L405 175 M60 230L135 175H211.316"/>
     <path id="DC-hidden" d="M211.316 175H405" stroke-dasharray="6 5"/>

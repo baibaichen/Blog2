@@ -19,14 +19,6 @@
   <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
  </defs>
  <g id="figure_1">
-  <g id="patch_1">
-   <path d="M 0 234 
-L 280.8 234 
-L 280.8 0 
-L 0 0 
-z
-" style="fill: #ffffff"/>
-  </g>
   <g id="axes_1">
    <g id="line2d_1">
     <path d="M 54 190.8 

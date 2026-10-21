@@ -1,5 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="405" height="320" viewBox="0 0 405 320">
-  <rect width="405" height="320" fill="white"/>
   <g fill="none" stroke="#111" stroke-width="1.4" stroke-linejoin="round">
     <path d="M70 280 L145 205 H335 M145 205 V20" stroke-dasharray="6 5"/>
     <path d="M70 280 H260 L335 205 V20 H145 L70 95 Z M70 95 H260 L335 20 M260 95 V280"/>

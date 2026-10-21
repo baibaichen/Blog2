@@ -8,7 +8,6 @@
       .label { fill: #111; font-family: "Times New Roman", serif; font-size: 18px; font-style: italic; }
     </style>
   </defs>
-  <rect width="370" height="250" fill="#fff" />
   <path class="edge" d="M180 24 L38 205 L332 205 Z M180 24 L238 133" />
   <path class="hidden" d="M38 205 L238 133 L332 205 M180 24 L138 169" />
   <circle class="point" cx="180" cy="24" r="3" />

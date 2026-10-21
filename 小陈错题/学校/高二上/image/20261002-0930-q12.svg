@@ -9,7 +9,6 @@
       .subscript { font-size: 15px; font-style: normal; }
     </style>
   </defs>
-  <rect width="370" height="380" fill="#fff" />
   <path class="hidden" d="M70 280 A110 44 0 0 1 290 280 M70 280 L290 280 M70 80 L290 280 M70 80 L235 318.105 M70 280 L235 318.105 L290 280" />
   <path class="hidden" d="M180 280 L235 318.105" />
   <ellipse class="edge" cx="180" cy="80" rx="110" ry="44" />

@@ -1,6 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="410" height="345" viewBox="0 0 410 345" role="img" aria-labelledby="title">
   <title id="title">第4题：三棱锥 A-BCD 与两个面的重心 M、N</title>
-  <rect width="410" height="345" fill="white"/>
   <g fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
     <path id="visible-edges" d="M170 40L65 235L250 285L350 205Z M170 40L250 285"/>
     <path id="BD" d="M65 235L350 205" stroke-dasharray="6 5"/>

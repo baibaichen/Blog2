@@ -1,5 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-  <rect width="300" height="300" fill="white"/>
   <g fill="none" stroke="#111" stroke-width="1.8">
     <path d="M75 245 A75 22 0 0 1 225 245 M150 65 V245 H225" stroke-dasharray="6 5"/>
     <ellipse cx="150" cy="65" rx="75" ry="22"/>

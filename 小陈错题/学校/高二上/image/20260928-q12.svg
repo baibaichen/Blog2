@@ -10,7 +10,6 @@
       .measure { fill: #111; font-family: "Times New Roman", serif; font-size: 15px; }
     </style>
   </defs>
-  <rect width="430" height="330" fill="#fff" />
   <path class="edge" d="M205 20 L45 250 M205 20 L385 250" />
   <path class="hidden" d="M45 250 A170 52 0 0 1 385 250" />
   <path class="edge" d="M45 250 A170 52 0 0 0 385 250" />
