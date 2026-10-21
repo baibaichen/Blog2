@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="324" viewBox="0 -15 450 405">
+  <rect y="-15" width="450" height="405" fill="white"/>
+  <g fill="none" stroke="#222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M170 40V245L65 340 M170 245L405 235 M117.5 190L143.75 268.75L235 287.5 M143.75 268.75L405 235" stroke-dasharray="6 5"/>
+    <path d="M170 40L65 340L405 235Z M117.5 190L405 235"/>
+  </g>
+  <circle cx="143.75" cy="268.75" r="2.8" fill="#222"/>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="24" font-style="italic">
+    <text x="156" y="23">P</text>
+    <text x="180" y="231">A</text>
+    <text x="38" y="366">B</text>
+    <text x="418" y="243">C</text>
+    <text x="77" y="189">M</text>
+    <text x="108" y="268">N</text>
+    <text x="230" y="320">S</text>
+  </g>
+</svg>
