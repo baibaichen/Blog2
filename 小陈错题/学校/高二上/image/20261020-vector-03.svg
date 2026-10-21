@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="315" height="390" viewBox="0 0 420 520">
+  <rect width="420" height="520" fill="white"/>
+  <g fill="none" stroke="#222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="200" cy="100" rx="120" ry="65"/>
+    <path d="M80 100V390 M320 100V390 M80 390A120 65 0 0 0 320 390"/>
+    <path d="M80 390A120 65 0 0 1 320 390 M128 338L87.68 412.88L272 442L312.32 367.12Z M128 338L272 442 M128 48V338 M128 48L87.68 412.88 M128 48L272 442 M128 48L312.32 367.12" stroke-dasharray="6 5"/>
+  </g>
+  <circle cx="200" cy="390" r="2.5" fill="#222"/>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="24" font-style="italic">
+    <text x="112" y="27">P</text>
+    <text x="144" y="316">A</text>
+    <text x="48" y="435">B</text>
+    <text x="277" y="477">C</text>
+    <text x="336" y="373">D</text>
+    <text x="216" y="385">O</text>
+  </g>
+</svg>
