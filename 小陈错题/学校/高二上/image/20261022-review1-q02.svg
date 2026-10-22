@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="280" viewBox="0 0 300 280">
+  <title>第2题：圆锥的轴截面，三边长分别为3、3、2</title>
+  <path d="M150 40 L88 215.36 L212 215.36 Z" fill="none" stroke="#111" stroke-width="2" stroke-linejoin="round"/>
+  <g fill="#111" font-family="Times New Roman,serif" font-size="24" text-anchor="middle">
+    <text x="75" y="133">3</text>
+    <text x="225" y="133">3</text>
+    <text x="150" y="252">2</text>
+  </g>
+</svg>

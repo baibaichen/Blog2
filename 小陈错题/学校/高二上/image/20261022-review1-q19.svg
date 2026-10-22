@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="465" height="375" viewBox="0 0 465 375">
+  <title>第19题：正方形ABED沿BD折起，点E移至点C</title>
+  <defs>
+    <marker id="fold-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M1 1 L9 5 L1 9" fill="none" stroke="#111" stroke-width="1.4"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M50 320 L225 65 L290 320 Z M290 320 L400 205 L260.686 205 M271.452 247.24 L400 205"/>
+    <path d="M50 320 L160 205 L290 320 M160 205 L225 65 L225 262.5 M160 205 L260.686 205 M50 320 L271.452 247.24" stroke-dasharray="7 6"/>
+    <path d="M358 175 C387 123 347 105 315 127" stroke-width="1.5" marker-end="url(#fold-arrow)"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman,serif" font-size="24" font-style="italic">
+    <text x="33" y="346" text-anchor="end">A</text>
+    <text x="303" y="347">B</text>
+    <text x="225" y="43" text-anchor="middle">C</text>
+    <text x="112" y="207" text-anchor="end">D</text>
+    <text x="419" y="211">E</text>
+    <text x="236" y="238">O</text>
+  </g>
+</svg>

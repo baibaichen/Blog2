@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="410" height="260" viewBox="0 0 410 260">
+  <title>第16题：直角梯形ABCD，AD平行于BC</title>
+  <path d="M60 60 L200 60 L340 200 L60 200 Z" fill="none" stroke="#111" stroke-width="2" stroke-linejoin="round"/>
+  <g fill="#111" font-family="Times New Roman,serif" font-size="24" font-style="italic">
+    <text x="39" y="50" text-anchor="end">A</text>
+    <text x="39" y="223" text-anchor="end">B</text>
+    <text x="357" y="217">C</text>
+    <text x="215" y="49">D</text>
+  </g>
+</svg>

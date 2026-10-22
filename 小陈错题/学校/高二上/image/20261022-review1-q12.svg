@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="650" height="359" viewBox="0 0 760 420">
+  <title>第12题：两个相同的直三棱柱，高为2/a，底面边长为3a、4a、5a</title>
+  <defs>
+    <g id="prism">
+      <g fill="none" stroke="#111" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M110 150 L250 60 L300 150 Z M110 150 L110 350 L300 350 L300 150"/>
+        <path d="M110 350 L250 260 L300 350 M250 260 L250 60" stroke-dasharray="7 6"/>
+        <path d="M58 239 H82" stroke-width="1.4"/>
+      </g>
+      <g fill="#111" font-family="Times New Roman,serif" font-size="24" text-anchor="middle">
+        <text x="70" y="229">2</text>
+        <text x="70" y="263" font-style="italic">a</text>
+        <text x="170" y="281">4<tspan font-style="italic">a</tspan></text>
+        <text x="239" y="326">3<tspan font-style="italic">a</tspan></text>
+        <text x="205" y="386">5<tspan font-style="italic">a</tspan></text>
+      </g>
+    </g>
+  </defs>
+  <use href="#prism"/>
+  <use href="#prism" x="360"/>
+</svg>

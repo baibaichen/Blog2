@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="455" height="370" viewBox="0 0 455 370">
+  <title>第18题：正四棱锥P-ABCD，E为PC中点</title>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M55 310 L190 45 L390 205 L280 310 Z M190 45 L280 310 M280 310 L290 125"/>
+    <path d="M55 310 L165 205 L390 205 M165 205 L190 45 M165 205 L280 310" stroke-dasharray="7 6"/>
+  </g>
+  <circle cx="290" cy="125" r="2.7" fill="#111"/>
+  <g fill="#111" font-family="Times New Roman,serif" font-size="24" font-style="italic">
+    <text x="38" y="338" text-anchor="end">A</text>
+    <text x="289" y="339">B</text>
+    <text x="409" y="214">C</text>
+    <text x="157" y="190" text-anchor="end">D</text>
+    <text x="308" y="121">E</text>
+    <text x="190" y="25" text-anchor="middle">P</text>
+  </g>
+</svg>

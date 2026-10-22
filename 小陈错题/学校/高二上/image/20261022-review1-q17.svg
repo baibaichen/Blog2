@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="395" height="395" viewBox="0 0 395 395">
+  <title>第17题：圆锥，D为AB中点，C在底面圆周上</title>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M65 300 L200 45 L340 300 M200 45 L150 344.35"/>
+    <path d="M65 300 A137.5 48 0 0 0 340 300"/>
+    <path d="M65 300 A137.5 48 0 0 1 340 300 M200 45 L200 300 L340 300 M200 300 L150 344.35 L270 172.5" stroke-dasharray="7 6"/>
+    <path d="M190 309 L204 309 L214 300" stroke-width="1.4" stroke-dasharray="4 4"/>
+  </g>
+  <circle cx="270" cy="172.5" r="2.7" fill="#111"/>
+  <g fill="#111" font-family="Times New Roman,serif" font-size="24" font-style="italic">
+    <text x="200" y="26" text-anchor="middle">A</text>
+    <text x="357" y="310">B</text>
+    <text x="135" y="376" text-anchor="middle">C</text>
+    <text x="287" y="166">D</text>
+    <text x="219" y="285">O</text>
+  </g>
+</svg>

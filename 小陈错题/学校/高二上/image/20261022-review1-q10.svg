@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="365" height="375" viewBox="0 0 365 375">
+  <title>第10题：直三棱柱ABC-A1B1C1</title>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M75 55 L180 100 L290 55 Z M75 55 L75 280 L180 325 L290 280 L290 55 M180 100 L180 325 M75 55 L180 325"/>
+    <path d="M75 280 L290 280 M75 55 L290 280" stroke-dasharray="7 6"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman,serif" font-size="24" font-style="italic">
+    <text x="53" y="302" text-anchor="end">A</text>
+    <text x="180" y="354" text-anchor="middle">B</text>
+    <text x="309" y="291">C</text>
+    <text x="55" y="49" text-anchor="end">A<tspan baseline-shift="sub" font-size="16" font-style="normal">1</tspan></text>
+    <text x="199" y="126">B<tspan baseline-shift="sub" font-size="16" font-style="normal">1</tspan></text>
+    <text x="308" y="52">C<tspan baseline-shift="sub" font-size="16" font-style="normal">1</tspan></text>
+  </g>
+</svg>

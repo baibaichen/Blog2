@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="385" height="370" viewBox="0 0 385 370">
+  <title>第11题：正方体ABCD-A1B1C1D1</title>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M65 310 L235 310 L310 235 L310 55 L140 55 L65 130 Z M65 130 L235 130 L310 55 M235 130 L235 310"/>
+    <path d="M65 310 L140 235 L310 235 M140 235 L140 55" stroke-dasharray="7 6"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman,serif" font-size="24" font-style="italic">
+    <text x="45" y="337" text-anchor="end">A</text>
+    <text x="235" y="342" text-anchor="middle">B</text>
+    <text x="330" y="247">C</text>
+    <text x="121" y="228" text-anchor="end">D</text>
+    <text x="44" y="124" text-anchor="end">A<tspan baseline-shift="sub" font-size="16" font-style="normal">1</tspan></text>
+    <text x="253" y="152">B<tspan baseline-shift="sub" font-size="16" font-style="normal">1</tspan></text>
+    <text x="329" y="55">C<tspan baseline-shift="sub" font-size="16" font-style="normal">1</tspan></text>
+    <text x="127" y="39" text-anchor="end">D<tspan baseline-shift="sub" font-size="16" font-style="normal">1</tspan></text>
+  </g>
+</svg>

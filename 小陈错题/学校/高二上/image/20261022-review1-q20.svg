@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="425" height="460" viewBox="0 0 425 460">
+  <title>第20题：直三棱柱ABC-A1B1C1及截面A1B1C</title>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M60 400 L60 175 L150 80 L350 80 L350 305 Z M60 175 L350 80 M60 175 L350 305"/>
+    <path d="M60 400 L150 305 L350 305 M150 305 L150 80 L350 305" stroke-dasharray="7 6"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman,serif" font-size="24" font-style="italic">
+    <text x="44" y="428" text-anchor="end">A</text>
+    <text x="131" y="310" text-anchor="end">B</text>
+    <text x="369" y="315">C</text>
+    <text x="38" y="180" text-anchor="end">A<tspan baseline-shift="sub" font-size="16" font-style="normal">1</tspan></text>
+    <text x="137" y="55" text-anchor="end">B<tspan baseline-shift="sub" font-size="16" font-style="normal">1</tspan></text>
+    <text x="369" y="80">C<tspan baseline-shift="sub" font-size="16" font-style="normal">1</tspan></text>
+  </g>
+</svg>

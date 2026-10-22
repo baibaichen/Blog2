@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="320" viewBox="0 0 340 320">
+  <title>第9题：四面体ABCD，M、N分别为BC、AD的中点</title>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M55 270 L150 40 L280 270 Z"/>
+    <path d="M55 270 L172 177 L280 270 M172 177 L150 40" stroke-dasharray="7 6"/>
+  </g>
+  <g fill="#111">
+    <circle cx="102.5" cy="155" r="3"/>
+    <circle cx="226" cy="223.5" r="3"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman,serif" font-size="24" font-style="italic">
+    <text x="30" y="304">A</text>
+    <text x="294" y="291">B</text>
+    <text x="147" y="168" text-anchor="end">C</text>
+    <text x="150" y="24" text-anchor="middle">D</text>
+    <text x="197" y="244" text-anchor="end">M</text>
+    <text x="83" y="153" text-anchor="end">N</text>
+  </g>
+</svg>

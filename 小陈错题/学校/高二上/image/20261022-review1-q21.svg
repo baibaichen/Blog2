@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="455" viewBox="0 0 390 455">
+  <title>第21题：半圆柱与直三棱柱组成的几何体，D为上底半圆弧中点</title>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M70 130 C47.909 95.758 83.726 68 150 68 C216.274 68 287.909 95.758 310 130 M70 130 L310 130 L310 340 L230 400 L70 340 Z M70 130 L230 190 L310 130 M230 190 L230 400 L70 130"/>
+    <path d="M70 340 C47.909 305.758 83.726 278 150 278 C216.274 278 287.909 305.758 310 340 M70 340 L310 340 M70 340 L150 68 L230 400" stroke-dasharray="7 6"/>
+  </g>
+  <circle cx="150" cy="68" r="2.7" fill="#111"/>
+  <g fill="#111" font-family="Times New Roman,serif" font-size="24" font-style="italic">
+    <text x="242" y="428">A</text>
+    <text x="48" y="349" text-anchor="end">B</text>
+    <text x="329" y="349">C</text>
+    <text x="150" y="45" text-anchor="middle">D</text>
+    <text x="250" y="215">A<tspan baseline-shift="sub" font-size="16" font-style="normal">1</tspan></text>
+    <text x="48" y="125" text-anchor="end">B<tspan baseline-shift="sub" font-size="16" font-style="normal">1</tspan></text>
+    <text x="329" y="125">C<tspan baseline-shift="sub" font-size="16" font-style="normal">1</tspan></text>
+  </g>
+</svg>
