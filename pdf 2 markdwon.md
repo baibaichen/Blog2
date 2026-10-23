@@ -89,3 +89,37 @@
  PY
 
 这是本次 PR 验证时保存的 classpath 和参数，不是通用的其他版本参数。当时编译约 3 分 43 秒；发布前最后一次 Delta UT 共 11 项全部通过，执行约 11.8 秒，不含编译。
+
+
+
+
+
+```mermaid
+sequenceDiagram
+    participant 人
+    participant D as Darwin：调度
+    participant A as Code Agent：改代码
+    participant E as Evaluator：正式评测
+
+    人->>D: 提供源码、优化目标、运行预算
+    人->>E: 提供编译、测试、benchmark方法
+
+    loop 自动尝试不同候选版本
+        D->>D: 选择父版本和优化方向
+        D->>A: 通过Driver交付工作区和任务
+
+        loop Agent本轮内部工作
+            A->>A: 阅读代码 → 修改 → 编译/自测 → 修复
+        end
+
+        A-->>D: 交付候选版本，由runner生成Git提交
+        D->>E: 在独立工作区检出该候选
+        E->>E: 编译 → 正确性检查 → benchmark
+        E-->>D: 返回实测指标和分数
+        D->>D: 保存结果，决定下一轮
+    end
+
+    D-->>人: 最佳版本及评测记录
+    人->>人: 审查、回归测试、决定是否合并
+```
+
