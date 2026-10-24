@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="240" viewBox="0 0 340 240">
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Outer visible edges: P(165,35), B(85,195), C(265,150) -->
+    <polygon points="165,35 85,195 265,150"/>
+    <!-- Hidden edges meeting at A(148,145) -->
+    <line x1="165" y1="35" x2="148" y2="145" stroke-dasharray="6,5"/>
+    <line x1="85" y1="195" x2="148" y2="145" stroke-dasharray="6,5"/>
+    <line x1="265" y1="150" x2="148" y2="145" stroke-dasharray="6,5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="20" font-style="italic">
+    <text x="158" y="24">P</text>
+    <text x="64" y="208">B</text>
+    <text x="275" y="156">C</text>
+    <text x="126" y="142">A</text>
+  </g>
+</svg>

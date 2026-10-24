@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="380" height="330" viewBox="0 0 380 330">
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="85" y1="290" x2="138" y2="248" stroke-dasharray="6,5"/>
+    <line x1="138" y1="248" x2="205" y2="290" stroke-dasharray="6,5"/>
+    <line x1="138" y1="248" x2="218" y2="53" stroke-dasharray="6,5"/>
+    <line x1="165" y1="95" x2="138" y2="248" stroke-dasharray="6,5"/>
+    <line x1="251.5" y1="74" x2="138" y2="248" stroke-dasharray="6,5"/>
+    <polygon points="165,95 285,95 205,290 85,290"/>
+    <line x1="165" y1="95" x2="205" y2="290"/>
+    <polyline points="165,95 218,53 285,95"/>
+    <line x1="165" y1="95" x2="251.5" y2="74"/>
+  </g>
+  <circle cx="171.5" cy="269" r="3.2" fill="#111"/>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="21" font-style="italic">
+    <text x="60" y="302">A</text>
+    <text x="214" y="304">B</text>
+    <text x="112" y="246">C</text>
+    <text x="150" y="284">O</text>
+    <text x="130" y="96">A</text>
+    <text x="144" y="102" font-size="14" font-style="normal">1</text>
+    <text x="294" y="100">B</text>
+    <text x="307" y="106" font-size="14" font-style="normal">1</text>
+    <text x="206" y="40">C</text>
+    <text x="220" y="46" font-size="14" font-style="normal">1</text>
+    <text x="258" y="68">M</text>
+  </g>
+</svg>

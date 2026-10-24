@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="230" viewBox="0 0 340 230">
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- S(60,185), B(180,35), A(255,185) -->
+    <!-- Generators SB and SA -->
+    <line x1="60" y1="185" x2="180" y2="35"/>
+    <line x1="60" y1="185" x2="255" y2="185"/>
+    <!-- Base diameter AB (hidden inside cone -> dashed) -->
+    <line x1="180" y1="35" x2="255" y2="185" stroke-dasharray="6,5"/>
+    <!-- Base ellipse centered at (217.5, 110), semi-major a=83.85 at angle 63.435 deg, semi-minor b=22 -->
+    <!-- Outer/right half of ellipse (visible, solid) -->
+    <path d="M 180 35 A 83.85 22 63.435 0 1 255 185"/>
+    <!-- Inner/left half of ellipse (hidden, dashed) -->
+    <path d="M 180 35 A 83.85 22 63.435 0 0 255 185" stroke-dasharray="6,5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="20" font-style="italic">
+    <text x="38" y="194">S</text>
+    <text x="168" y="24">B</text>
+    <text x="265" y="194">A</text>
+  </g>
+</svg>

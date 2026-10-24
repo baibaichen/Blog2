@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="380" height="230" viewBox="0 0 380 230">
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- B(110,115), C(82,190), A(265,35), D(315,165) -->
+    <!-- Triangle ABC (front/upper) -->
+    <polygon points="265,35 110,115 82,190"/>
+    <!-- Edge CD (visible bottom) -->
+    <line x1="82" y1="190" x2="315" y2="165"/>
+    <!-- Edge BD: hidden part behind triangle ABC (from B(110,115) to intersection with AC(165.4,132.9)) dashed, visible part to D(315,165) solid -->
+    <line x1="110" y1="115" x2="165.4" y2="130.6" stroke-dasharray="6,5"/>
+    <line x1="165.4" y1="130.6" x2="315" y2="165"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="20" font-style="italic">
+    <text x="273" y="30">A</text>
+    <text x="86" y="116">B</text>
+    <text x="58" y="204">C</text>
+    <text x="325" y="172">D</text>
+  </g>
+</svg>

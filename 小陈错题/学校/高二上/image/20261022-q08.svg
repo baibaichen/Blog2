@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="250" viewBox="0 0 340 250">
+  <defs>
+    <marker id="arrow8" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#111"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Axes -->
+    <line x1="45" y1="80" x2="295" y2="80" marker-end="url(#arrow8)"/>
+    <line x1="215" y1="225" x2="215" y2="20" marker-end="url(#arrow8)"/>
+    <!-- Triangle POQ: O(215,80), P(105,135), Q(215,190) -->
+    <line x1="215" y1="80" x2="105" y2="135" stroke-dasharray="4 3"/>
+    <line x1="105" y1="135" x2="215" y2="190" stroke-dasharray="4 3"/>
+  </g>
+  <g fill="#111">
+    <circle cx="105" cy="135" r="2.8"/>
+    <circle cx="215" cy="190" r="2.8"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="20" font-style="italic">
+    <text x="195" y="34">y</text>
+    <text x="292" y="102">x</text>
+    <text x="223" y="102">O</text>
+    <text x="82" y="156">P</text>
+    <text x="190" y="208">Q</text>
+  </g>
+</svg>

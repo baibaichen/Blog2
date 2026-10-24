@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="345" viewBox="0 0 360 345">
+  <g fill="none" stroke="#182266" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="126" y1="38" x2="120" y2="230" stroke-dasharray="6,5"/>
+    <line x1="120" y1="230" x2="41" y2="309" stroke-dasharray="6,5"/>
+    <line x1="120" y1="230" x2="316" y2="230" stroke-dasharray="6,5"/>
+    <line x1="80.1" y1="184.3" x2="120" y2="230" stroke-dasharray="6,5"/>
+    <line x1="80.1" y1="184.3" x2="316" y2="230" stroke-dasharray="6,5"/>
+    <line x1="126" y1="38" x2="41" y2="309"/>
+    <line x1="126" y1="38" x2="161" y2="309"/>
+    <line x1="126" y1="38" x2="316" y2="230"/>
+    <line x1="41" y1="309" x2="161" y2="309"/>
+    <line x1="161" y1="309" x2="316" y2="230"/>
+    <line x1="80.1" y1="184.3" x2="161" y2="309"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="101" y="42">P</text>
+    <text x="53" y="186">Q</text>
+    <text x="126" y="222">A</text>
+    <text x="16" y="320">B</text>
+    <text x="158" y="334">C</text>
+    <text x="326" y="238">D</text>
+  </g>
+</svg>
