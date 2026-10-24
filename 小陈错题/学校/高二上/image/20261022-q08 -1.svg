@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="430" height="310" viewBox="0 0 430 310">
+  <!-- Shaded generating triangle POQ -->
+  <polygon points="210,66 86,156 210,246" fill="#2563eb" fill-opacity="0.13" stroke="none"/>
+
+  <g fill="none" stroke="#182266" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Back half of shared circular base at y = -1 (hidden, dashed) -->
+    <path d="M 86 156 C 128 126, 292 126, 334 156" stroke-dasharray="6,5"/>
+    <!-- Radius HP and axis segment OQ inside the solid (hidden, dashed) -->
+    <line x1="86" y1="156" x2="210" y2="156" stroke-dasharray="6,5"/>
+    <line x1="210" y1="66" x2="210" y2="246" stroke-dasharray="6,5"/>
+
+    <!-- Front half of shared circular base at y = -1 (visible, solid) -->
+    <path d="M 86 156 C 128 186, 292 186, 334 156"/>
+    <!-- Upper cone and lower cone outer generators -->
+    <line x1="210" y1="66" x2="86" y2="156" stroke-width="2.2"/>
+    <line x1="86" y1="156" x2="210" y2="246" stroke-width="2.2"/>
+    <line x1="210" y1="66" x2="334" y2="156"/>
+    <line x1="334" y1="156" x2="210" y2="246"/>
+  </g>
+
+  <!-- Coordinate axes and rotation indicator -->
+  <g fill="none" stroke="#111" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <!-- x-axis -->
+    <line x1="35" y1="66" x2="380" y2="66"/>
+    <!-- y-axis (solid outside the double-cone) -->
+    <line x1="210" y1="292" x2="210" y2="246"/>
+    <line x1="210" y1="66" x2="210" y2="16"/>
+    <!-- Rotation arc around y-axis -->
+    <path d="M 194 31 C 182 35, 188 42, 210 42 C 230 42, 236 36, 226 31"/>
+  </g>
+  <!-- Explicit arrowheads for universal rendering -->
+  <g fill="#111" stroke="none">
+    <!-- x-axis arrow -->
+    <polygon points="386,66 376,61.5 376,70.5"/>
+    <!-- y-axis arrow -->
+    <polygon points="210,10 205.5,20 214.5,20"/>
+    <!-- rotation arc arrow -->
+    <polygon points="222,29 231,29 227,36"/>
+  </g>
+
+  <!-- Key points -->
+  <g fill="#182266">
+    <circle cx="210" cy="66" r="2.8"/>
+    <circle cx="86" cy="156" r="2.8"/>
+    <circle cx="210" cy="156" r="2.6"/>
+    <circle cx="334" cy="156" r="2.6"/>
+    <circle cx="210" cy="246" r="2.8"/>
+  </g>
+
+  <!-- Labels -->
+  <g fill="#111" font-family="Times New Roman, serif" font-size="18" font-style="italic">
+    <text x="220" y="22">y</text>
+    <text x="392" y="72">x</text>
+    <text x="236" y="57">O(0,0)</text>
+    <text x="76" y="162" text-anchor="end">P(-2,-1)</text>
+    <text x="344" y="162">P'(2,-1)</text>
+    <text x="217" y="151" font-size="16">H(0,-1)</text>
+    <text x="155" y="150" font-size="15" text-anchor="middle">r = 2</text>
+    <text x="218" y="264">Q(0,-2)</text>
+  </g>
+</svg>
