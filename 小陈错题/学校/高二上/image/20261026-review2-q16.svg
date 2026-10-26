@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="445" height="410" viewBox="0 0 445 410">
+  <title>第16题：正方体中的D1、E、F</title>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M80 350 L162 268 L382 268 M162 268 L162 48 M162 48 L190 350 L341 309 Z" stroke-dasharray="7 6"/>
+    <path d="M80 350 L80 130 L162 48 L382 48 L382 268 L300 350 Z M80 130 L300 130 L382 48 M300 130 L300 350"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman,serif" font-size="24" font-style="italic">
+    <text x="64" y="380" text-anchor="end">A</text>
+    <text x="303" y="383">B</text>
+    <text x="402" y="277">C</text>
+    <text x="144" y="256" text-anchor="end">D</text>
+    <text x="58" y="133" text-anchor="end">A<tspan baseline-shift="sub" font-size="16" font-style="normal">1</tspan></text>
+    <text x="322" y="149">B<tspan baseline-shift="sub" font-size="16" font-style="normal">1</tspan></text>
+    <text x="397" y="45">C<tspan baseline-shift="sub" font-size="16" font-style="normal">1</tspan></text>
+    <text x="150" y="25" text-anchor="end">D<tspan baseline-shift="sub" font-size="16" font-style="normal">1</tspan></text>
+    <text x="190" y="384" text-anchor="middle">E</text>
+    <text x="360" y="338">F</text>
+  </g>
+</svg>

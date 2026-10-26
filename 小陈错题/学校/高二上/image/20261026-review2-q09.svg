@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="405" height="390" viewBox="0 0 405 390">
+  <title>第9题：正四面体ABCD</title>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M55 240 L345 240" stroke-dasharray="7 6"/>
+    <path d="M180 55 L55 240 L208 330 L345 240 Z M180 55 L208 330"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman,serif" font-size="24" font-style="italic">
+    <text x="172" y="30" text-anchor="middle">A</text>
+    <text x="36" y="252" text-anchor="end">B</text>
+    <text x="208" y="363" text-anchor="middle">C</text>
+    <text x="365" y="249">D</text>
+  </g>
+</svg>

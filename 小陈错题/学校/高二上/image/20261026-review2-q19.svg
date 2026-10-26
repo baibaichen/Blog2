@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="435" height="375" viewBox="0 0 435 375">
+  <title>第19题：长方体截去一个角后留下的几何体</title>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M70 315 L145 220 L365 220 M145 220 L145 75" stroke-dasharray="7 6"/>
+    <path d="M70 315 L70 170 L145 75 L365 75 L365 220 L290 315 Z M70 170 L365 75 L290 315 Z"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman,serif" font-size="24" font-style="italic">
+    <text x="50" y="328" text-anchor="end">A</text>
+    <text x="293" y="348">B</text>
+    <text x="386" y="229">C</text>
+    <text x="164" y="205">D</text>
+    <text x="48" y="177" text-anchor="end">A<tspan baseline-shift="sub" font-size="16" font-style="normal">1</tspan></text>
+    <text x="386" y="81">C<tspan baseline-shift="sub" font-size="16" font-style="normal">1</tspan></text>
+    <text x="126" y="60" text-anchor="end">D<tspan baseline-shift="sub" font-size="16" font-style="normal">1</tspan></text>
+  </g>
+</svg>

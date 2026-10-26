@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="440" viewBox="0 0 390 440">
+  <title>第20题：圆柱、轴截面ABCD及垂线AF</title>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M95 330 A110 50 0 0 1 315 330 M95 330 L315 330 M95 85 L315 330 M95 85 L163 376.21 M95 330 L163 376.21 L315 330 M95 330 L146.95 307.46" stroke-dasharray="7 6"/>
+    <ellipse cx="205" cy="85" rx="110" ry="50"/>
+    <path d="M95 85 L315 85 L315 330 A110 50 0 0 1 95 330 Z"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman,serif" font-size="24" font-style="italic">
+    <text x="75" y="343" text-anchor="end">A</text>
+    <text x="335" y="343">B</text>
+    <text x="335" y="93">C</text>
+    <text x="75" y="93" text-anchor="end">D</text>
+    <text x="163" y="411" text-anchor="middle">E</text>
+    <text x="173" y="317">F</text>
+  </g>
+</svg>

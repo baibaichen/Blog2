@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="410" viewBox="0 0 390 410">
+  <title>第5题：正三棱柱ABC-A1B1C1</title>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M65 350 L65 140 L232 70 L305 140 L305 350 Z M65 140 L305 140"/>
+    <path d="M65 350 L232 280 L305 350 M232 280 L232 70 L305 350" stroke-dasharray="7 6"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman,serif" font-size="24" font-style="italic">
+    <text x="47" y="378" text-anchor="end">A</text>
+    <text x="322" y="378">B</text>
+    <text x="214" y="273" text-anchor="end">C</text>
+    <text x="43" y="144" text-anchor="end">A<tspan baseline-shift="sub" font-size="16" font-style="normal">1</tspan></text>
+    <text x="324" y="144">B<tspan baseline-shift="sub" font-size="16" font-style="normal">1</tspan></text>
+    <text x="232" y="44" text-anchor="middle">C<tspan baseline-shift="sub" font-size="16" font-style="normal">1</tspan></text>
+  </g>
+</svg>

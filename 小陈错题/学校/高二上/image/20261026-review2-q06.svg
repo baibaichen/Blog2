@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="395" height="385" viewBox="0 0 395 385">
+  <title>第6题：正四棱锥</title>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M198 55 L65 325 L250 325 L330 245 Z M198 55 L250 325"/>
+    <path d="M65 325 L145 245 L330 245 M145 245 L198 55 L198 285" stroke-dasharray="7 6"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman,serif" font-size="24" font-style="italic">
+    <text x="198" y="30" text-anchor="middle">P</text>
+    <text x="48" y="353" text-anchor="end">A</text>
+    <text x="255" y="356">B</text>
+    <text x="350" y="251">C</text>
+    <text x="177" y="231" text-anchor="middle">D</text>
+  </g>
+</svg>

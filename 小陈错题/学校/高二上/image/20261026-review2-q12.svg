@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="750" height="350" viewBox="0 0 750 350">
+  <title>第12题：正三棱柱容器放倒前后的水面</title>
+  <defs>
+    <pattern id="water" width="9" height="9" patternUnits="userSpaceOnUse">
+      <path d="M0 4.5 L9 4.5" fill="none" stroke="#111" stroke-width="0.7" stroke-opacity="0.5"/>
+    </pattern>
+  </defs>
+  <path d="M50 188 L205 133 L255 188 Z M435 184 L466 156 L671 156 L640 184 Z" fill="url(#water)"/>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M50 290 L50 85 L205 30 L255 85 L255 290 Z M50 85 L255 85 M50 188 L255 188"/>
+    <path d="M50 290 L205 235 L255 290 M205 235 L205 30 M50 188 L205 133 L255 188" stroke-dasharray="7 6"/>
+    <path d="M435 80 L640 80 L702 232 L640 288 L435 288 Z M640 80 L640 288 M435 184 L640 184 L671 156"/>
+    <path d="M435 80 L497 232 L435 288 M497 232 L702 232 M435 184 L466 156 L671 156" stroke-dasharray="7 6"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman,serif" font-size="24" text-anchor="middle">
+    <text x="155" y="333">(1)</text>
+    <text x="566" y="333">(2)</text>
+  </g>
+</svg>

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="415" height="390" viewBox="0 0 415 390">
+  <title>第18题：三棱锥P-ABC及垂线PO</title>
+  <g fill="none" stroke="#111" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M65 242 L355 242 M178 50 L178 282" stroke-dasharray="7 6"/>
+    <path d="M178 50 L65 242 L110 335 L355 242 Z M178 50 L110 335"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman,serif" font-size="24" font-style="italic">
+    <text x="178" y="25" text-anchor="middle">P</text>
+    <text x="46" y="248" text-anchor="end">A</text>
+    <text x="105" y="367" text-anchor="middle">B</text>
+    <text x="376" y="249">C</text>
+    <text x="198" y="284">O</text>
+  </g>
+</svg>
