@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="340" viewBox="0 0 320 340" role="img" aria-labelledby="title">
+  <title id="title">Question 5: square prism ABCD-A1B1C1D1</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M105 55H245L195 100H55Z M55 100V290H195V100 M245 55V245L195 290"/>
+    <path d="M105 55V245H245 M105 245L55 290" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="24" font-style="italic">
+    <text x="84" y="40">A</text>
+    <text x="29" y="107">B</text>
+    <text x="209" y="132">C</text>
+    <text x="259" y="57">D</text>
+    <text x="116" y="223">A<tspan font-size="15" baseline-shift="sub" font-style="normal">1</tspan></text>
+    <text x="29" y="320">B<tspan font-size="15" baseline-shift="sub" font-style="normal">1</tspan></text>
+    <text x="195" y="323">C<tspan font-size="15" baseline-shift="sub" font-style="normal">1</tspan></text>
+    <text x="259" y="252">D<tspan font-size="15" baseline-shift="sub" font-style="normal">1</tspan></text>
+  </g>
+</svg>

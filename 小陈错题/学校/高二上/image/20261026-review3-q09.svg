@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="330" height="326" viewBox="0 -16 330 326" role="img" aria-labelledby="title">
+  <title id="title">Question 9: aircraft P above observation stations A, B and C</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M175 35L45 185L195 265L285 185Z M175 35L195 265"/>
+    <path d="M45 185H285 M175 35V211.667" stroke-dasharray="6 5"/>
+  </g>
+  <circle cx="175" cy="211.667" r="2.2" fill="#111"/>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="24" font-style="italic">
+    <text x="168" y="21">P</text>
+    <text x="20" y="192">A</text>
+    <text x="190" y="298">B</text>
+    <text x="299" y="192">C</text>
+    <text x="143" y="220">H</text>
+  </g>
+</svg>

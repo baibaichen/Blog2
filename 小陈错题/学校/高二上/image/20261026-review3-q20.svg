@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="370" viewBox="0 0 340 370" role="img" aria-labelledby="title">
+  <title id="title">Question 20: polyhedron ABC-A1B1C1 with unequal perpendicular edges</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M75 45L135 210L275 102.5Z M75 45V275L135 325L275 275V102.5 M135 210V325"/>
+    <path d="M75 275H275" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="24" font-style="italic">
+    <text x="49" y="283">A</text>
+    <text x="127" y="353">B</text>
+    <text x="290" y="283">C</text>
+    <text x="43" y="32">A<tspan font-size="15" baseline-shift="sub" font-style="normal">1</tspan></text>
+    <text x="151" y="238">B<tspan font-size="15" baseline-shift="sub" font-style="normal">1</tspan></text>
+    <text x="292" y="101">C<tspan font-size="15" baseline-shift="sub" font-style="normal">1</tspan></text>
+  </g>
+</svg>

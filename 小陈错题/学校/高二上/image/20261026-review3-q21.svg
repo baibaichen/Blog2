@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="360" viewBox="0 0 800 360" role="img" aria-labelledby="title">
+  <title id="title">Question 21: shaded cutouts of a square sheet and the resulting square pyramid</title>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+      <path d="M0 0L8 4L0 8Z" fill="#111"/>
+    </marker>
+  </defs>
+  <g fill="#b8b8b8">
+    <path d="M80 50H135L190 160L80 105Z"/>
+    <path d="M245 50H300V105L190 160Z"/>
+    <path d="M300 215V270H245L190 160Z"/>
+    <path d="M135 270H80V215L190 160Z"/>
+  </g>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M80 50H300V270H80Z M135 50L190 160L245 50 M80 105L190 160L80 215 M300 105L190 160L300 215 M135 270L190 160L245 270"/>
+    <path d="M190 160V270" stroke-dasharray="6 5"/>
+    <path d="M605 72L455 285H675L755 205Z M605 72L675 285 M605 72L715 245"/>
+    <path d="M455 285L535 205H755 M605 72L535 205 M605 72V245H715" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="none" stroke="#111" stroke-width="1.2">
+    <path d="M64 50H38 M64 270H38 M80 282V320 M300 282V320 M310 50H343 M310 105H343"/>
+    <path d="M50 50V270 M80 308H300 M330 50V105" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="24">
+    <text x="31" y="168" text-anchor="middle" transform="rotate(-90 31 168)">10</text>
+    <text x="190" y="342" text-anchor="middle">10</text>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="24" font-style="italic">
+    <text x="352" y="85">x</text>
+    <text x="431" y="300">A</text>
+    <text x="676" y="314">B</text>
+    <text x="769" y="212">C</text>
+    <text x="548" y="239">D</text>
+    <text x="598" y="53">E</text>
+    <text x="728" y="269">F</text>
+    <text x="578" y="268">O</text>
+  </g>
+</svg>

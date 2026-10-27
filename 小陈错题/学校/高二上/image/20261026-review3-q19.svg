@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="370" viewBox="0 0 340 370" role="img" aria-labelledby="title">
+  <title id="title">Question 19: EA and CD perpendicular to ABC, F the midpoint of BE</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M70 45V265L120 325L290 265V155Z M70 45L120 325L290 155 M70 265L95 185L290 155"/>
+    <path d="M70 265H290" stroke-dasharray="6 5"/>
+  </g>
+  <circle cx="95" cy="185" r="2.3" fill="#111"/>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="24" font-style="italic">
+    <text x="44" y="273">A</text>
+    <text x="112" y="358">B</text>
+    <text x="303" y="274">C</text>
+    <text x="303" y="161">D</text>
+    <text x="48" y="34">E</text>
+    <text x="112" y="160">F</text>
+  </g>
+</svg>

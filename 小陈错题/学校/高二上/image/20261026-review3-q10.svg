@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="330" viewBox="0 0 320 330" role="img" aria-labelledby="title">
+  <title id="title">Question 10: sphere O and tetrahedron O-ABC</title>
+  <g fill="none" stroke="#111" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="160" cy="170" r="115"/>
+    <path d="M45 170A115 35 0 0 0 275 170"/>
+    <path d="M45 170A115 35 0 0 1 275 170 M160 55L95 198.877H225L160 55V170L95 198.877 M160 170L225 198.877" stroke-dasharray="5 5"/>
+    <path d="M151.55 173.754L160 177.508L168.45 173.754"/>
+  </g>
+  <circle cx="160" cy="170" r="2.1" fill="#111"/>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="24" font-style="italic">
+    <text x="151" y="36">C</text>
+    <text x="76" y="229">A</text>
+    <text x="230" y="229">B</text>
+    <text x="174" y="164.5">O</text>
+  </g>
+</svg>

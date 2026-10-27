@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="356" viewBox="0 -16 320 356" role="img" aria-labelledby="title">
+  <title id="title">Question 7: regular triangular prism ABC-A1B1C1</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M65 280V80L190 30L235 102V302Z M65 80L235 102"/>
+    <path d="M65 280L190 230L235 302L190 30V230" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="24" font-style="italic">
+    <text x="39" y="291">A</text>
+    <text x="245" y="324">B</text>
+    <text x="164" y="211">C</text>
+    <text x="29" y="83">A<tspan font-size="15" baseline-shift="sub" font-style="normal">1</tspan></text>
+    <text x="249" y="106">B<tspan font-size="15" baseline-shift="sub" font-style="normal">1</tspan></text>
+    <text x="182" y="10">C<tspan font-size="15" baseline-shift="sub" font-style="normal">1</tspan></text>
+  </g>
+</svg>

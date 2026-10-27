@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="316" viewBox="0 -16 320 316" role="img" aria-labelledby="title">
+  <title id="title">Question 8: cube AC1</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M60 245H220V85H60Z M60 85L110 35H270L220 85 M220 245L270 195V35"/>
+    <path d="M60 245L110 195H270 M110 195V35" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="24" font-style="italic">
+    <text x="39" y="272">A</text>
+    <text x="217" y="273">B</text>
+    <text x="284" y="204">C</text>
+    <text x="124" y="181">D</text>
+    <text x="25" y="85">A<tspan font-size="15" baseline-shift="sub" font-style="normal">1</tspan></text>
+    <text x="188" y="65">B<tspan font-size="15" baseline-shift="sub" font-style="normal">1</tspan></text>
+    <text x="283" y="37">C<tspan font-size="15" baseline-shift="sub" font-style="normal">1</tspan></text>
+    <text x="103" y="13">D<tspan font-size="15" baseline-shift="sub" font-style="normal">1</tspan></text>
+  </g>
+</svg>
