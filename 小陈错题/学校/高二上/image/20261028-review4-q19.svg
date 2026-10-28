@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="375" height="325" viewBox="0 0 375 325" role="img" aria-labelledby="title">
+  <title id="title">Question 19: tetrahedron A-BCD, perpendicular foot E on AD and midpoint F on AC</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M65 45V200L220 270L310 200Z M65 45L220 270 M65 200L142.5 157.5L146.667 96.667"/>
+    <path d="M65 200H310 M65 200L146.667 96.667" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="23" font-style="italic">
+    <text x="43" y="31">A</text>
+    <text x="39" y="210">B</text>
+    <text x="218" y="300">C</text>
+    <text x="328" y="208">D</text>
+    <text x="160" y="86">E</text>
+    <text x="159" y="161">F</text>
+  </g>
+</svg>

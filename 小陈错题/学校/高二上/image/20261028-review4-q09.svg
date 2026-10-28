@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="285" viewBox="0 0 300 285" role="img" aria-labelledby="title">
+  <title id="title">Question 9: square paper ABCD with diagonals meeting at O</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M55 45H245V235H55Z M55 45L245 235 M55 235L245 45"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="23" font-style="italic">
+    <text x="33" y="263">A</text>
+    <text x="249" y="263">B</text>
+    <text x="254" y="35">C</text>
+    <text x="35" y="32">D</text>
+    <text x="142" y="178">O</text>
+  </g>
+</svg>

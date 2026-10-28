@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="460" height="405" viewBox="0 0 460 405" role="img" aria-labelledby="title">
+  <title id="title">Question 20: right square prism ABCD-A1B1C1D1 with lower-base center O1</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M170 35H400L285 135H55Z M55 135V355H285V135 M400 35V255L285 355"/>
+    <path d="M170 35V255H400 M170 255L55 355" stroke-dasharray="6 5"/>
+    <path d="M170 35L55 355 M170 35L400 255 M170 255L285 355 M55 355L400 255" stroke-width="1.3" stroke-dasharray="6 5"/>
+  </g>
+  <circle cx="227.5" cy="305" r="2.3" fill="#111"/>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="23" font-style="italic">
+    <text x="153" y="25">A</text>
+    <text x="28" y="139">B</text>
+    <text x="316" y="150">C</text>
+    <text x="414" y="38">D</text>
+    <text x="184" y="240">A<tspan font-size="15" baseline-shift="sub">1</tspan></text>
+    <text x="23" y="385">B<tspan font-size="15" baseline-shift="sub">1</tspan></text>
+    <text x="293" y="385">C<tspan font-size="15" baseline-shift="sub">1</tspan></text>
+    <text x="415" y="263">D<tspan font-size="15" baseline-shift="sub">1</tspan></text>
+    <text x="216" y="335">O<tspan font-size="15" baseline-shift="sub">1</tspan></text>
+  </g>
+</svg>

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="790" height="400" viewBox="0 0 790 400" role="img" aria-labelledby="title">
+  <title id="title">Question 21: cone-cylinder combination and its circumscribed sphere</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M70 155L170 55L270 155V255 M70 155V255 M70 155A100 24 0 0 0 270 155 M70 255A100 24 0 0 0 270 255"/>
+    <path d="M70 155A100 24 0 0 1 270 155 M70 255A100 24 0 0 1 270 255 M170 55V255" stroke-dasharray="6 5"/>
+    <circle cx="580" cy="205" r="150"/>
+    <path d="M438.579 155L580 55L721.421 155 M438.579 155A141.421 25 0 0 0 721.421 155 M438.579 255A141.421 25 0 0 0 721.421 255"/>
+    <path d="M438.579 155A141.421 25 0 0 1 721.421 155 M438.579 255A141.421 25 0 0 1 721.421 255 M438.579 155V255 M721.421 155V255 M580 55V255 M438.579 155H721.421 M438.579 255H721.421 M580 205L438.579 155" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="#111">
+    <circle cx="580" cy="205" r="2.3"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="23" font-style="italic">
+    <text x="163" y="37">P</text>
+    <text x="188" y="160">O<tspan font-size="15" baseline-shift="sub">1</tspan></text>
+    <text x="188" y="260">O<tspan font-size="15" baseline-shift="sub">2</tspan></text>
+    <text x="573" y="37">P</text>
+    <text x="405" y="154">D</text>
+    <text x="742" y="154">C</text>
+    <text x="405" y="268">A</text>
+    <text x="742" y="268">B</text>
+    <text x="597" y="112">O<tspan font-size="15" baseline-shift="sub">1</tspan></text>
+    <text x="597" y="309">O<tspan font-size="15" baseline-shift="sub">2</tspan></text>
+    <text x="597" y="219">O</text>
+    <text x="477" y="218">R</text>
+  </g>
+</svg>

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="365" height="320" viewBox="0 0 365 320" role="img" aria-labelledby="title">
+  <title id="title">Question 17: covered regular square-pyramid container with apex P below lid ABCD</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M60 45H250L310 115H120Z M60 45L175 265L310 115 M120 115L175 265"/>
+    <path d="M250 45L175 265" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="23" font-style="italic">
+    <text x="132" y="99">A</text>
+    <text x="327" y="122">B</text>
+    <text x="244" y="28">C</text>
+    <text x="39" y="36">D</text>
+    <text x="168" y="296">P</text>
+  </g>
+</svg>

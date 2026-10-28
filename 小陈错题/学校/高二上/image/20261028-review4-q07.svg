@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="310" height="310" viewBox="0 0 310 310" role="img" aria-labelledby="title">
+  <title id="title">Question 7: cylinder inscribed in sphere O of radius R</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="155" cy="155" r="113.137085"/>
+    <path d="M41.862915 155A113.137085 28 0 0 0 268.137085 155 M75 75A80 20 0 0 0 235 75 M75 235A80 20 0 0 0 235 235"/>
+    <path d="M41.862915 155A113.137085 28 0 0 1 268.137085 155 M75 75A80 20 0 0 1 235 75 M75 235A80 20 0 0 1 235 235 M75 75V235 M235 75V235 M155 155L235 75" stroke-dasharray="6 5"/>
+  </g>
+  <circle cx="155" cy="155" r="2.3" fill="#111"/>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="23" font-style="italic">
+    <text x="121" y="158">O</text>
+    <text x="190" y="163">R</text>
+  </g>
+</svg>

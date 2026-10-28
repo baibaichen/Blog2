@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="330" height="300" viewBox="0 0 330 300" role="img" aria-labelledby="title">
+  <title id="title">Questions 4 and 10: cube ABCD-A1B1C1D1</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M65 225H200L270 177V42H135L65 90H200L270 42 M65 90V225 M200 90V225"/>
+    <path d="M65 225L135 177H270 M135 177V42" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="23" font-style="italic">
+    <text x="43" y="249">A</text>
+    <text x="202" y="251">B</text>
+    <text x="284" y="185">C</text>
+    <text x="100" y="167">D</text>
+    <text x="31" y="82">A<tspan font-size="15" baseline-shift="sub">1</tspan></text>
+    <text x="181" y="68">B<tspan font-size="15" baseline-shift="sub">1</tspan></text>
+    <text x="278" y="33">C<tspan font-size="15" baseline-shift="sub">1</tspan></text>
+    <text x="117" y="25">D<tspan font-size="15" baseline-shift="sub">1</tspan></text>
+  </g>
+</svg>

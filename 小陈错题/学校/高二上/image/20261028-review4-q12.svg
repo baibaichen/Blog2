@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="410" viewBox="0 0 440 410" role="img" aria-labelledby="title">
+  <title id="title">Question 12: oblique drawing A'B'C' with axes x' and y'</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M35 345H415 M55 380L385 50 M220 345L350 45V345 M148 345A58 58 0 0 0 131.012 303.988"/>
+  </g>
+  <g fill="#111">
+    <path d="M415 345L402 340V350Z M385 50L372.5 55.5L379.5 62.5Z"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="23" font-style="italic">
+    <text x="204" y="379">A'</text>
+    <text x="338" y="379">B'</text>
+    <text x="315" y="30">C'</text>
+    <text x="24" y="375">O'</text>
+    <text x="412" y="378">x'</text>
+    <text x="403" y="65">y'</text>
+  </g>
+  <text x="153" y="326" fill="#111" font-family="Times New Roman, serif" font-size="21">45°</text>
+</svg>

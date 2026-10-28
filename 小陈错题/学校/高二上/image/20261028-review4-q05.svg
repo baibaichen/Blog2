@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="330" height="275" viewBox="0 0 330 275" role="img" aria-labelledby="title">
+  <title id="title">Question 5: regular square pyramid P-ABCD with base center O</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M55 220H225L270 160L162.5 35Z M162.5 35L225 220"/>
+    <path d="M55 220L100 160H270 M100 160L162.5 35V190" stroke-dasharray="6 5"/>
+  </g>
+  <circle cx="162.5" cy="190" r="2.3" fill="#111"/>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="23" font-style="italic">
+    <text x="155" y="24">P</text>
+    <text x="111" y="186">A</text>
+    <text x="32" y="244">B</text>
+    <text x="234" y="244">C</text>
+    <text x="285" y="165">D</text>
+    <text x="178" y="202">O</text>
+  </g>
+</svg>

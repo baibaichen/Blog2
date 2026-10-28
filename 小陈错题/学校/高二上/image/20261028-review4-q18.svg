@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="365" height="340" viewBox="0 0 365 340" role="img" aria-labelledby="title">
+  <title id="title">Question 18: right triangular prism ABC-A1B1C1 and plane A1BC</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M70 95L140 45H295Z M70 95V285L295 235V45 M70 95L295 235"/>
+    <path d="M140 45V235H295 M70 285L140 235L70 95" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="23" font-style="italic">
+    <text x="48" y="315">A</text>
+    <text x="153" y="218">B</text>
+    <text x="310" y="244">C</text>
+    <text x="30" y="94">A<tspan font-size="15" baseline-shift="sub">1</tspan></text>
+    <text x="130" y="25">B<tspan font-size="15" baseline-shift="sub">1</tspan></text>
+    <text x="311" y="45">C<tspan font-size="15" baseline-shift="sub">1</tspan></text>
+  </g>
+</svg>
