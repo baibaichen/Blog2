@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="325" viewBox="0 0 360 325" role="img" aria-labelledby="title">
+  <title id="title">Question 17: triangular pyramid P-ABC</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M145 38L40 172L175 278L320 160Z M145 38L175 278"/>
+    <path d="M40 172L320 160" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="135" y="23">P</text>
+    <text x="13" y="181">A</text>
+    <text x="170" y="308">B</text>
+    <text x="333" y="167">C</text>
+  </g>
+</svg>

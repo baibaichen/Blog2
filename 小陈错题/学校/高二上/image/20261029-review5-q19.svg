@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="375" height="355" viewBox="0 0 375 355" role="img" aria-labelledby="title">
+  <title id="title">Question 19: circle with diameter AB and perpendicular PA</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M50 268A137 43 0 0 0 324 268 M50 268L187 311L324 268 M50 268V36L324 268 M50 36L187 311 M50 268L118.5 173.5L184.26 149.68"/>
+    <path d="M50 268A137 43 0 0 1 324 268 M50 268H324 M50 268L184.26 149.68" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="40" y="22">P</text>
+    <text x="23" y="280">A</text>
+    <text x="338" y="276">B</text>
+    <text x="180" y="342">M</text>
+    <text x="128" y="145">N</text>
+    <text x="192" y="136">Q</text>
+    <text x="199" y="257">O</text>
+  </g>
+</svg>

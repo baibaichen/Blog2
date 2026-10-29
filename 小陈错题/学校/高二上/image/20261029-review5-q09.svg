@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="315" viewBox="0 0 340 315" role="img" aria-labelledby="title">
+  <title id="title">Question 9: regular tetrahedron net, Q is the midpoint of DF</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M170 35L40 260H300Z M105 147.5H235L170 260Z M40 260L137.5 203.75"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="163" y="22">A</text>
+    <text x="16" y="281">B</text>
+    <text x="311" y="281">C</text>
+    <text x="76" y="151">D</text>
+    <text x="249" y="151">E</text>
+    <text x="162" y="291">F</text>
+    <text x="150" y="198">Q</text>
+  </g>
+</svg>

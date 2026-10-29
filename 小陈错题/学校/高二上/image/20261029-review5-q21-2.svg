@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="410" height="350" viewBox="0 0 410 350" role="img" aria-labelledby="title">
+  <title id="title">Question 21, figure 2: sector PAD, C bisects arc AD and B bisects arc AC</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M200 275L35.455 180A190 190 0 0 1 364.545 180Z M200 275L105 110.455 M200 275V85"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="8" y="189">A</text>
+    <text x="81" y="98">B</text>
+    <text x="192" y="68">C</text>
+    <text x="377" y="190">D</text>
+    <text x="211" y="300">P</text>
+  </g>
+  <text x="200" y="336" fill="#111" font-family="Microsoft YaHei, SimSun, sans-serif" font-size="18" text-anchor="middle">图 2</text>
+</svg>

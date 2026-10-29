@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="365" height="430" viewBox="0 0 365 430" role="img" aria-labelledby="title">
+  <title id="title">Question 20: square prism with C1E=3EC and plane BED</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M65 105L120 55H315L260 105Z M65 105V385H260V105 M315 55V335L260 385"/>
+    <path d="M120 55V335H315 M120 335L65 385" stroke-dasharray="6 5"/>
+    <path d="M260 385L315 265"/>
+    <path d="M65 105L120 335L260 385 M120 335L315 265L65 105 M65 105L315 335" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="39" y="411">A</text>
+    <text x="263" y="414">B</text>
+    <text x="328" y="344">C</text>
+    <text x="131" y="312">D</text>
+    <text x="30" y="108">A<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="272" y="129">B<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="328" y="57">C<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="100" y="35">D<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="330" y="273">E</text>
+  </g>
+</svg>

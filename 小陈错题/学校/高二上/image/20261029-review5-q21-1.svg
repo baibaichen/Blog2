@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="650" height="350" viewBox="0 0 650 350" role="img" aria-labelledby="title">
+  <title id="title">Question 21, figure 1: upright and fallen cones on a horizontal plane</title>
+  <g fill="none" stroke="#111" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M48 172H110 M190 172H394.4 M522.7 172H615L578 296H12L48 172"/>
+    <path d="M150 50L85 250A65 20 0 0 0 215 250Z"/>
+    <path d="M85 250A65 20 0 0 1 215 250 M150 50V250H215" stroke-dasharray="6 5"/>
+    <path d="M300 250.112L467.281 111.697A24 76 -24 1 1 527.558 250.112Z"/>
+    <path d="M527.558 250.112A24 76 -24 0 1 467.281 111.697 M300 250.112L500 180L467.281 111.697" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="142" y="34">P</text>
+    <text x="270" y="263">P</text>
+  </g>
+  <text x="315" y="334" fill="#111" font-family="Microsoft YaHei, SimSun, sans-serif" font-size="18" text-anchor="middle">图 1</text>
+</svg>

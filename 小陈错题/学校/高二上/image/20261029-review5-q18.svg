@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="295" viewBox="0 0 360 295" role="img" aria-labelledby="title">
+  <title id="title">Question 18: shaded trapezoid, AD=2, AB=3, BC=4</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0L8 4L0 8Z" fill="#111"/>
+    </marker>
+  </defs>
+  <path d="M198 55L306 217H90V163A108 108 0 0 0 198 55Z" fill="#aaa" fill-opacity="0.55"/>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M90 55H198L306 217H90Z M198 55A108 108 0 0 1 90 163"/>
+    <path d="M90 55L166.37 131.37" marker-end="url(#arrow)"/>
+  </g>
+  <g fill="none" stroke="#111" stroke-width="1.2">
+    <path d="M90 27V47 M198 27V47 M59 55H82 M59 217H82 M90 228V250 M306 228V250"/>
+    <path d="M92 33H196" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <path d="M65 57V215" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <path d="M92 244H304" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="36" y="46">A</text>
+    <text x="65" y="246">B</text>
+    <text x="319" y="227">C</text>
+    <text x="211" y="54">D</text>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="22" text-anchor="middle">
+    <text x="144" y="21">2</text>
+    <text x="43" y="143">3</text>
+    <text x="198" y="277">4</text>
+  </g>
+</svg>
