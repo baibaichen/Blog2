@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="355" height="335" viewBox="0 0 355 335" role="img" aria-labelledby="title">
+  <title id="title">Question 18: cone with diameter AB and midpoint D of PA</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M55 250L180 35L305 250 M55 250A125 45 0 0 0 305 250"/>
+    <path d="M55 250A125 45 0 0 1 305 250 M55 250H305 M180 35V250L145 293.2 M117.5 142.5L145 293.2" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="172" y="22">P</text>
+    <text x="30" y="257">A</text>
+    <text x="319" y="257">B</text>
+    <text x="136" y="323">C</text>
+    <text x="82" y="148">D</text>
+    <text x="193" y="279">O</text>
+  </g>
+</svg>

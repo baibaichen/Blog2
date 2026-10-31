@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="355" height="445" viewBox="0 0 355 445" role="img" aria-labelledby="title">
+  <title id="title">Question 19: cuboid with M on C1C and C1M equal to one fifth of C1C</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M50 75L115 45H290L225 75Z M50 75V395H225V75 M290 45V365L225 395 M50 75L225 139L50 395"/>
+    <path d="M115 45V365H290 M115 365L50 395 M115 45L225 139" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="130" y="350">A</text>
+    <text x="29" y="424">B</text>
+    <text x="226" y="424">C</text>
+    <text x="304" y="373">D</text>
+    <text x="96" y="24">A<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="16" y="70">B<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="237" y="98">C<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="302" y="47">D<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="241" y="147">M</text>
+  </g>
+</svg>

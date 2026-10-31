@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="287" viewBox="0 0 420 335" role="img" aria-labelledby="title">
+  <title id="title">Question 21 figure 2: tetrahedron with opposite edge pairs sqrt(5), sqrt(13) and sqrt(10)</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M90 35L45 300L365 260L290 125Z M45 300L290 125"/>
+    <path d="M90 35L365 260" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="22">
+    <text x="23" y="162">&#8730;<tspan text-decoration="overline">5</tspan></text>
+    <text x="349" y="181">&#8730;<tspan text-decoration="overline">5</tspan></text>
+    <text x="184" y="55">&#8730;<tspan text-decoration="overline">10</tspan></text>
+    <text x="193" y="316">&#8730;<tspan text-decoration="overline">10</tspan></text>
+    <text x="163" y="175">&#8730;<tspan text-decoration="overline">13</tspan></text>
+    <text x="231" y="225">&#8730;<tspan text-decoration="overline">13</tspan></text>
+  </g>
+</svg>

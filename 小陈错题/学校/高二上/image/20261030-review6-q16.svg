@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="365" height="315" viewBox="0 0 365 315" role="img" aria-labelledby="title">
+  <title id="title">Question 16: square pyramid with side PAD perpendicular to the base</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M90 40L55 270H245L320 195Z M90 40L245 270"/>
+    <path d="M55 270L125 195H320 M90 40L125 195" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="82" y="24">P</text>
+    <text x="29" y="294">A</text>
+    <text x="245" y="299">B</text>
+    <text x="333" y="203">C</text>
+    <text x="128" y="225">D</text>
+  </g>
+</svg>

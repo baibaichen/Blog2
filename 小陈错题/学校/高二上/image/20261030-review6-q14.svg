@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="325" viewBox="0 0 360 325" role="img" aria-labelledby="title">
+  <title id="title">Question 14: cube with E on A1A and F on BC</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M50 90L115 45H295L230 90Z M50 90V275H230V90 M295 45V230L230 275"/>
+    <path d="M115 45V230H295 M115 230L50 275 M115 125L140 275L295 230Z" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="85" y="216">A</text>
+    <text x="29" y="303">B</text>
+    <text x="232" y="303">C</text>
+    <text x="309" y="237">D</text>
+    <text x="98" y="25">A<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="16" y="85">B<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="240" y="111">C<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="307" y="47">D<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="87" y="131">E</text>
+    <text x="132" y="303">F</text>
+  </g>
+</svg>

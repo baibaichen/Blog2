@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="355" height="305" viewBox="0 0 355 305" role="img" aria-labelledby="title">
+  <title id="title">Question 8: regular square pyramid</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M182.5 35L55 260H240L310 190Z M182.5 35L240 260"/>
+    <path d="M55 260L125 190H310 M125 190L182.5 35V225" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="176" y="22">P</text>
+    <text x="31" y="285">A</text>
+    <text x="241" y="287">B</text>
+    <text x="323" y="198">C</text>
+    <text x="137" y="222">D</text>
+  </g>
+</svg>

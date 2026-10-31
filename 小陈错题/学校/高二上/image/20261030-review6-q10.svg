@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="355" height="330" viewBox="0 0 355 330" role="img" aria-labelledby="title">
+  <title id="title">Question 10: tetrahedron ABCD with midpoints E, F and G</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M170 35L45 205L140 285L310 205Z M170 35L140 285 M170 35L92.5 245 M155 160L225 245"/>
+    <path d="M45 205H310" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="161" y="22">A</text>
+    <text x="17" y="211">B</text>
+    <text x="132" y="314">C</text>
+    <text x="323" y="212">D</text>
+    <text x="68" y="269">E</text>
+    <text x="234" y="269">F</text>
+    <text x="173" y="153">G</text>
+  </g>
+</svg>

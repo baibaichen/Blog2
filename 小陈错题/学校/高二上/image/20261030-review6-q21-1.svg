@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="325" viewBox="0 0 360 325" role="img" aria-labelledby="title">
+  <title id="title">Question 21 figure 1: regular tetrahedron ACB1D1 inscribed in its generating cube</title>
+  <g fill="none" stroke="#111" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M50 105L115 40H295L230 105Z M50 105V275H230V105 M295 40V210L230 275"/>
+    <path d="M115 40V210H295 M115 210L50 275" stroke-dasharray="6 5"/>
+    <path d="M50 275L230 105L295 210 M230 105L115 40" stroke-width="2.1"/>
+    <path d="M50 275L295 210L115 40Z" stroke-width="2.1" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="30" y="302">A</text>
+    <text x="231" y="302">B</text>
+    <text x="308" y="217">C</text>
+    <text x="88" y="205">D</text>
+    <text x="17" y="98">A<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="263" y="123">B<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="307" y="44">C<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+    <text x="86" y="23">D<tspan font-size="14" baseline-shift="sub">1</tspan></text>
+  </g>
+</svg>

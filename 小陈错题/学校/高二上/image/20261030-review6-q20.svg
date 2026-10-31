@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="385" height="305" viewBox="0 0 385 305" role="img" aria-labelledby="title">
+  <title id="title">Question 20: pyramid with isosceles trapezoid ABCD and PD perpendicular to the base</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M100 35L55 265H335Z"/>
+    <path d="M100 35V200L55 265 M100 200H240L335 265 M100 35L240 200" stroke-dasharray="6 5"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="22" font-style="italic">
+    <text x="91" y="22">P</text>
+    <text x="29" y="286">A</text>
+    <text x="348" y="278">B</text>
+    <text x="226" y="229">C</text>
+    <text x="112" y="181">D</text>
+  </g>
+</svg>
