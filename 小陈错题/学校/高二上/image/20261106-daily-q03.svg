@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="262" viewBox="0 0 300 262" role="img" aria-labelledby="title">
+  <title id="title">正三棱锥及高的示意图</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M35 145L41 145 M46 145L52 145 M57 145L63 145 M68 145L74 145 M79 145L85 145
+      M90 145L96 145 M101 145L107 145 M112 145L118 145 M123 145L129 145 M134 145L140 145
+      M145 145L151 145 M156 145L162 145 M167 145L173 145 M178 145L184 145 M189 145L195 145
+      M200 145L206 145 M211 145L217 145 M222 145L228 145 M233 145L239 145 M244 145L250 145
+      M255 145L261 145 M266 145L267 145"/>
+    <path d="M162 25L162 31 M162 36L162 42 M162 47L162 53 M162 58L162 64 M162 69L162 75
+      M162 80L162 86 M162 91L162 97 M162 102L162 108 M162 113L162 119 M162 124L162 130
+      M162 135L162 141 M162 146L162 152 M162 157L162 163 M162 168L162 172"/>
+    <path d="M35 145L162 25L267 145L185 225Z M162 25L185 225"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="20" font-style="italic">
+    <text x="155" y="17">P</text>
+    <text x="12" y="151">A</text>
+    <text x="178" y="251">B</text>
+    <text x="276" y="151">C</text>
+    <text x="135" y="190">H</text>
+  </g>
+</svg>

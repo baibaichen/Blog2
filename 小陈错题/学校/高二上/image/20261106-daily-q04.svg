@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="315" height="280" viewBox="0 0 315 280" role="img" aria-labelledby="title">
+  <title id="title">正方体 ABCD-A1B1C1D1 示意图</title>
+  <g fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M108 35L108 41 M108 46L108 52 M108 57L108 63 M108 68L108 74 M108 79L108 85
+      M108 90L108 96 M108 101L108 107 M108 112L108 118 M108 123L108 129 M108 134L108 140
+      M108 145L108 151 M108 156L108 162 M108 167L108 173 M108 178L108 184 M108 189L108 190"/>
+    <path d="M108 190L114 190 M119 190L125 190 M130 190L136 190 M141 190L147 190 M152 190L158 190
+      M163 190L169 190 M174 190L180 190 M185 190L191 190 M196 190L202 190 M207 190L213 190
+      M218 190L224 190 M229 190L235 190 M240 190L246 190 M251 190L257 190 M262 190L268 190"/>
+    <path d="M108 190L103.2 193.6 M99.2 196.6L94.4 200.2 M90.4 203.2L85.6 206.8
+      M81.6 209.8L76.8 213.4 M72.8 216.4L68 220 M64 223L59.2 226.6 M55.2 229.6L50.4 233.2"/>
+    <path d="M48 80L108 35H270L210 80Z M48 80V235H210V80 M270 35V190L210 235"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="20" font-style="italic">
+    <text x="20" y="264">A</text>
+    <text x="205" y="264">B</text>
+    <text x="280" y="198">C</text>
+    <text x="116" y="184">D</text>
+    <text x="16" y="75">A<tspan font-size="13" baseline-shift="sub">1</tspan></text>
+    <text x="181" y="71">B<tspan font-size="13" baseline-shift="sub">1</tspan></text>
+    <text x="278" y="33">C<tspan font-size="13" baseline-shift="sub">1</tspan></text>
+    <text x="98" y="24">D<tspan font-size="13" baseline-shift="sub">1</tspan></text>
+  </g>
+</svg>
