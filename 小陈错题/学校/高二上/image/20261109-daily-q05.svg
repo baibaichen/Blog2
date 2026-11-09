@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="310" height="265" viewBox="0 0 310 265">
+  <g fill="none" stroke="#222" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M105 30 V160 M105 30 L50 205 M105 30 L180 205 M105 30 L245 160 M50 205 H180 L245 160 M105 160 L50 205"/>
+    <path d="M105 160 L245 160" stroke-dasharray="5 5"/>
+    <path d="M105 160 L115 205 M115 205 L142.5 117.5 M105 160 L142.5 117.5 M105 160 L180 205"/>
+    <circle cx="115" cy="205" r="3" fill="#222"/>
+    <circle cx="142.5" cy="117.5" r="3" fill="#222"/>
+  </g>
+  <g fill="#111" font-family="Times New Roman, serif" font-size="19" font-style="italic">
+    <text x="99" y="21">P</text>
+    <text x="88" y="158">A</text>
+    <text x="31" y="221">B</text>
+    <text x="182" y="221">C</text>
+    <text x="251" y="164">D</text>
+    <text x="107" y="228">E</text>
+    <text x="148" y="114">F</text>
+  </g>
+</svg>
