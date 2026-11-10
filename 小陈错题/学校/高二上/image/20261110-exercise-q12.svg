@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="130" viewBox="0 0 240 130" role="img">
+  <title>W 形霓虹灯</title>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M30 25 L75 102.9423 L120 25 L165 102.9423 L210 25" stroke="#f4a8d1" stroke-width="12" opacity="0.55"/>
+    <path d="M30 25 L75 102.9423 L120 25 L165 102.9423 L210 25" stroke="#d81b83" stroke-width="5"/>
+  </g>
+</svg>
